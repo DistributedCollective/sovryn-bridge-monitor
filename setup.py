@@ -17,9 +17,13 @@ requires = [
     'alembic',
     'pyramid_retry',
     'pyramid_tm',
+    'pyramid_di',
+    'psycopg2',
     'SQLAlchemy',
     'transaction',
     'zope.sqlalchemy',
+    'eth-utils',
+    'web3',
 ]
 
 tests_require = [

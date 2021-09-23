@@ -6,6 +6,7 @@ def main(global_config, **settings):
     """
     with Configurator(settings=settings) as config:
         config.include('pyramid_jinja2')
+        config.include('pyramid_di')
         config.include('.routes')
         config.include('.models')
         config.scan()

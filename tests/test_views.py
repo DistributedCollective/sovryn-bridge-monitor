@@ -8,7 +8,7 @@ def test_my_view_failure(app_request):
     assert info.status_int == 500
 
 def test_my_view_success(app_request, dbsession):
-    model = models.MyModel(name='one', value=55)
+    model = models.KeyValuePair(key='test', value=55)
     dbsession.add(model)
     dbsession.flush()
 

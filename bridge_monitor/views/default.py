@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from pyramid.view import view_config
 from pyramid.response import Response
 from sqlalchemy.exc import SQLAlchemyError
@@ -8,10 +10,11 @@ from .. import models
 @view_config(route_name='home', renderer='bridge_monitor:templates/mytemplate.jinja2')
 def my_view(request):
     try:
-        query = request.dbsession.query(models.MyModel)
-        one = query.filter(models.MyModel.name == 'one').one()
+        query = request.dbsession.query(models.KeyValuePair)
+        query.filter(models.KeyValuePair.key == 'test').one()
     except SQLAlchemyError:
         return Response(db_err_msg, content_type='text/plain', status=500)
+    one = SimpleNamespace(name='one')
     return {'one': one, 'project': 'bridge_monitor'}
 
 

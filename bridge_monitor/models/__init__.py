@@ -1,11 +1,12 @@
 from sqlalchemy import engine_from_config
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.orm import configure_mappers
 import zope.sqlalchemy
 
 # Import or define all models here to ensure they are attached to the
 # ``Base.metadata`` prior to any initialization routines.
-from .mymodel import MyModel  # flake8: noqa
+from .bridge import Transfer  # flake8: noqa
+from .key_value_store import KeyValuePair  # flake8: noqa
 
 # Run ``configure_mappers`` after defining all of the models to ensure
 # all relationships can be setup.
@@ -125,3 +126,9 @@ def includeme(config):
         return dbsession
 
     config.add_request_method(dbsession, reify=True)
+
+    config.register_di_service(
+        lambda request: request.dbsession,
+        interface=Session,
+        scope='request'
+    )

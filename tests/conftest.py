@@ -17,14 +17,17 @@ from bridge_monitor.models.meta import Base
 def pytest_addoption(parser):
     parser.addoption('--ini', action='store', metavar='INI_FILE')
 
+
 @pytest.fixture(scope='session')
 def ini_file(request):
     # potentially grab this path from a pytest option
     return os.path.abspath(request.config.option.ini or 'testing.ini')
 
+
 @pytest.fixture(scope='session')
 def app_settings(ini_file):
     return get_appsettings(ini_file)
+
 
 @pytest.fixture(scope='session')
 def dbengine(app_settings, ini_file):
@@ -46,9 +49,11 @@ def dbengine(app_settings, ini_file):
     Base.metadata.drop_all(bind=engine)
     alembic.command.stamp(alembic_cfg, None, purge=True)
 
+
 @pytest.fixture(scope='session')
 def app(app_settings, dbengine):
     return main({}, dbengine=dbengine, **app_settings)
+
 
 @pytest.fixture
 def tm():
@@ -60,10 +65,12 @@ def tm():
 
     tm.abort()
 
+
 @pytest.fixture
 def dbsession(app, tm):
     session_factory = app.registry['dbsession_factory']
     return models.get_tm_session(session_factory, tm)
+
 
 @pytest.fixture
 def testapp(app, tm, dbsession):
@@ -78,6 +85,7 @@ def testapp(app, tm, dbsession):
     })
 
     return testapp
+
 
 @pytest.fixture
 def app_request(app, tm, dbsession):
@@ -100,6 +108,7 @@ def app_request(app, tm, dbsession):
 
         yield request
 
+
 @pytest.fixture
 def dummy_request(tm, dbsession):
     """
@@ -119,6 +128,7 @@ def dummy_request(tm, dbsession):
     request.tm = tm
 
     return request
+
 
 @pytest.fixture
 def dummy_config(dummy_request):
