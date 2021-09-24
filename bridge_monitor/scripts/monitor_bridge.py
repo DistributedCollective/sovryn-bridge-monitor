@@ -3,10 +3,8 @@ import sys
 
 from pyramid.paster import bootstrap, setup_logging
 from pyramid.request import Request
-from sqlalchemy.exc import OperationalError
-from ..business_logic.bridge_transfer_updater import update_transfers_from_all_bridges
 
-from .. import models
+from ..business_logic.bridge_transfer_updater import update_transfers_from_all_bridges
 
 
 def parse_args(argv):

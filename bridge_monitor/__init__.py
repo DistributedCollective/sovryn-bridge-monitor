@@ -9,5 +9,7 @@ def main(global_config, **settings):
         config.include('pyramid_di')
         config.include('.routes')
         config.include('.models')
+        config.include('.auth')
         config.scan()
+
     return config.make_wsgi_app()
