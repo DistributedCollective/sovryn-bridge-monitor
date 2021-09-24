@@ -21,13 +21,15 @@ BRIDGES: Dict[str, Dict[str, BridgeConfig]] = {
         'rsk': {
             'bridge_address': '0x1ccad820b6d031b41c54f1f3da11c0d48b399581',
             'federation_address': '0x5e2ee3cd18421838d066bd1dc02fb1f767d834dd',
-            'bridge_start_block': 3373266,
+            #'bridge_start_block': 3373266,
+            'bridge_start_block': 3600000,
             'chain': 'rsk_mainnet',
         },
         'other': {
             'bridge_address': '0x33c0d33a0d4312562ad622f91d12b0ac47366ee1',
             'federation_address': '0x74aa9b461CAd174cA066fc80AF2151c96Bd4D45f',
-            'bridge_start_block': 12485023,
+            #'bridge_start_block': 12485023,
+            'bridge_start_block': 13100000,
             'chain': 'eth_mainnet',
         }
     },
@@ -35,13 +37,15 @@ BRIDGES: Dict[str, Dict[str, BridgeConfig]] = {
         'rsk': {
             'bridge_address': '0x971b97c8cc82e7d27bc467c2dc3f219c6ee2e350',
             'federation_address': '0xa7938270c2bf99a9cf033c9d35156d2ddb097b12',
-            'bridge_start_block': 3399221,
+            #'bridge_start_block': 3399221,
+            'bridge_start_block': 3600000,
             'chain': 'rsk_mainnet',
         },
         'other': {
             'bridge_address': '0xdfc7127593c8af1a17146893f10e08528f4c2aa7',
             'federation_address': '0x33f8743d5afa519dd373a75e7aa5c255e2c82468',
-            'bridge_start_block': 7917126,
+            #'bridge_start_block': 7917126,
+            'bridge_start_block': 10300000,
             'chain': 'bsc_mainnet',
         }
     },
