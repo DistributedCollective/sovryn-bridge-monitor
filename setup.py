@@ -59,7 +59,7 @@ setup(
             'main = bridge_monitor:main',
         ],
         'console_scripts': [
-            'initialize_bridge_monitor_db=bridge_monitor.scripts.initialize_db:main',
+            'monitor_bridge=bridge_monitor.scripts.monitor_bridge:main',
         ],
     },
 )

@@ -1,11 +1,11 @@
 import pytest
 
-from bridge_monitor.services.key_value_store import KeyValueService
+from bridge_monitor.business_logic.key_value_store import KeyValueStore
 
 
 @pytest.fixture()
-def key_value_service(app_request) -> KeyValueService:
-    return app_request.find_service(KeyValueService)
+def key_value_service(dbsession) -> KeyValueStore:
+    return KeyValueStore(dbsession=dbsession)
 
 
 def test_get_or_create_value(key_value_service):

@@ -1,12 +1,17 @@
-from argparse import ArgumentParser
+"""
+Low-level operations for fetching bridge transfers (no DB updates)
+"""
+import logging
 from dataclasses import dataclass
 from typing import List, Optional
 
 from eth_utils import to_hex
 from web3.logs import DISCARD
 
-from .constants import BRIDGES, BRIDGE_ABI, BridgeConfig, FEDERATION_ABI
-from .utils import enable_logging, get_events, get_web3, to_address
+from .constants import BRIDGE_ABI, BridgeConfig, FEDERATION_ABI
+from .utils import get_events, get_web3, to_address
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -26,49 +31,14 @@ class TransferDTO:
     event_block_hash: str
     event_transaction_hash: str
     event_log_index: int
-    executed_transaction_hash: str
-    executed_block_hash: str
-    executed_block_number: int
-    executed_log_index: int
+    executed_transaction_hash: Optional[str]
+    executed_block_hash: Optional[str]
+    executed_block_number: Optional[int]
+    executed_log_index: Optional[int]
     has_error_token_receiver_events: bool
     error_data: str
     #vote_transaction_args: Tuple
     #cross_event: AttributeDict
-
-
-def fetch_transfers():
-    parser = ArgumentParser(description="Show status of Cross events of bridge")
-    parser.add_argument('bridge',
-                        help='which bridge to use?',
-                        choices=list(BRIDGES.keys())),
-    parser.add_argument('-o', '--outfile', help='Path of CSV file to write all transfers to', required=False)
-    parser.add_argument('-v', '--verbose', action='store_true', default=False)
-    parser.add_argument('--rsk-start-block', type=int, default=None)
-    parser.add_argument('--other-start-block', type=int, default=None)
-    args = parser.parse_args()
-
-    bridge_config = BRIDGES[args.bridge]
-    print("Config:", args.bridge)
-
-    if args.verbose:
-        print("Verbose mode ON")
-        enable_logging()
-
-    print(f"CSV Output file: {args.outfile}")
-
-    print("Transfers from RSK:")
-    rsk_transfers = fetch_state(bridge_config['rsk'],
-                                bridge_config['other'],
-                                bridge_start_block=args.rsk_start_block,
-                                federation_start_block=args.other_start_block)
-
-    print("Transfers from the other chain:")
-    other_transfers = fetch_state(bridge_config['other'],
-                                  bridge_config['rsk'],
-                                  bridge_start_block=args.other_start_block,
-                                  federation_start_block=args.rsk_start_block)
-
-    return rsk_transfers + other_transfers
 
 
 def fetch_state(
@@ -106,28 +76,28 @@ def fetch_state(
         abi=BRIDGE_ABI,
     )
 
-    print(f'main: {main_chain}, side: {side_chain}, from: {bridge_start_block}, to: {bridge_end_block}')
-    print('getting Cross events')
+    logger.info(f'main: {main_chain}, side: {side_chain}, from: {bridge_start_block}, to: {bridge_end_block}')
+    logger.info('getting Cross events')
     cross_events = get_events(
         event=bridge_contract.events.Cross,
         from_block=bridge_start_block,
         to_block=bridge_end_block,
     )
-    print(f'found {len(cross_events)} Cross events')
+    logger.info(f'found {len(cross_events)} Cross events')
 
-    print('getting Executed events')
+    logger.info('getting Executed events')
     executed_events = get_events(
         event=federation_contract.events.Executed,
         from_block=federation_start_block,
         to_block=federation_end_block,
     )
-    print(f'found {len(executed_events)} Executed events')
+    logger.info(f'found {len(executed_events)} Executed events')
     executed_event_by_transaction_id = {
         to_hex(e.args.transactionId): e
         for e in executed_events
     }
 
-    print('processing transfers')
+    logger.info('processing transfers')
     transfers = []
     for event in cross_events:
         args = event.args
@@ -145,19 +115,19 @@ def fetch_state(
         tx_id_args = tx_id_args_old + (
             args['_userData'],
         )
-        print(event)
+        logger.debug(event)
         transaction_id = federation_contract.functions.getTransactionIdU(*tx_id_args).call()
         transaction_id = to_hex(transaction_id)
-        print('transaction_id', transaction_id)
+        logger.debug('transaction_id: %s', transaction_id)
         transaction_id_old = federation_contract.functions.getTransactionId(*tx_id_args_old).call()
         transaction_id_old = to_hex(transaction_id_old)
-        print('transaction_id_old', transaction_id_old)
+        logger.debug('transaction_id_old: %s', transaction_id_old)
         num_votes = federation_contract.functions.getTransactionCount(transaction_id).call()
-        print('num_votes', num_votes)
+        logger.debug('num_votes: %s', num_votes)
         was_processed = federation_contract.functions.transactionWasProcessed(transaction_id).call()
-        print('was_processed', was_processed)
+        logger.debug('was_processed: %s', was_processed)
         executed_event = executed_event_by_transaction_id.get(transaction_id)
-        print('related Executed event', executed_event)
+        logger.debug('related Executed event: %s', executed_event)
         executed_transaction_hash = executed_event.transactionHash.hex() if executed_event else None
         error_token_receiver_events = tuple()
         if executed_transaction_hash:

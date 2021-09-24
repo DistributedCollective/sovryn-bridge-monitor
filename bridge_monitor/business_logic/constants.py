@@ -15,7 +15,8 @@ class BridgeConfig(TypedDict):
     chain: Chain
 
 
-BRIDGES: Dict[str, Dict[Literal['rsk', 'other'], BridgeConfig]] = {
+# TODO: Make these configurable instead of having a hard-coded dict here
+BRIDGES: Dict[str, Dict[str, BridgeConfig]] = {
     'rsk_eth_mainnet': {
         'rsk': {
             'bridge_address': '0x1ccad820b6d031b41c54f1f3da11c0d48b399581',

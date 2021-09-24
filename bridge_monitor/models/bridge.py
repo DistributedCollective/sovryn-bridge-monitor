@@ -6,6 +6,7 @@ from sqlalchemy import (
 )
 
 from .meta import Base
+from .types import Uint256, TZDateTime, now_in_utc
 
 
 class Transfer(Base):
@@ -22,15 +23,18 @@ class Transfer(Base):
     receiver_address = Column(Text, nullable=False)
     token_address = Column(Text, nullable=False)
     token_symbol = Column(Text, nullable=False)
-    amount_wei = Column(Integer, nullable=False)
+    amount_wei = Column(Uint256, nullable=False)
     user_data = Column(Text, nullable=False)
     event_block_number = Column(Integer, nullable=False)
     event_block_hash = Column(Text, nullable=False)
     event_transaction_hash = Column(Text, nullable=False)
     event_log_index = Column(Integer, nullable=False)
-    executed_transaction_hash = Column(Text, nullable=False)
-    executed_block_hash = Column(Text, nullable=False)
-    executed_block_number = Column(Integer, nullable=False)
-    executed_log_index = Column(Integer, nullable=False)
+    executed_transaction_hash = Column(Text, nullable=True)
+    executed_block_hash = Column(Text, nullable=True)
+    executed_block_number = Column(Integer, nullable=True)
+    executed_log_index = Column(Integer, nullable=True)
     has_error_token_receiver_events = Column(Boolean, nullable=False)
     error_data = Column(Text, nullable=False)
+
+    created_on = Column(TZDateTime, default=now_in_utc, nullable=False)
+    updated_on = Column(TZDateTime, default=now_in_utc, nullable=False)

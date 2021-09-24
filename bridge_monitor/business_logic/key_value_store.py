@@ -1,14 +1,13 @@
 from typing import Any
 
-from pyramid_di import RequestScopedBaseService, autowired, service
 from sqlalchemy.orm import Session
 
 from bridge_monitor.models import KeyValuePair
 
 
-@service()
-class KeyValueService(RequestScopedBaseService):
-    dbsession = autowired(Session)
+class KeyValueStore:
+    def __init__(self, dbsession: Session):
+        self.dbsession = dbsession
 
     def get_value(self, key: str):
         pair = self.dbsession.query(KeyValuePair).filter_by(key=key).first()
