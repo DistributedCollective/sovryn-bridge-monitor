@@ -126,9 +126,3 @@ def includeme(config):
         return dbsession
 
     config.add_request_method(dbsession, reify=True)
-
-    config.register_di_service(
-        lambda request: request.dbsession,
-        interface=Session,
-        scope='request'
-    )
