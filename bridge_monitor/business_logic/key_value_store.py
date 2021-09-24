@@ -5,13 +5,18 @@ from sqlalchemy.orm import Session
 from bridge_monitor.models import KeyValuePair
 
 
+_unset = object()
+
+
 class KeyValueStore:
     def __init__(self, dbsession: Session):
         self.dbsession = dbsession
 
-    def get_value(self, key: str):
+    def get_value(self, key: str, default_value: Any = _unset):
         pair = self.dbsession.query(KeyValuePair).filter_by(key=key).first()
         if not pair:
+            if default_value is not _unset:
+                return default_value
             raise LookupError(f'value for key {key!r} not found')
         return pair.value
 
