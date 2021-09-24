@@ -1,3 +1,6 @@
+venv/
+secret_env
+
 *.egg
 *.egg-info
 *.pyc
