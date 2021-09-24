@@ -35,6 +35,7 @@ def upgrade():
     sa.Column('receiver_address', sa.Text(), nullable=False),
     sa.Column('token_address', sa.Text(), nullable=False),
     sa.Column('token_symbol', sa.Text(), nullable=False),
+    sa.Column('token_decimals', sa.Integer(), nullable=False),
     sa.Column('amount_wei', Uint256(), nullable=False),
     sa.Column('user_data', sa.Text(), nullable=False),
     sa.Column('event_block_number', sa.Integer(), nullable=False),

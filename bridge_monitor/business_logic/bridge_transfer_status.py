@@ -25,6 +25,7 @@ class TransferDTO:
     receiver_address: str
     token_address: str
     token_symbol: str
+    token_decimals: int
     amount_wei: int
     user_data: str
     event_block_number: int
@@ -147,6 +148,7 @@ def fetch_state(
             token_symbol=args['_symbol'],
             receiver_address=args['_to'],
             token_address=args['_tokenAddress'],
+            token_decimals=args['_decimals'],
             amount_wei=args['_amount'],
             user_data=to_hex(args['_userData']),
             event_block_number=event.blockNumber,

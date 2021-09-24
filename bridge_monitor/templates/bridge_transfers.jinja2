@@ -71,7 +71,7 @@
                         <td
                             title="{{  transfer.amount_wei }} wei"
                         >
-                            <code>~{{ (transfer.amount_wei/10**18)|round(4) }}&nbsp;{{ transfer.token_symbol }}</code>
+                            <code>~{{ transfer.formatted_amount|round(4) }}&nbsp;{{ transfer.token_symbol }}</code>
                         </td>
                         <td>{{ transfer.num_votes }}</td>
                         <td>

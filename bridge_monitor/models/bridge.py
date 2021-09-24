@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 from sqlalchemy import (
     Column,
@@ -28,6 +29,7 @@ class Transfer(Base):
     receiver_address = Column(Text, nullable=False)
     token_address = Column(Text, nullable=False)
     token_symbol = Column(Text, nullable=False)
+    token_decimals = Column(Integer, nullable=False)
     amount_wei = Column(Uint256, nullable=False)
     user_data = Column(Text, nullable=False)
     event_block_number = Column(Integer, nullable=False)
@@ -54,3 +56,6 @@ class Transfer(Base):
             now - self.updated_on > TRANSFER_LATE_UPDATED_CUTOFF
         )
 
+    @property
+    def formatted_amount(self):
+        return Decimal(self.amount_wei) / 10**self.token_decimals
