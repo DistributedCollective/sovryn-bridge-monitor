@@ -1,0 +1,101 @@
+{% extends "layout.jinja2" %}
+
+{% block content %}
+<div class="content">
+    <h1>Sovryn Bridge Transfers</h1>
+    <nav>
+        Show
+        {% for value in [10, 50, 1000] %}
+            {% if loop.index0 != 0 %}| {% endif %}<a href="?count={{ value  }}">{{ value }}</a>
+        {% endfor %}
+        transfers
+    </nav>
+    {% for bridge_name, transfers in transfers_by_bridge.items() %}
+        {% set updated_on = last_updated_by_bridge[bridge_name] %}
+
+        <h2>Last {{ max_transfers }} {{ bridge_name }} transfers</h2>
+        <p>
+            {% if updated_on %}
+                Updated <time class="timeago" datetime="{{ updated_on }}">{{ updated_on }}</time>
+            {% else %}
+                Never updated.
+            {% endif %}
+        </p>
+
+        <table class="table mb-4">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>from</th>
+                    <th>to</th>
+                    <th>amount</th>
+                    <th>votes</th>
+                    <th>seen</th>
+                    <th>updated</th>
+                    <th>details</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transfer in transfers  %}
+                    <tr>
+                        <td>
+                            {% if transfer.was_processed %}
+                                <i class="glyphicon glyphicon-ok" title="processed"></i>
+                            {% elif transfer.is_late() %}
+                                <i
+                                    {# class="glyphicon glyphicon-hourglass" #}
+                                    class="glyphicon glyphicon-remove"
+                                    title="not processed, late"
+                                    style="color: red"
+                                ></i>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ transfer.from_chain }}
+                            <small>
+                                <br/>
+                                <span title="deposit on {{ transfer.from_chain }} block: {{ transfer.event_block_number }}">#{{ transfer.event_block_number }}</span>
+                            </small>
+                        </td>
+                        <td>
+                            {{ transfer.to_chain }}
+                            {% if transfer.executed_block_number %}
+                                <small>
+                                    <br/>
+                                    <span title="executed on {{ transfer.to_chain }} block {{ transfer.executed_block_number }}">
+                                        #{{ transfer.executed_block_number }}
+                                    </span>
+                                </small>
+                            {% endif %}
+                        </td>
+                        <td
+                            title="{{  transfer.amount_wei }} wei"
+                        >
+                            <code>~{{ (transfer.amount_wei/10**18)|round(4) }}&nbsp;{{ transfer.token_symbol }}</code>
+                        </td>
+                        <td>{{ transfer.num_votes }}</td>
+                        <td>
+                            <small>
+                                <time class="timeago" datetime="{{ transfer.created_on.isoformat() }}">{{ transfer.created_on }}</time>
+                            </small>
+                        </td>
+                        <td>
+                            <small>
+                                <time class="timeago" datetime="{{ transfer.updated_on.isoformat() }}">{{ transfer.updated_on }}</time>
+                            </small>
+                        </td>
+                        <td>
+                            <small>
+                                TxIdU: {{ transfer.transaction_id }}<br/>
+                                EventTx: {{ transfer.event_transaction_hash }}<br/>
+                                ExecTx: {{ transfer.executed_transaction_hash }}<br/>
+                                ErrorData: {{ transfer.error_data }}
+                            </small>
+                        </td>
+                    </tr>
+                {% endfor  %}
+            </tbody>
+        </table>
+    {% endfor %}
+</div>
+{% endblock content %}

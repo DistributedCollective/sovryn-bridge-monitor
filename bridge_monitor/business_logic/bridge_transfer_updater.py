@@ -118,7 +118,7 @@ def update_transfers(*, bridge_name, session_factory, transaction_manager=transa
             other_last_processed_block
         )
         key_value_store.set_value(
-            f'last-updated-block:{bridge_name}',
+            f'last-updated:{bridge_name}',
             now.isoformat(),
         )
 

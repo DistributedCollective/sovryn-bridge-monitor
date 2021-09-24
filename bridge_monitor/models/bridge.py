@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from sqlalchemy import (
     Column,
     Integer,
@@ -8,6 +10,9 @@ from sqlalchemy import (
 from .meta import Base
 from .types import Uint256, TZDateTime, now_in_utc
 
+
+TRANSFER_LATE_CREATED_CUTOFF = timedelta(hours=2)
+TRANSFER_LATE_UPDATED_CUTOFF = timedelta(minutes=30)
 
 class Transfer(Base):
     __tablename__ = 'transfer'
@@ -38,3 +43,14 @@ class Transfer(Base):
 
     created_on = Column(TZDateTime, default=now_in_utc, nullable=False)
     updated_on = Column(TZDateTime, default=now_in_utc, nullable=False)
+
+    def is_late(self, now: datetime = None):
+        if self.was_processed:
+            return False
+        if not now:
+            now = now_in_utc()
+        return (
+            now - self.created_on > TRANSFER_LATE_CREATED_CUTOFF or
+            now - self.updated_on > TRANSFER_LATE_UPDATED_CUTOFF
+        )
+
