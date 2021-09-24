@@ -3,7 +3,9 @@ High-level operations for updating bridge transfers in DB
 """
 import logging
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
+from datetime import datetime
 from typing import List
 
 import transaction
@@ -50,16 +52,27 @@ def update_transfers(*, bridge_name, session_factory, transaction_manager=transa
             bridge_config['other']['bridge_start_block'] - 1,
         )
 
-    rsk_transfers = fetch_state(bridge_config['rsk'],
-                                bridge_config['other'],
-                                bridge_start_block=rsk_last_processed_block + 1,
-                                federation_start_block=other_last_processed_block + 1)
-    logger.debug("Got %s %s transfers", len(rsk_transfers), rsk_chain_name)
+    now = now_in_utc()
 
-    other_transfers = fetch_state(bridge_config['other'],
-                                  bridge_config['rsk'],
-                                  bridge_start_block=other_last_processed_block + 1,
-                                  federation_start_block=rsk_last_processed_block + 1)
+    with ThreadPoolExecutor() as executor:
+        rsk_transfers_future = executor.submit(
+            fetch_state,
+            main_bridge_config=bridge_config['rsk'],
+            side_bridge_config=bridge_config['other'],
+            bridge_start_block=rsk_last_processed_block + 1,
+            federation_start_block=other_last_processed_block + 1
+        )
+        other_transfers_future = executor.submit(
+            fetch_state,
+            main_bridge_config=bridge_config['other'],
+            side_bridge_config=bridge_config['rsk'],
+            bridge_start_block=other_last_processed_block + 1,
+            federation_start_block=rsk_last_processed_block + 1
+        )
+
+    rsk_transfers = rsk_transfers_future.result()
+    other_transfers = other_transfers_future.result()
+    logger.debug("Got %s %s transfers", len(rsk_transfers), rsk_chain_name)
     logger.debug("Got %s %s transfers", len(other_transfers), other_chain_name)
 
     rsk_last_processed_block = get_last_block_number_with_all_transfers_processed(
@@ -92,7 +105,8 @@ def update_transfers(*, bridge_name, session_factory, transaction_manager=transa
 
         update_db_transfers(
             dbsession=dbsession,
-            transfer_dtos=rsk_transfers + other_transfers
+            transfer_dtos=rsk_transfers + other_transfers,
+            now=now,
         )
 
         key_value_store.set_value(
@@ -102,6 +116,10 @@ def update_transfers(*, bridge_name, session_factory, transaction_manager=transa
         key_value_store.set_value(
             other_chain_block_key,
             other_last_processed_block
+        )
+        key_value_store.set_value(
+            f'last-updated-block:{bridge_name}',
+            now.isoformat(),
         )
 
     logger.debug("All done")
@@ -120,7 +138,7 @@ def get_last_block_number_with_all_transfers_processed(transfers: List[TransferD
     return ret
 
 
-def update_db_transfers(*, dbsession: Session, transfer_dtos: List[TransferDTO]):
+def update_db_transfers(*, dbsession: Session, transfer_dtos: List[TransferDTO], now: datetime):
     created, updated = 0, 0
     for transfer_dto in transfer_dtos:
         transfer = dbsession.query(Transfer).filter_by(
@@ -131,7 +149,8 @@ def update_db_transfers(*, dbsession: Session, transfer_dtos: List[TransferDTO])
         if not transfer:
             transfer = Transfer(
                 **asdict(transfer_dto),
-                updated_on=now_in_utc(),
+                created_on=now,
+                updated_on=now,
             )
             logger.info("Creating transfer %s", transfer_dto)
             dbsession.add(transfer)
@@ -155,6 +174,6 @@ def update_db_transfers(*, dbsession: Session, transfer_dtos: List[TransferDTO])
                     setattr(transfer, field, dto_value)
             if has_changes:
                 logger.info('Updating transfer %s', transfer.transaction_id)
-                transfer.updated_on = now_in_utc()
+                transfer.updated_on = now
                 updated += 1
         logger.info('Created %s, updated %s transfers', created, updated)
