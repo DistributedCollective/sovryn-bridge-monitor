@@ -6,7 +6,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 import transaction
 from sqlalchemy.orm import Session
@@ -20,17 +20,29 @@ from ..models.types import now_in_utc
 logger = logging.getLogger(__name__)
 
 
-def update_transfers_from_all_bridges(*, session_factory, transaction_manager=transaction.manager):
+def update_transfers_from_all_bridges(
+    *,
+    session_factory,
+    transaction_manager=transaction.manager,
+    max_blocks: Optional[int] = None,
+):
     # TODO: these are hardcoded :f
     for bridge_name in ['rsk_eth_mainnet', 'rsk_bsc_mainnet']:
         update_transfers(
             bridge_name=bridge_name,
             session_factory=session_factory,
             transaction_manager=transaction_manager,
+            max_blocks=max_blocks,
         )
 
 
-def update_transfers(*, bridge_name, session_factory, transaction_manager=transaction.manager):
+def update_transfers(
+    *,
+    bridge_name,
+    session_factory,
+    transaction_manager=transaction.manager,
+    max_blocks: Optional[int] = None
+):
     bridge_config = BRIDGES[bridge_name]
 
     with transaction_manager:
@@ -60,14 +72,16 @@ def update_transfers(*, bridge_name, session_factory, transaction_manager=transa
             main_bridge_config=bridge_config['rsk'],
             side_bridge_config=bridge_config['other'],
             bridge_start_block=rsk_last_processed_block + 1,
-            federation_start_block=other_last_processed_block + 1
+            federation_start_block=other_last_processed_block + 1,
+            max_blocks=max_blocks,
         )
         other_transfers_future = executor.submit(
             fetch_state,
             main_bridge_config=bridge_config['other'],
             side_bridge_config=bridge_config['rsk'],
             bridge_start_block=other_last_processed_block + 1,
-            federation_start_block=rsk_last_processed_block + 1
+            federation_start_block=rsk_last_processed_block + 1,
+            max_blocks=max_blocks,
         )
 
     rsk_transfers = rsk_transfers_future.result()

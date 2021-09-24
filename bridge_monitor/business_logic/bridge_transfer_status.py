@@ -47,7 +47,8 @@ def fetch_state(
     side_bridge_config: BridgeConfig,
     *,
     bridge_start_block: Optional[int] = None,
-    federation_start_block: Optional[int] = None
+    federation_start_block: Optional[int] = None,
+    max_blocks: Optional[int] = None,
 ) -> List[TransferDTO]:
     bridge_address = main_bridge_config['bridge_address']
     if not bridge_start_block:
@@ -65,6 +66,8 @@ def fetch_state(
         abi=BRIDGE_ABI,
     )
     bridge_end_block = main_web3.eth.get_block_number()
+    if max_blocks:
+        bridge_end_block = min(bridge_start_block + max_blocks, bridge_end_block)
 
     side_web3 = get_web3(side_chain)
     federation_contract = side_web3.eth.contract(
@@ -72,6 +75,9 @@ def fetch_state(
         abi=FEDERATION_ABI,
     )
     federation_end_block = side_web3.eth.get_block_number()
+    if max_blocks:
+        federation_end_block = min(federation_start_block + max_blocks, federation_end_block)
+
     side_bridge_contract = side_web3.eth.contract(
         address=to_address(side_bridge_address),
         abi=BRIDGE_ABI,
