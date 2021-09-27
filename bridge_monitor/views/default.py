@@ -16,7 +16,8 @@ def bridge_transfers(request):
         max_transfers = 10
 
     # Order unprocessed transactions first
-    ordering = [Transfer.was_processed.asc(), Transfer.id.desc()]
+    #ordering = [Transfer.was_processed.asc(), Transfer.event_block_timestamp.desc()]
+    ordering = [Transfer.event_block_timestamp.desc()]
 
     rsk_eth_transfers = dbsession.query(Transfer).filter(
         (((Transfer.from_chain == 'rsk_mainnet') & (Transfer.to_chain == 'eth_mainnet')) |

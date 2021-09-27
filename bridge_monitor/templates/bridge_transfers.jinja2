@@ -10,10 +10,16 @@
         {% endfor %}
         transfers
     </nav>
+    <nav>
+        Bridges:
+        {% for bridge_name in transfers_by_bridge.keys() %}
+            {% if loop.index0 != 0 %}| {% endif %}<a href="#{{ bridge_name }}">{{ bridge_name }}</a>
+        {% endfor  %}
+    </nav>
     {% for bridge_name, transfers in transfers_by_bridge.items() %}
         {% set updated_on = last_updated_by_bridge[bridge_name] %}
 
-        <h2>Last {{ max_transfers }} {{ bridge_name }} transfers</h2>
+        <h2 id="{{ bridge_name }}">Last {{ max_transfers }} {{ bridge_name }} transfers</h2>
         <p>
             {% if updated_on %}
                 Updated <time class="timeago" datetime="{{ updated_on }}">{{ updated_on }}</time>
@@ -30,8 +36,7 @@
                     <th>to</th>
                     <th>amount</th>
                     <th>votes</th>
-                    <th>seen</th>
-                    <th>updated</th>
+                    <th>timestamps</th>
                     <th>details</th>
                 </tr>
             </thead>
@@ -76,12 +81,12 @@
                         <td>{{ transfer.num_votes }}</td>
                         <td>
                             <small>
-                                <time class="timeago" datetime="{{ transfer.created_on.isoformat() }}">{{ transfer.created_on }}</time>
-                            </small>
-                        </td>
-                        <td>
-                            <small>
-                                <time class="timeago" datetime="{{ transfer.updated_on.isoformat() }}">{{ transfer.updated_on }}</time>
+                                deposited <time class="timeago" datetime="{{ transfer.deposited_on.isoformat() }}">{{ transfer.created_on }}</time><br/>
+                                {% if transfer.executed_on %}
+                                executed <time class="timeago" datetime="{{ transfer.executed_on.isoformat() }}">{{ transfer.created_on }}</time><br/>
+                                {% endif %}
+                                updated <time class="timeago" datetime="{{ transfer.updated_on.isoformat() }}">{{ transfer.updated_on }}</time><br/>
+                                first seen <time class="timeago" datetime="{{ transfer.created_on.isoformat() }}">{{ transfer.created_on }}</time>
                             </small>
                         </td>
                         <td class="details">
