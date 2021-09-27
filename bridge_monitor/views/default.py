@@ -12,7 +12,7 @@ def bridge_transfers(request):
 
     try:
         max_transfers = int(request.params.get('count', 10))
-    except TypeError:
+    except (TypeError, ValueError):
         max_transfers = 10
 
     transfer_filter_name = request.params.get('filter', '').lower()
