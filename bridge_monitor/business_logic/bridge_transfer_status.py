@@ -95,11 +95,13 @@ def fetch_state(
             event=bridge_contract.events.Cross,
             from_block=bridge_start_block,
             to_block=bridge_end_block,
+            batch_size=get_event_batch_size(main_chain),
         ),
         lambda: get_events(
             event=federation_contract.events.Executed,
             from_block=federation_start_block,
             to_block=federation_end_block,
+            batch_size=get_event_batch_size(side_chain),
         ),
     )
 
@@ -212,3 +214,9 @@ def fetch_state(
         logger.debug('transfer %s: %s', index, transfer)
         transfers.append(transfer)
     return transfers
+
+
+def get_event_batch_size(chain_name: str) -> Optional[int]:
+    if chain_name.startswith('rsk_'):
+        return 500
+    return 250

@@ -112,11 +112,14 @@ def get_events(
     event: ContractEvent,
     from_block: int,
     to_block: int,
-    batch_size: int = 100
+    batch_size: int = None
 ):
     """Load events in batches"""
     if to_block < from_block:
         raise ValueError(f'to_block {to_block} is smaller than from_block {from_block}')
+
+    if batch_size is None:
+        batch_size = 100
 
     logger.info('fetching events from %s to %s with batch size %s', from_block, to_block, batch_size)
     ret = []

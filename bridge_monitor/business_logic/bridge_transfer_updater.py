@@ -191,4 +191,4 @@ def update_db_transfers(*, dbsession: Session, transfer_dtos: List[TransferDTO],
                 logger.info('Updating transfer %s', transfer.transaction_id)
                 transfer.updated_on = now
                 updated += 1
-        logger.info('Created %s, updated %s transfers', created, updated)
+    logger.info('Created %s, updated %s transfers', created, updated)
