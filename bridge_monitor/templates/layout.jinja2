@@ -7,8 +7,7 @@
     <meta name="description" content="Sovryn Bridge Monitor">
     <meta name="author" content="Sovryn">
 
-    {# TODO: make cachebreaker automatic #}
-    <link rel="shortcut icon" href="{{request.static_url('bridge_monitor:static/pyramid-16x16.png', _query={'cache': 1})}}">
+    <link rel="shortcut icon" href="{{request.static_url('bridge_monitor:static/pyramid-16x16.png')}}">
 
     <title>Sovryn Bridge Monitor</title>
 
@@ -16,7 +15,8 @@
     <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
 
     <!-- Custom styles for this scaffold -->
-    <link href="{{request.static_url('bridge_monitor:static/theme.css')}}" rel="stylesheet">
+    {# TODO: make cachebreaker automatic #}
+    <link href="{{request.static_url('bridge_monitor:static/theme.css', _query={'cache': 1})}}" rel="stylesheet">
 
     <!-- HTML5 shiv and Respond.js IE8 support of HTML5 elements and media queries -->
     <!--[if lt IE 9]>
