@@ -46,6 +46,8 @@ class Transfer(Base):
     has_error_token_receiver_events = Column(Boolean, nullable=False)
     error_data = Column(Text, nullable=False)
 
+    ignored = Column(Boolean, nullable=False, default=False)
+
     created_on = Column(TZDateTime, default=now_in_utc, nullable=False)  # TODO: should be seen_on
     updated_on = Column(TZDateTime, default=now_in_utc, nullable=False)
 

@@ -6,20 +6,41 @@
     <nav>
         Show
         {% for value in [10, 50, 1000] %}
-            {% if loop.index0 != 0 %}| {% endif %}<a href="?count={{ value  }}">{{ value }}</a>
+            {% if loop.index0 != 0 %}| {% endif %}<a href="{{ request.current_route_path(_query={
+                'filter': request.params.get('filter'),
+                'count': value,
+            }) }}">{{ value }}</a>
         {% endfor %}
         transfers
     </nav>
     <nav>
+        Filters:
+        <a href="{{ request.current_route_path(_query={
+            'filter': '',
+            'count': request.params.get('count'),
+        }) }}">all</a> |
+        <a href="{{ request.current_route_path(_query={
+            'filter': 'unprocessed',
+            'count': request.params.get('count'),
+        }) }}">unprocessed</a> |
+        <a href="{{ request.current_route_path(_query={
+            'filter': 'ignored',
+            'count': request.params.get('count'),
+        }) }}">ignored</a>
+    </nav>
+    <nav>
         Bridges:
         {% for bridge_name in transfers_by_bridge.keys() %}
-            {% if loop.index0 != 0 %}| {% endif %}<a href="#{{ bridge_name }}">{{ bridge_name }}</a>
+            {% if loop.index0 != 0 %}| {% endif %}<a href="{{ request.current_route_path(_anchor=bridge_name) }}">{{ bridge_name }}</a>
         {% endfor  %}
     </nav>
     {% for bridge_name, transfers in transfers_by_bridge.items() %}
         {% set updated_on = last_updated_by_bridge[bridge_name] %}
 
-        <h2 id="{{ bridge_name }}">Last {{ max_transfers }} {{ bridge_name }} transfers</h2>
+        <div>
+            <a href="#" style="float:right">top</a>
+            <h2 id="{{ bridge_name }}">Last {{ max_transfers }} {{ filter_name }} {{ bridge_name }} transfers </h2>
+        </div>
         <p>
             {% if updated_on %}
                 Updated <time class="timeago" datetime="{{ updated_on }}">{{ updated_on }}</time>
@@ -44,7 +65,14 @@
                 {% for transfer in transfers  %}
                     <tr>
                         <td>
-                            {% if transfer.was_processed %}
+                            {% if transfer.ignored %}
+                                <i
+                                    {# class="glyphicon glyphicon-hourglass" #}
+                                    class="glyphicon glyphicon-question-sign"
+                                    title="ignored"
+                                    style="color: yellow"
+                                ></i>
+                            {% elif transfer.was_processed %}
                                 <i class="glyphicon glyphicon-ok" title="processed"></i>
                             {% elif transfer.is_late() %}
                                 <i

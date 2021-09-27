@@ -15,6 +15,15 @@ def bridge_transfers(request):
     except TypeError:
         max_transfers = 10
 
+    transfer_filter_name = request.params.get('filter', '').lower()
+    transfer_filter = []
+    if transfer_filter_name not in ('unprocessed', 'ignored'):
+        transfer_filter_name = ''
+    if transfer_filter_name == 'unprocessed':
+        transfer_filter = [~Transfer.was_processed]
+    elif transfer_filter_name == 'ignored':
+        transfer_filter = [Transfer.ignored]
+
     # Order unprocessed transactions first
     #ordering = [Transfer.was_processed.asc(), Transfer.event_block_timestamp.desc()]
     ordering = [Transfer.event_block_timestamp.desc()]
@@ -22,11 +31,15 @@ def bridge_transfers(request):
     rsk_eth_transfers = dbsession.query(Transfer).filter(
         (((Transfer.from_chain == 'rsk_mainnet') & (Transfer.to_chain == 'eth_mainnet')) |
          ((Transfer.from_chain == 'eth_mainnet') & (Transfer.to_chain == 'rsk_mainnet')))
+    ).filter(
+        *transfer_filter
     ).order_by(*ordering).limit(max_transfers)
 
     rsk_bsc_transfers = dbsession.query(Transfer).filter(
         (((Transfer.from_chain == 'rsk_mainnet') & (Transfer.to_chain == 'bsc_mainnet')) |
          ((Transfer.from_chain == 'bsc_mainnet') & (Transfer.to_chain == 'rsk_mainnet')))
+    ).filter(
+        *transfer_filter
     ).order_by(*ordering).limit(max_transfers)
 
     last_updated = {
@@ -41,4 +54,5 @@ def bridge_transfers(request):
         },
         'max_transfers': max_transfers,
         'last_updated_by_bridge': last_updated,
+        'filter_name': transfer_filter_name,
     }
