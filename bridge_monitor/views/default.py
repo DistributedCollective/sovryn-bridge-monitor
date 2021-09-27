@@ -24,8 +24,6 @@ def bridge_transfers(request):
     elif transfer_filter_name == 'ignored':
         transfer_filter = [Transfer.ignored]
 
-    # Order unprocessed transactions first
-    #ordering = [Transfer.was_processed.asc(), Transfer.event_block_timestamp.desc()]
     ordering = [Transfer.event_block_timestamp.desc()]
 
     rsk_eth_transfers = dbsession.query(Transfer).filter(
