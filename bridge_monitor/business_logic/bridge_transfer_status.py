@@ -23,6 +23,7 @@ class TransferDTO:
     was_processed: bool
     num_votes: int
     receiver_address: str
+    depositor_address: str
     token_address: str
     token_symbol: str
     token_decimals: int
@@ -132,7 +133,8 @@ def fetch_state(
         else:
             logger.debug(*progress_log_args)
 
-        transaction_id, transaction_id_old = call_concurrently(
+        event_receipt, transaction_id, transaction_id_old = call_concurrently(
+            lambda: main_web3.eth.get_transaction_receipt(event.transactionHash),
             federation_contract.functions.getTransactionIdU(*tx_id_args),
             federation_contract.functions.getTransactionId(*tx_id_args_old),
         )
@@ -141,6 +143,7 @@ def fetch_state(
         logger.debug('transaction_id: %s', transaction_id)
         transaction_id_old = to_hex(transaction_id_old)
         logger.debug('transaction_id_old: %s', transaction_id_old)
+        logger.debug('event receipt: %s', event_receipt)
 
         executed_event = executed_event_by_transaction_id.get(transaction_id)
         logger.debug('related Executed event: %s', executed_event)
@@ -175,6 +178,7 @@ def fetch_state(
             was_processed=was_processed,
             token_symbol=args['_symbol'],
             receiver_address=args['_to'],
+            depositor_address=event_receipt['from'],
             token_address=args['_tokenAddress'],
             token_decimals=args['_decimals'],
             amount_wei=args['_amount'],

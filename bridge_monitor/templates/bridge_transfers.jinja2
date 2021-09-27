@@ -84,13 +84,13 @@
                                 <time class="timeago" datetime="{{ transfer.updated_on.isoformat() }}">{{ transfer.updated_on }}</time>
                             </small>
                         </td>
-                        <td>
-                            <small>
-                                TxIdU: {{ transfer.transaction_id }}<br/>
-                                EventTx: {{ transfer.event_transaction_hash }}<br/>
-                                ExecTx: {{ transfer.executed_transaction_hash }}<br/>
-                                ErrorData: {{ transfer.error_data }}
-                            </small>
+                        <td class="details">
+                            <span>TxIdU:</span><code>{{ transfer.transaction_id }}</code><br/>
+                            <span>EventTx:</span><code>{{ transfer.event_transaction_hash }}</code><br/>
+                            <span>ExecTx:</span><code>{{ transfer.executed_transaction_hash }}</code><br/>
+                            <span>Depositor:</span><code>{{ transfer.depositor_address }}</code><br/>
+                            <span>Receiver:</span><code>{{ transfer.receiver_address }}</code><br/>
+                            <span>ErrorData:</span><code>{{ transfer.error_data }}</code>
                         </td>
                     </tr>
                 {% endfor  %}

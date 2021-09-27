@@ -27,6 +27,7 @@ class Transfer(Base):
     was_processed = Column(Boolean, nullable=False)
     num_votes = Column(Integer, nullable=False)
     receiver_address = Column(Text, nullable=False)
+    depositor_address = Column(Text, nullable=False)
     token_address = Column(Text, nullable=False)
     token_symbol = Column(Text, nullable=False)
     token_decimals = Column(Integer, nullable=False)

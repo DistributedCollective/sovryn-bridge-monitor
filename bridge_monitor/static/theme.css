@@ -33,3 +33,18 @@ button, input, optgroup, select, textarea {
 .font-bold {
   font-weight: 700;
 }
+
+td.details {
+  font-size: smaller;
+}
+td.details span {
+  display: inline-block;
+  min-width: 60px;
+}
+td.details code {
+  padding-top: 0;
+  padding-bottom: 0;
+  color: white;
+  background-color: transparent;
+  border-radius: 0;
+}
