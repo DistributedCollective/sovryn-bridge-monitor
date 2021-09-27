@@ -38,6 +38,24 @@ def parse_args(argv):
         default=False,
         help='One-off operation, don\'t enter infinite loop',
     )
+    parser.add_argument(
+        '--no-updates',
+        action='store_true',
+        default=False,
+        help="Don't update transfers",
+    )
+    parser.add_argument(
+        '--no-alerts',
+        action='store_true',
+        default=False,
+        help="Don't send alerts",
+    )
+    parser.add_argument(
+        '--update-last-processed-blocks-first',
+        action='store_true',
+        default=False,
+        help="Update last processed blocks from DB first (developers only)",
+    )
     return parser.parse_args(argv[1:])
 
 
@@ -50,19 +68,33 @@ def main(argv=sys.argv):
 
     # TODO: limit 1 session at time
     while True:
-        try:
-            update_transfers_from_all_bridges(
-                transaction_manager=request.tm,
-                session_factory=session_factory,
-                max_blocks=args.max_blocks,
-            )
-        except KeyboardInterrupt:
-            logger.info("Quitting!")
-            return
-        except Exception as e:
-            logger.exception("Got exception monitoring bridge")
+        if not args.no_updates:
+            try:
+                update_transfers_from_all_bridges(
+                    transaction_manager=request.tm,
+                    session_factory=session_factory,
+                    max_blocks=args.max_blocks,
+                    update_last_processed_blocks_first=args.update_last_processed_blocks_first,
+                )
+            except KeyboardInterrupt:
+                logger.info("Quitting!")
+                raise
+            except Exception:  # noqa
+                logger.exception("Got exception getting bridge transfers")
+
+        if not args.no_alerts:
+            try:
+                print("SEND ALERTS HERE")
+            except KeyboardInterrupt:
+                logger.info("Quitting!")
+                raise
+            except Exception:  # noqa
+                logger.exception("Got exception sending alerts")
+
         if args.one_off:
             return
+
+        logger.info("Monitoring round done, sleeping a while.")
         time.sleep(args.sleep)
 
 

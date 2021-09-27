@@ -25,6 +25,7 @@ def update_transfers_from_all_bridges(
     session_factory,
     transaction_manager=transaction.manager,
     max_blocks: Optional[int] = None,
+    update_last_processed_blocks_first: bool = False
 ):
     # TODO: these are hardcoded :f
     for bridge_name in ['rsk_eth_mainnet', 'rsk_bsc_mainnet']:
@@ -33,6 +34,7 @@ def update_transfers_from_all_bridges(
             session_factory=session_factory,
             transaction_manager=transaction_manager,
             max_blocks=max_blocks,
+            update_last_processed_blocks_first=update_last_processed_blocks_first,
         )
 
 
