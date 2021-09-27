@@ -74,7 +74,7 @@ def upgrade():
             #with ThreadPoolExecutor(max_workers=4) as executor:
             #    transfer_futures = executor.map(set_transfer_timestamps, enumerate(transfers))
             #transfers = list(transfer_futures)
-            for i, transfer in enumerate(transfers):
+            for i, transfer in enumerate(transfers, start=1):
                 set_transfer_timestamps((i, transfer))
 
             dbsession.add_all(transfers)
