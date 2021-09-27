@@ -41,7 +41,8 @@ def update_transfers(
     bridge_name,
     session_factory,
     transaction_manager=transaction.manager,
-    max_blocks: Optional[int] = None
+    max_blocks: Optional[int] = None,
+    update_last_processed_blocks_first: bool = False
 ):
     bridge_config = BRIDGES[bridge_name]
 
@@ -63,6 +64,35 @@ def update_transfers(
             other_chain_block_key,
             bridge_config['other']['bridge_start_block'] - 1,
         )
+
+        # Quick thing to update these blocks if it was somehow messed
+        if update_last_processed_blocks_first:
+            logger.info('updating last processed blocks first')
+            logger.info('rsk from: %s', rsk_last_processed_block)
+            rsk_last_processed_block = get_last_block_number_with_all_transfers_processed(
+                dbsession.query(Transfer).filter(
+                    (Transfer.from_chain == rsk_chain_name) & (Transfer.to_chain == other_chain_name)
+                ),
+                rsk_last_processed_block
+            )
+            logger.info('rsk to: %s', rsk_last_processed_block)
+            logger.info('%s from: %s', other_chain_name, other_last_processed_block)
+            other_last_processed_block = get_last_block_number_with_all_transfers_processed(
+                dbsession.query(Transfer).filter(
+                    (Transfer.from_chain == other_chain_name) & (Transfer.to_chain == rsk_chain_name)
+                ),
+                other_last_processed_block
+            )
+            logger.info('%s to: %s', other_chain_name, other_last_processed_block)
+
+            key_value_store.set_value(
+                rsk_chain_block_key,
+                rsk_last_processed_block
+            )
+            key_value_store.set_value(
+                other_chain_block_key,
+                other_last_processed_block
+            )
 
     now = now_in_utc()
 
