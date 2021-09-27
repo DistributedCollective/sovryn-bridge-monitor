@@ -184,6 +184,9 @@ def update_db_transfers(*, dbsession: Session, transfer_dtos: List[TransferDTO],
             has_changes = False
             for field in compared_fields:
                 dto_value = getattr(transfer_dto, field)
+                if field == 'was_processed' and dto_value is False and transfer.ignored:
+                    logger.debug('Ignoring was_processed for ignored transfer %s', transfer.transaction_id)
+                    continue
                 if dto_value != getattr(transfer, field):
                     has_changes = True
                     setattr(transfer, field, dto_value)
