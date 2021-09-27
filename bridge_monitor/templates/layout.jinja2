@@ -6,7 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Sovryn Bridge Monitor">
     <meta name="author" content="Sovryn">
-    <link rel="shortcut icon" href="{{request.static_url('bridge_monitor:static/pyramid-16x16.png')}}">
+
+    {# TODO: make cachebreaker automatic #}
+    <link rel="shortcut icon" href="{{request.static_url('bridge_monitor:static/pyramid-16x16.png', _query={'cache': 1})}}">
 
     <title>Sovryn Bridge Monitor</title>
 
