@@ -14,7 +14,7 @@ from eth_typing import AnyAddress
 from eth_utils import to_checksum_address
 from web3 import Web3
 from web3.contract import Contract, ContractEvent, ContractFunction
-from web3.middleware import construct_sign_and_send_raw_middleware
+from web3.middleware import construct_sign_and_send_raw_middleware, geth_poa_middleware
 
 THIS_DIR = os.path.dirname(__file__)
 ABI_DIR = os.path.join(THIS_DIR, 'abi')
@@ -46,6 +46,13 @@ def get_web3(chain_name: str, *, account: Optional[LocalAccount] = None) -> Web3
             web3=web3,
             account=account,
         )
+
+    # Fix this
+    # web3.exceptions.ExtraDataLengthError:
+    # The field extraData is 97 bytes, but should be 32. It is quite likely that  you are connected to a POA chain.
+    # Refer to http://web3py.readthedocs.io/en/stable/middleware.html#geth-style-proof-of-authority for more details.
+    web3.middleware_onion.inject(geth_poa_middleware, layer=0)
+
     return web3
 
 

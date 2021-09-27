@@ -1,6 +1,7 @@
 """
 Low-level operations for fetching bridge transfers (no DB updates)
 """
+import functools
 import logging
 from dataclasses import dataclass
 from typing import List, Optional
@@ -31,11 +32,13 @@ class TransferDTO:
     user_data: str
     event_block_number: int
     event_block_hash: str
+    event_block_timestamp: int
     event_transaction_hash: str
     event_log_index: int
     executed_transaction_hash: Optional[str]
     executed_block_hash: Optional[str]
     executed_block_number: Optional[int]
+    executed_block_timestamp: Optional[int]
     executed_log_index: Optional[int]
     has_error_token_receiver_events: bool
     error_data: str
@@ -107,6 +110,11 @@ def fetch_state(
         for e in executed_events
     }
 
+    # Cache block retrieval -- might speed things up a tiny bit
+    @functools.lru_cache(maxsize=128)
+    def _get_block(web3, block_hash):
+        return web3.eth.get_block(block_hash)
+
     logger.info('processing transfers')
     transfers = []
     for index, event in enumerate(cross_events):
@@ -125,31 +133,29 @@ def fetch_state(
         tx_id_args = tx_id_args_old + (
             args['_userData'],
         )
-        logger.debug('event: %s', event)
 
-        progress_log_args = ("Progress: %.2f %%", index / len(cross_events) * 100)
-        if index % 10 == 0:
-            logger.info(*progress_log_args)
-        else:
-            logger.debug(*progress_log_args)
+        logger.info("Progress: %.2f %%", index / len(cross_events) * 100)
+        #logger.debug('event %s: %s', index, event)
 
-        event_receipt, transaction_id, transaction_id_old = call_concurrently(
+        event_receipt, event_block, transaction_id, transaction_id_old = call_concurrently(
             lambda: main_web3.eth.get_transaction_receipt(event.transactionHash),
+            lambda: _get_block(main_web3, event.blockHash),
             federation_contract.functions.getTransactionIdU(*tx_id_args),
             federation_contract.functions.getTransactionId(*tx_id_args_old),
         )
 
         transaction_id = to_hex(transaction_id)
-        logger.debug('transaction_id: %s', transaction_id)
+        #logger.debug('transaction_id: %s', transaction_id)
         transaction_id_old = to_hex(transaction_id_old)
-        logger.debug('transaction_id_old: %s', transaction_id_old)
-        logger.debug('event receipt: %s', event_receipt)
+        #logger.debug('transaction_id_old: %s', transaction_id_old)
+        #logger.debug('event block: %s', event_block)
+        #logger.debug('event receipt: %s', event_receipt)
 
         executed_event = executed_event_by_transaction_id.get(transaction_id)
-        logger.debug('related Executed event: %s', executed_event)
+        #logger.debug('related Executed event: %s', executed_event)
         executed_transaction_hash = executed_event.transactionHash.hex() if executed_event else None
 
-        num_votes, was_processed, executed_transaction_receipt = call_concurrently(
+        num_votes, was_processed, executed_transaction_receipt, executed_block = call_concurrently(
             federation_contract.functions.getTransactionCount(transaction_id),
             federation_contract.functions.transactionWasProcessed(transaction_id),
             lambda: (
@@ -157,10 +163,15 @@ def fetch_state(
                 if executed_transaction_hash
                 else None
             ),
+            lambda: (
+                _get_block(side_web3, executed_event.blockHash)
+                if executed_event
+                else None
+            ),
         )
 
-        logger.debug('num_votes: %s', num_votes)
-        logger.debug('was_processed: %s', was_processed)
+        #logger.debug('num_votes: %s', num_votes)
+        #logger.debug('was_processed: %s', was_processed)
 
         error_token_receiver_events = tuple()
         if executed_transaction_receipt:
@@ -185,16 +196,19 @@ def fetch_state(
             user_data=to_hex(args['_userData']),
             event_block_number=event.blockNumber,
             event_block_hash=event.blockHash.hex(),
+            event_block_timestamp=event_block.timestamp,
             event_transaction_hash=event.transactionHash.hex(),
             event_log_index=event.logIndex,
             executed_transaction_hash=executed_transaction_hash,
             executed_block_hash=executed_event.blockHash.hex() if executed_event else None,
             executed_block_number=executed_event.blockNumber if executed_event else None,
+            executed_block_timestamp=executed_block.timestamp if executed_block else None,
             executed_log_index=executed_event.logIndex if executed_event else None,
             has_error_token_receiver_events=bool(error_token_receiver_events),
             error_data=to_hex(error_token_receiver_events[0].args._errorData) if error_token_receiver_events else '0x',
             #vote_transaction_args=vote_transaction_args,
             #cross_event=event,
         )
+        logger.debug('transfer %s: %s', index, transfer)
         transfers.append(transfer)
     return transfers
