@@ -1,4 +1,5 @@
 """Various web3"""
+from concurrent.futures import ThreadPoolExecutor
 import functools
 import json
 import logging
@@ -6,13 +7,13 @@ import os
 import sys
 from datetime import datetime, timezone
 from time import sleep
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
 from eth_account.signers.local import LocalAccount
 from eth_typing import AnyAddress
 from eth_utils import to_checksum_address
 from web3 import Web3
-from web3.contract import Contract, ContractEvent
+from web3.contract import Contract, ContractEvent, ContractFunction
 from web3.middleware import construct_sign_and_send_raw_middleware
 
 THIS_DIR = os.path.dirname(__file__)
@@ -159,7 +160,7 @@ def retryable(*, max_attempts: int = 10):
                     return func(*args, **kwargs)
                 except Exception as e:
                     if attempt >= max_attempts:
-                        logger.warning('max attempts (%s) exchusted for error: %s', max_attempts, e)
+                        logger.warning('max attempts (%s) exhausted for error: %s', max_attempts, e)
                         raise
                     logger.warning(
                         'Retryable error (attempt: %s/%s): %s',
@@ -177,3 +178,16 @@ def retryable(*, max_attempts: int = 10):
 def is_contract(*, web3: Web3, address: str) -> bool:
     code = web3.eth.get_code(to_address(address))
     return code != b'\x00'
+
+
+def call_concurrently(*funcs: Union[Callable, ContractFunction]) -> List[Any]:
+    futures = []
+    with ThreadPoolExecutor() as executor:
+        for func in funcs:
+            if hasattr(func, 'call'):
+                # ContractFunction
+                futures.append(executor.submit(func.call))
+            else:
+                futures.append(executor.submit(func))
+    return [f.result() for f in futures]
+

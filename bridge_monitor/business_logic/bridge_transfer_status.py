@@ -9,7 +9,7 @@ from eth_utils import to_hex
 from web3.logs import DISCARD
 
 from .constants import BRIDGE_ABI, BridgeConfig, FEDERATION_ABI
-from .utils import get_events, get_web3, to_address
+from .utils import call_concurrently, get_events, get_web3, to_address
 
 logger = logging.getLogger(__name__)
 
@@ -84,20 +84,22 @@ def fetch_state(
     )
 
     logger.info(f'main: {main_chain}, side: {side_chain}, from: {bridge_start_block}, to: {bridge_end_block}')
-    logger.info('getting Cross events')
-    cross_events = get_events(
-        event=bridge_contract.events.Cross,
-        from_block=bridge_start_block,
-        to_block=bridge_end_block,
-    )
-    logger.info(f'found {len(cross_events)} Cross events')
 
-    logger.info('getting Executed events')
-    executed_events = get_events(
-        event=federation_contract.events.Executed,
-        from_block=federation_start_block,
-        to_block=federation_end_block,
+    logger.info('getting Cross and Executed events')
+    cross_events, executed_events = call_concurrently(
+        lambda: get_events(
+            event=bridge_contract.events.Cross,
+            from_block=bridge_start_block,
+            to_block=bridge_end_block,
+        ),
+        lambda: get_events(
+            event=federation_contract.events.Executed,
+            from_block=federation_start_block,
+            to_block=federation_end_block,
+        ),
     )
+
+    logger.info(f'found {len(cross_events)} Cross events')
     logger.info(f'found {len(executed_events)} Executed events')
     executed_event_by_transaction_id = {
         to_hex(e.args.transactionId): e
@@ -106,7 +108,7 @@ def fetch_state(
 
     logger.info('processing transfers')
     transfers = []
-    for event in cross_events:
+    for index, event in enumerate(cross_events):
         args = event.args
         tx_id_args_old = (
             args['_tokenAddress'],
@@ -122,25 +124,45 @@ def fetch_state(
         tx_id_args = tx_id_args_old + (
             args['_userData'],
         )
-        logger.debug(event)
-        transaction_id = federation_contract.functions.getTransactionIdU(*tx_id_args).call()
+        logger.debug('event: %s', event)
+
+        progress_log_args = ("Progress: %.2f %%", index / len(cross_events) * 100)
+        if index % 10 == 0:
+            logger.info(*progress_log_args)
+        else:
+            logger.debug(*progress_log_args)
+
+        transaction_id, transaction_id_old = call_concurrently(
+            federation_contract.functions.getTransactionIdU(*tx_id_args),
+            federation_contract.functions.getTransactionId(*tx_id_args_old),
+        )
+
         transaction_id = to_hex(transaction_id)
         logger.debug('transaction_id: %s', transaction_id)
-        transaction_id_old = federation_contract.functions.getTransactionId(*tx_id_args_old).call()
         transaction_id_old = to_hex(transaction_id_old)
         logger.debug('transaction_id_old: %s', transaction_id_old)
-        num_votes = federation_contract.functions.getTransactionCount(transaction_id).call()
-        logger.debug('num_votes: %s', num_votes)
-        was_processed = federation_contract.functions.transactionWasProcessed(transaction_id).call()
-        logger.debug('was_processed: %s', was_processed)
+
         executed_event = executed_event_by_transaction_id.get(transaction_id)
         logger.debug('related Executed event: %s', executed_event)
         executed_transaction_hash = executed_event.transactionHash.hex() if executed_event else None
+
+        num_votes, was_processed, executed_transaction_receipt = call_concurrently(
+            federation_contract.functions.getTransactionCount(transaction_id),
+            federation_contract.functions.transactionWasProcessed(transaction_id),
+            lambda: (
+                side_web3.eth.get_transaction_receipt(executed_transaction_hash)
+                if executed_transaction_hash
+                else None
+            ),
+        )
+
+        logger.debug('num_votes: %s', num_votes)
+        logger.debug('was_processed: %s', was_processed)
+
         error_token_receiver_events = tuple()
-        if executed_transaction_hash:
-            receipt = side_web3.eth.get_transaction_receipt(executed_transaction_hash)
+        if executed_transaction_receipt:
             error_token_receiver_events = side_bridge_contract.events.ErrorTokenReceiver().processReceipt(
-                receipt,
+                executed_transaction_receipt,
                 errors=DISCARD,  # TODO: is this right?
             )
 
