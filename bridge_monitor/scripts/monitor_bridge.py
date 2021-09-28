@@ -2,11 +2,13 @@ import logging
 import argparse
 import sys
 import time
+from datetime import timedelta
 
 from pyramid.paster import bootstrap, setup_logging
 from pyramid.request import Request
 
 from ..business_logic.bridge_transfer_updater import update_transfers_from_all_bridges
+from ..business_logic.bridge_alerts import handle_bridge_alerts
 
 
 logger = logging.getLogger(__name__)
@@ -51,6 +53,11 @@ def parse_args(argv):
         help="Don't send alerts",
     )
     parser.add_argument(
+        '--alert-interval-minutes',
+        type=int,
+        help="Send new alerts only every N minutes",
+    )
+    parser.add_argument(
         '--update-last-processed-blocks-first',
         action='store_true',
         default=False,
@@ -83,8 +90,15 @@ def main(argv=sys.argv):
                 logger.exception("Got exception getting bridge transfers")
 
         if not args.no_alerts:
+            extra_args = {}
+            if args.alert_interval_minutes is not None:
+                extra_args['alert_interval'] = timedelta(minutes=args.alert_interval_minutes)
             try:
-                print("SEND ALERTS HERE")
+                handle_bridge_alerts(
+                    transaction_manager=request.tm,
+                    session_factory=session_factory,
+                    **extra_args,
+                )
             except KeyboardInterrupt:
                 logger.info("Quitting!")
                 raise

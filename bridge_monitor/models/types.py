@@ -35,6 +35,7 @@ class TZDateTime(types.TypeDecorator):
     """
     # https://stackoverflow.com/a/62538441/5696586
     impl = types.DateTime(timezone=True)
+    cache_ok = True
 
     def process_bind_param(self, value, dialect):
         if isinstance(value, datetime.datetime) and value.tzinfo is None:

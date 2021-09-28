@@ -7,6 +7,7 @@ import zope.sqlalchemy
 # ``Base.metadata`` prior to any initialization routines.
 from .bridge import Transfer  # flake8: noqa
 from .key_value_store import KeyValuePair  # flake8: noqa
+from .alerts import Alert, AlertType  # flake8: noqa
 
 # Run ``configure_mappers`` after defining all of the models to ensure
 # all relationships can be setup.

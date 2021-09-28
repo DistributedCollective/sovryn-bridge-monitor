@@ -6,7 +6,11 @@ from sqlalchemy import (
     Integer,
     Text,
     Boolean,
+    cast,
+    text,
+    TIMESTAMP,
 )
+from sqlalchemy.ext.hybrid import hybrid_method
 
 from .meta import Base
 from .types import Uint256, TZDateTime, now_in_utc
@@ -61,14 +65,23 @@ class Transfer(Base):
             return None
         return datetime.utcfromtimestamp(self.executed_block_timestamp).replace(tzinfo=timezone.utc)
 
+    @hybrid_method
     def is_late(self, now: datetime = None):
-        if self.was_processed:
-            return False
         if not now:
             now = now_in_utc()
-        return (
+        return not self.was_processed and (
             now - self.deposited_on > TRANSFER_LATE_DEPOSITED_CUTOFF or
             now - self.updated_on > TRANSFER_LATE_UPDATED_CUTOFF
+        )
+
+    @is_late.expression
+    def is_late(self, now: datetime = None):
+        if not now:
+            now = now_in_utc()
+        now_ts = int(now.timestamp())
+        return ~self.was_processed & (
+            (now_ts - self.event_block_timestamp > TRANSFER_LATE_DEPOSITED_CUTOFF.total_seconds()) |
+            (now - self.updated_on > TRANSFER_LATE_UPDATED_CUTOFF)
         )
 
     @property
