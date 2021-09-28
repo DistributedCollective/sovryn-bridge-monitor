@@ -23,6 +23,7 @@ requires = [
     'zope.sqlalchemy',
     'eth-utils',
     'web3',
+    'requests',
 ]
 
 tests_require = [

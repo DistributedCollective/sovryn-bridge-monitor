@@ -1,5 +1,6 @@
 import logging
 import argparse
+import os
 import sys
 import time
 from datetime import timedelta
@@ -58,6 +59,12 @@ def parse_args(argv):
         help="Send new alerts only every N minutes",
     )
     parser.add_argument(
+        '--discord-webhook-url',
+        type=str,
+        required=False,
+        help="Discord webhook url for alerts. Can also be specified with env var DISCORD_WEBHOOK_URL",
+    )
+    parser.add_argument(
         '--update-last-processed-blocks-first',
         action='store_true',
         default=False,
@@ -72,6 +79,8 @@ def main(argv=sys.argv):
     env = bootstrap(args.config_uri)
     request: Request = env['request']
     session_factory = request.registry['dbsession_factory']
+
+    discord_webhook_url = args.discord_webhook_url or os.getenv('DISCORD_WEBHOOK_URL')
 
     # TODO: limit 1 session at time
     while True:
@@ -97,6 +106,7 @@ def main(argv=sys.argv):
                 handle_bridge_alerts(
                     transaction_manager=request.tm,
                     session_factory=session_factory,
+                    discord_webhook_url=discord_webhook_url,
                     **extra_args,
                 )
             except KeyboardInterrupt:

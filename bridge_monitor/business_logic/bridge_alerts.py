@@ -1,9 +1,13 @@
 from datetime import timedelta
 import logging
+from textwrap import dedent
+from typing import Optional
+
 import transaction
 
-from bridge_monitor.models import Transfer, Alert, AlertType, get_tm_session
-from bridge_monitor.models.types import now_in_utc
+from ..models import Transfer, Alert, AlertType, get_tm_session
+from ..models.types import now_in_utc
+from .messages import get_preferred_messager
 
 logger = logging.getLogger(__name__)
 
@@ -12,9 +16,15 @@ def handle_bridge_alerts(
     *,
     session_factory,
     transaction_manager: transaction.TransactionManager = transaction.manager,
-    alert_interval: timedelta = timedelta(minutes=30)
+    alert_interval: timedelta = timedelta(minutes=30),
+    discord_webhook_url: Optional[str] = None,
 ):
     logger.info("Handling alerts")
+
+    messager = get_preferred_messager(
+        discord_webhook_url=discord_webhook_url,
+        username="Bridge Monitor"
+    )
 
     with transaction_manager as tx:
         dbsession = get_tm_session(
@@ -59,7 +69,10 @@ def handle_bridge_alerts(
 
             def send_alert_message_after_commit(success, num_late_transfers):
                 if success:
-                    print("ALERT MESSAGE SENT HERE", num_late_transfers)
+                    messager.send_message(dedent(f"""\
+                    **🚨 Alert! 🚨**
+                    There are **{num_late_transfers}** late transfers on the token bridge.
+                    """))
                 else:
                     logger.error("Transaction failure, not sending message")
             tx.addAfterCommitHook(send_alert_message_after_commit, args=(len(late_transfers),))
@@ -71,7 +84,7 @@ def handle_bridge_alerts(
 
             def send_resolved_message_after_commit(success):
                 if success:
-                    print("RESOLVED MESSAGE SENT HERE")
+                    messager.send_message("**Resolved:** No more late transfers on the token bridge 😌 .")
                 else:
                     logger.error("Transaction failure, not sending message")
             tx.addAfterCommitHook(send_resolved_message_after_commit)
