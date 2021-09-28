@@ -20,9 +20,9 @@ THIS_DIR = os.path.dirname(__file__)
 ABI_DIR = os.path.join(THIS_DIR, 'abi')
 logger = logging.getLogger(__name__)
 
-INFURA_API_KEY = os.environ.get('INFURA_API_KEY', 'INFURA_API_KEY_NOT_SET')
+INFURA_API_KEY = os.getenv('INFURA_API_KEY', 'INFURA_API_KEY_NOT_SET')
 RPC_URLS = {
-    'rsk_mainnet': 'https://mainnet.sovryn.app/rpc',
+    'rsk_mainnet': os.getenv('RSK_NODE_URL', 'https://mainnet.sovryn.app/rpc'),
     'rsk_mainnet_iov': 'https://public-node.rsk.co',
     'bsc_mainnet': 'https://bsc-dataseed.binance.org/',
     'rsk_testnet': 'https://testnet2.sovryn.app/rpc',
