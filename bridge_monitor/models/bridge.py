@@ -17,7 +17,8 @@ from .types import Uint256, TZDateTime, now_in_utc
 
 
 TRANSFER_LATE_DEPOSITED_CUTOFF = timedelta(hours=2)
-TRANSFER_LATE_UPDATED_CUTOFF = timedelta(minutes=30)
+TRANSFER_LATE_UPDATED_CUTOFF = timedelta(minutes=45)
+
 
 class Transfer(Base):
     __tablename__ = 'transfer'
