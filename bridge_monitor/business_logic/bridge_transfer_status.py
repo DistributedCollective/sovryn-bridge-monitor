@@ -53,6 +53,7 @@ def fetch_state(
     bridge_start_block: Optional[int] = None,
     federation_start_block: Optional[int] = None,
     max_blocks: Optional[int] = None,
+    min_block_confirmations: int = 2,
 ) -> List[TransferDTO]:
     bridge_address = main_bridge_config['bridge_address']
     if not bridge_start_block:
@@ -69,9 +70,17 @@ def fetch_state(
         address=to_address(bridge_address),
         abi=BRIDGE_ABI,
     )
-    bridge_end_block = main_web3.eth.get_block_number()
+    # Note: we need to get the Cross events right -- other parts are less important (and updates will be handled
+    # for them). So we only care for confirmations for the bridge.
+    bridge_end_block = main_web3.eth.get_block_number() - min_block_confirmations
     if max_blocks:
         bridge_end_block = min(bridge_start_block + max_blocks, bridge_end_block)
+
+    if bridge_start_block > bridge_end_block:
+        logger.info("Bridge start block %s is larger than bridge end block %s -- skipping",
+                    bridge_start_block,
+                    bridge_end_block)
+        return []
 
     side_web3 = get_web3(side_chain)
     federation_contract = side_web3.eth.contract(
