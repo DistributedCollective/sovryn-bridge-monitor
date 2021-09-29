@@ -1,20 +1,11 @@
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
-from sqlalchemy import (
-    Column,
-    Integer,
-    Text,
-    Boolean,
-    cast,
-    text,
-    TIMESTAMP,
-)
+from sqlalchemy import Boolean, Column, Integer, Text
 from sqlalchemy.ext.hybrid import hybrid_method
 
 from .meta import Base
-from .types import Uint256, TZDateTime, now_in_utc
-
+from .types import TZDateTime, Uint256, now_in_utc
 
 TRANSFER_LATE_DEPOSITED_CUTOFF = timedelta(hours=2)
 TRANSFER_LATE_UPDATED_CUTOFF = timedelta(minutes=45)
