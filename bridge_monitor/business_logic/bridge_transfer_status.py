@@ -53,7 +53,7 @@ def fetch_state(
     bridge_start_block: Optional[int] = None,
     federation_start_block: Optional[int] = None,
     max_blocks: Optional[int] = None,
-    min_block_confirmations: int = 2,
+    min_block_confirmations: int = 5,
 ) -> List[TransferDTO]:
     bridge_address = main_bridge_config['bridge_address']
     if not bridge_start_block:
