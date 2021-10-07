@@ -79,3 +79,28 @@ class Transfer(Base):
     @property
     def formatted_amount(self):
         return Decimal(self.amount_wei) / 10**self.token_decimals
+
+    @property
+    def vote_command(self):
+        deposit_chain = 'rsk' if self.from_chain.startswith('rsk_') else 'other'
+        env_vars = ''
+        if self.bridge_name.startswith('rsk_eth'):
+            env_vars = 'INFURA_API_KEY=keygoeshere '
+        return (
+            f"{env_vars}venv/bin/python vote_bridge_tx.py --bridge {self.bridge_name} --deposit-chain {deposit_chain} "
+            f"--tx-hash {self.event_transaction_hash}"
+        )
+
+    @property
+    def bridge_name(self):
+        chains = {self.from_chain, self.to_chain}
+        if chains == {'rsk_mainnet', 'eth_mainnet'}:
+            return 'rsk_eth_mainnet'
+        if chains == {'rsk_mainnet', 'bsc_mainnet'}:
+            return 'rsk_bsc_mainnet'
+        if chains == {'rsk_testnet', 'eth_testnet_ropsten'}:
+            return 'rsk_eth_testnet'
+        if chains == {'rsk_testnet', 'bsc_testnet'}:
+            return 'rsk_bsc_testnet'
+        return 'unknown'
+

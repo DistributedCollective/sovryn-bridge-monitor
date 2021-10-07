@@ -48,3 +48,10 @@ td.details code {
   background-color: transparent;
   border-radius: 0;
 }
+code.vote-command {
+  padding-left: 0;
+  padding-right: 0;
+  max-width: 460px;
+  display: block;
+  word-break: break-word;
+}

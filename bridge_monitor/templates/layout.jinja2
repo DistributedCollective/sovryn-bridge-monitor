@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="{{request.locale_name}}">
+{% set cache_breaker=2 %}
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -16,7 +17,7 @@
 
     <!-- Custom styles for this scaffold -->
     {# TODO: make cachebreaker automatic #}
-    <link href="{{request.static_url('bridge_monitor:static/theme.css', _query={'cache': 1})}}" rel="stylesheet">
+    <link href="{{request.static_url('bridge_monitor:static/theme.css', _query={'cache': cache_breaker})}}" rel="stylesheet">
 
     <!-- HTML5 shiv and Respond.js IE8 support of HTML5 elements and media queries -->
     <!--[if lt IE 9]>
@@ -40,10 +41,6 @@
 <script src="//code.jquery.com/jquery-1.12.4.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=" crossorigin="anonymous"></script>
 <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
 <script src="{{request.static_url('bridge_monitor:static/timeago.js')}}"></script>
-<script>
-    jQuery(document).ready(function() {
-        jQuery("time.timeago").timeago();
-    });
-</script>
+<script src="{{request.static_url('bridge_monitor:static/script.js', _query={'cache': cache_breaker})}}"></script>
 </body>
 </html>

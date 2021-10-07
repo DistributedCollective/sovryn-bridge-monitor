@@ -124,7 +124,11 @@
                             <span>Depositor:</span><code>{{ transfer.depositor_address }}</code><br/>
                             <span>Receiver:</span><code>{{ transfer.receiver_address }}</code><br/>
                             <span>UserData:</span><code>{{ transfer.user_data }}</code><br/>
-                            <span>ErrorData:</span><code>{{ transfer.error_data }}</code>
+                            <span>ErrorData:</span><code>{{ transfer.error_data }}</code><br/>
+                            {% if not transfer.was_processed  %}
+                            <span>Cmd</span> <a href="#" data-vote-command="{{ transfer.vote_command  }}">show vote command</a>
+                                {# <code class="vote-command">{{ transfer.vote_command }}</code> #}
+                            {% endif %}
                         </td>
                     </tr>
                 {% endfor  %}
