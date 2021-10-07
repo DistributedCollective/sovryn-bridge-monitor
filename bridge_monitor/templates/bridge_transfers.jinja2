@@ -126,8 +126,7 @@
                             <span>UserData:</span><code>{{ transfer.user_data }}</code><br/>
                             <span>ErrorData:</span><code>{{ transfer.error_data }}</code><br/>
                             {% if not transfer.was_processed  %}
-                            <span>Cmd</span> <a href="#" data-vote-command="{{ transfer.vote_command  }}">show vote command</a>
-                                {# <code class="vote-command">{{ transfer.vote_command }}</code> #}
+                                <span>Cmd</span> <a href="#" data-vote-command="{{ transfer.vote_command  }}">show vote command</a>
                             {% endif %}
                         </td>
                     </tr>

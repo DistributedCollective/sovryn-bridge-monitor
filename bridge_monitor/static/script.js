@@ -3,10 +3,6 @@ $(document).ready(function() {
 
     $("a[data-vote-command]").click(function (e) {
         e.preventDefault();
-        //alert(
-        //    "Vote for this transaction by running this command in the sovryn-scripts repo:\n\n" +
-        //    $(this).data('vote-command')
-        //);
         $(this).after($(
             '<code class="vote-command">' +
             $(this).data('vote-command') +
