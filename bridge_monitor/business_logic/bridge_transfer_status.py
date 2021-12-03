@@ -226,6 +226,6 @@ def fetch_state(
 
 
 def get_event_batch_size(chain_name: str) -> Optional[int]:
-    if chain_name.startswith('rsk_'):
-        return 500
+    #if chain_name.startswith('rsk_'):
+    #    return 500
     return 250
