@@ -153,6 +153,7 @@ def fetch_state(
             lambda: _get_block(main_web3, event.blockHash),
             federation_contract.functions.getTransactionIdU(*tx_id_args),
             federation_contract.functions.getTransactionId(*tx_id_args_old),
+            retry=True
         )
 
         transaction_id = to_hex(transaction_id)
@@ -179,6 +180,7 @@ def fetch_state(
                 if executed_event
                 else None
             ),
+            retry=True
         )
 
         #logger.debug('num_votes: %s', num_votes)

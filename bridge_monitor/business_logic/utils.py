@@ -141,7 +141,8 @@ def get_events(
     return ret
 
 
-def get_event_batch_with_retries(event, from_block, to_block, *, retries=3):
+def get_event_batch_with_retries(event, from_block, to_block, *, retries=6):
+    original_retries = retries
     while True:
         try:
             return event.getLogs(
@@ -153,6 +154,8 @@ def get_event_batch_with_retries(event, from_block, to_block, *, retries=3):
                 raise e
             logger.warning('error in get_all_entries: %s, retrying (%s)', e, retries)
             retries -= 1
+            attempt = original_retries - retries
+            exponential_sleep(attempt)
 
 
 def exponential_sleep(attempt, max_sleep_time=256.0):
@@ -190,14 +193,20 @@ def is_contract(*, web3: Web3, address: str) -> bool:
     return code != b'\x00'
 
 
-def call_concurrently(*funcs: Union[Callable, ContractFunction]) -> List[Any]:
-    futures = []
-    with ThreadPoolExecutor() as executor:
-        for func in funcs:
-            if hasattr(func, 'call'):
-                # ContractFunction
-                futures.append(executor.submit(func.call))
-            else:
-                futures.append(executor.submit(func))
-    return [f.result() for f in futures]
+def call_concurrently(*funcs: Union[Callable, ContractFunction], retry: bool = False) -> List[Any]:
+    def _call():
+        futures = []
+        with ThreadPoolExecutor() as executor:
+            for func in funcs:
+                if hasattr(func, 'call'):
+                    # ContractFunction
+                    futures.append(executor.submit(func.call))
+                else:
+                    futures.append(executor.submit(func))
+        return [f.result() for f in futures]
+
+    if retry:
+        _call = retryable()(_call)
+
+    return _call()
 
