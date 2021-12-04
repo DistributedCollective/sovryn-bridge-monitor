@@ -24,10 +24,10 @@ INFURA_API_KEY = os.getenv('INFURA_API_KEY', 'INFURA_API_KEY_NOT_SET')
 RPC_URLS = {
     'rsk_mainnet': os.getenv('RSK_NODE_URL', 'https://mainnet.sovryn.app/rpc'),
     'rsk_mainnet_iov': 'https://public-node.rsk.co',
-    'bsc_mainnet': 'https://bsc-dataseed.binance.org/',
+    'bsc_mainnet': os.getenv('BSC_NODE_URL', 'https://bsc-dataseed.binance.org/'),
     'rsk_testnet': 'https://testnet2.sovryn.app/rpc',
     'bsc_testnet': 'https://data-seed-prebsc-1-s1.binance.org:8545/',
-    'eth_mainnet': f'https://mainnet.infura.io/v3/{INFURA_API_KEY}',
+    'eth_mainnet': os.getenv('ETH_NODE_URL', f'https://mainnet.infura.io/v3/{INFURA_API_KEY}'),
     'eth_testnet_ropsten': f'https://ropsten.infura.io/v3/{INFURA_API_KEY}',
 }
 
