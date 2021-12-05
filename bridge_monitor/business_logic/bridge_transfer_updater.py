@@ -74,6 +74,7 @@ def update_transfers(
             rsk_last_processed_block = get_last_block_number_with_all_transfers_processed(
                 dbsession.query(Transfer).filter(
                     (Transfer.from_chain == rsk_chain_name) & (Transfer.to_chain == other_chain_name)
+                    & ~Transfer.ignored
                 ),
                 rsk_last_processed_block
             )
@@ -82,8 +83,9 @@ def update_transfers(
             other_last_processed_block = get_last_block_number_with_all_transfers_processed(
                 dbsession.query(Transfer).filter(
                     (Transfer.from_chain == other_chain_name) & (Transfer.to_chain == rsk_chain_name)
+                    & ~Transfer.ignored
                 ),
-                other_last_processed_block
+                other_last_processed_block,
             )
             logger.info('%s to: %s', other_chain_name, other_last_processed_block)
 
@@ -121,6 +123,7 @@ def update_transfers(
     logger.debug("Got %s %s transfers", len(rsk_transfers), rsk_chain_name)
     logger.debug("Got %s %s transfers", len(other_transfers), other_chain_name)
 
+    # TODO: get_last_block_number_with_all_transfers_processed doesn't handle ignored transfers correctly here
     rsk_last_processed_block = get_last_block_number_with_all_transfers_processed(
         rsk_transfers,
         rsk_last_processed_block
@@ -131,6 +134,7 @@ def update_transfers(
         max(t.event_block_number for t in rsk_transfers) if rsk_transfers else '(none)',
         rsk_last_processed_block
     )
+    # TODO: get_last_block_number_with_all_transfers_processed doesn't handle ignored transfers correctly here either
     other_last_processed_block = get_last_block_number_with_all_transfers_processed(
         other_transfers,
         other_last_processed_block
@@ -178,6 +182,7 @@ def get_last_block_number_with_all_transfers_processed(transfers: List[TransferD
 
     ret = default_value
     for block_number, transfers in sorted(transfers_by_block.items()):
+        # TODO: check ignored here
         if any(not t.was_processed for t in transfers):
             break
         ret = block_number
