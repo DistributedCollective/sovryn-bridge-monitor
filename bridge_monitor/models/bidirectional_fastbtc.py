@@ -78,7 +78,7 @@ class BidirectionalFastBTCTransfer(Base):
         return self.seen_on
 
     @property
-    def deposited_on(self):
+    def initiated_on(self):
         return datetime.utcfromtimestamp(self.event_block_timestamp).replace(tzinfo=timezone.utc)
 
     @property
@@ -95,7 +95,7 @@ class BidirectionalFastBTCTransfer(Base):
 
     @property
     def refunded_or_reclaimed_on(self):
-        if not self.marked_as_sending_block_timestamp:
+        if not self.refunded_or_reclaimed_block_timestamp:
             return None
         return datetime.utcfromtimestamp(self.refunded_or_reclaimed_block_timestamp).replace(tzinfo=timezone.utc)
 
@@ -112,7 +112,7 @@ class BidirectionalFastBTCTransfer(Base):
         if not now:
             now = now_in_utc()
         return not self.was_processed and (
-            now - self.deposited_on > TRANSFER_LATE_DEPOSITED_CUTOFF or
+            now - self.initiated_on > TRANSFER_LATE_DEPOSITED_CUTOFF or
             now - self.updated_on > TRANSFER_LATE_UPDATED_CUTOFF
         )
 
@@ -128,12 +128,12 @@ class BidirectionalFastBTCTransfer(Base):
 
     @property
     def formatted_amount(self):
-        return Decimal(self.amount_satoshi) / 10**SATOSHI_IN_BTC
+        return Decimal(self.total_amount_satoshi) / SATOSHI_IN_BTC
 
     @property
     def formatted_fee(self):
-        return Decimal(self.fee_satoshi) / 10**SATOSHI_IN_BTC
+        return Decimal(self.fee_satoshi) / SATOSHI_IN_BTC
 
     @property
     def formatted_net_amount(self):
-        return Decimal(self.net_amount_satoshi) / 10**SATOSHI_IN_BTC
+        return Decimal(self.net_amount_satoshi) / SATOSHI_IN_BTC

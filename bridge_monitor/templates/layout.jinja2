@@ -29,6 +29,13 @@
 <body>
 
 <div class="container">
+    <nav>
+        <a href="{{ request.route_path('bridge_transfers') }}">Token bridge</a> |
+        <a href="{{ request.route_path('bidirectional_fastbtc') }}">Bidirectional FastBTC</a>
+    </nav>
+</div>
+
+<div class="container">
     {% block content %}
         <p>No content</p>
     {% endblock content %}

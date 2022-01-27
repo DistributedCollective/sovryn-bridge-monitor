@@ -117,6 +117,7 @@ def main(argv=sys.argv):
             if not args.no_fastbtc:
                 try:
                     update_bidi_fastbtc_transfers(
+                        #config_name='rsk_testnet',  # For testing
                         config_name='rsk_mainnet',
                         transaction_manager=request.tm,
                         session_factory=session_factory,
