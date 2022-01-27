@@ -89,7 +89,7 @@ class BidirectionalFastBTCTransfer(Base):
 
     @property
     def marked_as_mined_on(self):
-        if not self.marked_as_sending_block_timestamp:
+        if not self.marked_as_mined_block_timestamp:
             return None
         return datetime.utcfromtimestamp(self.marked_as_mined_block_timestamp).replace(tzinfo=timezone.utc)
 
