@@ -10,6 +10,7 @@ from pyramid.request import Request
 
 from ..business_logic.bridge_transfer_updater import update_transfers_from_all_bridges
 from ..business_logic.bridge_alerts import handle_bridge_alerts
+from ..business_logic.bidirectional_fastbtc import update_bidi_fastbtc_transfers
 
 
 logger = logging.getLogger(__name__)
@@ -70,6 +71,20 @@ def parse_args(argv):
         default=False,
         help="Update last processed blocks from DB first (developers only)",
     )
+
+    parser.add_argument(
+        '--no-fastbtc',
+        action='store_true',
+        default=False,
+        help="Don't monitor (bidirectional) FastBTC",
+    )
+    parser.add_argument(
+        '--no-bridge',
+        action='store_true',
+        default=False,
+        help="Only monitor (bidirectional) FastBTC - no token bridge",
+    )
+
     return parser.parse_args(argv[1:])
 
 
@@ -85,18 +100,33 @@ def main(argv=sys.argv):
     # TODO: limit 1 session at time
     while True:
         if not args.no_updates:
-            try:
-                update_transfers_from_all_bridges(
-                    transaction_manager=request.tm,
-                    session_factory=session_factory,
-                    max_blocks=args.max_blocks,
-                    update_last_processed_blocks_first=args.update_last_processed_blocks_first,
-                )
-            except KeyboardInterrupt:
-                logger.info("Quitting!")
-                raise
-            except Exception:  # noqa
-                logger.exception("Got exception getting bridge transfers")
+            if not args.no_bridge:
+                try:
+                    update_transfers_from_all_bridges(
+                        transaction_manager=request.tm,
+                        session_factory=session_factory,
+                        max_blocks=args.max_blocks,
+                        update_last_processed_blocks_first=args.update_last_processed_blocks_first,
+                    )
+                except KeyboardInterrupt:
+                    logger.info("Quitting!")
+                    raise
+                except Exception:  # noqa
+                    logger.exception("Got exception getting bridge transfers")
+
+            if not args.no_fastbtc:
+                try:
+                    update_bidi_fastbtc_transfers(
+                        config_name='rsk_mainnet',
+                        transaction_manager=request.tm,
+                        session_factory=session_factory,
+                        max_blocks=args.max_blocks,
+                    )
+                except KeyboardInterrupt:
+                    logger.info("Quitting!")
+                    raise
+                except Exception:  # noqa
+                    logger.exception("Got exception getting bridge transfers")
 
         if not args.no_alerts:
             extra_args = {}
@@ -114,6 +144,7 @@ def main(argv=sys.argv):
                 raise
             except Exception:  # noqa
                 logger.exception("Got exception sending alerts")
+            # TODO: fastbtc alerts
 
         if args.one_off:
             return

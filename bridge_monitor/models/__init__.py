@@ -8,6 +8,7 @@ import zope.sqlalchemy
 from .bridge import Transfer  # flake8: noqa
 from .key_value_store import KeyValuePair  # flake8: noqa
 from .alerts import Alert, AlertType  # flake8: noqa
+from .bidirectional_fastbtc import BidirectionalFastBTCTransfer, TransferStatus  # flake8: noqa
 
 # Run ``configure_mappers`` after defining all of the models to ensure
 # all relationships can be setup.

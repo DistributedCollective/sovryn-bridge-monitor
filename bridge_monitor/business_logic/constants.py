@@ -80,3 +80,18 @@ BRIDGES: Dict[str, Dict[str, BridgeConfig]] = {
 }
 BRIDGE_ABI = load_abi('token_bridge/Bridge')
 FEDERATION_ABI = load_abi('token_bridge/Federation')
+
+BIDI_FASTBTC_CONFIGS = {
+    'rsk_mainnet': {
+        'contract_address': '0x0D5006330289336ebdF9d0AC9E0674f91b4851eA',
+        'start_block': 4029878,
+        'chain': 'rsk_mainnet',
+    },
+    'rsk_testnet': {
+        'contract_address': '0x10C848e9495a32acA95F6c23C92eCA2b2bE9903A',
+        #'start_block': 2417524,
+        'start_block': 2425099,
+        'chain': 'rsk_testnet',
+    },
+}
+BIDI_FASTBTC_ABI = load_abi('bidirectional_fastbtc/FastBTCBridge')

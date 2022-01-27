@@ -48,6 +48,10 @@ class Transfer(Base):
     updated_on = Column(TZDateTime, default=now_in_utc, nullable=False)
 
     @property
+    def seen_on(self):
+        return self.created_on
+
+    @property
     def deposited_on(self):
         return datetime.utcfromtimestamp(self.event_block_timestamp).replace(tzinfo=timezone.utc)
 
