@@ -109,12 +109,12 @@
                         <td>{{ transfer.num_votes }}</td>
                         <td>
                             <small>
-                                deposited <time class="timeago" datetime="{{ transfer.deposited_on.isoformat() }}">{{ transfer.created_on }}</time><br/>
+                                deposited <time class="timeago" datetime="{{ transfer.deposited_on.isoformat() }}">{{ transfer.deposited_on }}</time><br/>
                                 {% if transfer.executed_on %}
-                                executed <time class="timeago" datetime="{{ transfer.executed_on.isoformat() }}">{{ transfer.created_on }}</time><br/>
+                                executed <time class="timeago" datetime="{{ transfer.executed_on.isoformat() }}">{{ transfer.executed_on }}</time><br/>
                                 {% endif %}
                                 updated <time class="timeago" datetime="{{ transfer.updated_on.isoformat() }}">{{ transfer.updated_on }}</time><br/>
-                                first seen <time class="timeago" datetime="{{ transfer.created_on.isoformat() }}">{{ transfer.created_on }}</time>
+                                first seen <time class="timeago" datetime="{{ transfer.created_on.isoformat() }}">{{ transfer.seen_on }}</time>
                             </small>
                         </td>
                         <td class="details">
