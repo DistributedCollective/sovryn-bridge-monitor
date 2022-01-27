@@ -39,7 +39,7 @@
 
         <div>
             <a href="#" style="float:right">top</a>
-            <h2 id="{{ bridge_name }}">Last {{ max_transfers }} {{ filter_name }} {{ bridge_name }} transfers </h2>
+            <h2 id="{{ bridge_name }}">Last {{ transfers|length }} {{ filter_name }} {{ bridge_name }} transfers </h2>
         </div>
         <p>
             {% if updated_on %}

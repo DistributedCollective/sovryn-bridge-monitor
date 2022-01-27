@@ -31,14 +31,14 @@ def bridge_transfers(request):
          ((Transfer.from_chain == 'eth_mainnet') & (Transfer.to_chain == 'rsk_mainnet')))
     ).filter(
         *transfer_filter
-    ).order_by(*ordering).limit(max_transfers)
+    ).order_by(*ordering).limit(max_transfers).all()
 
     rsk_bsc_transfers = dbsession.query(Transfer).filter(
         (((Transfer.from_chain == 'rsk_mainnet') & (Transfer.to_chain == 'bsc_mainnet')) |
          ((Transfer.from_chain == 'bsc_mainnet') & (Transfer.to_chain == 'rsk_mainnet')))
     ).filter(
         *transfer_filter
-    ).order_by(*ordering).limit(max_transfers)
+    ).order_by(*ordering).limit(max_transfers).all()
 
     last_updated = {
         'rsk_eth': key_value_store.get_value('last-updated:rsk_eth_mainnet', None),
