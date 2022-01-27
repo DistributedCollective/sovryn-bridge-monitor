@@ -190,7 +190,7 @@ def retryable(*, max_attempts: int = 10):
 @functools.lru_cache()
 def is_contract(*, web3: Web3, address: str) -> bool:
     code = web3.eth.get_code(to_address(address))
-    return code != b'\x00'
+    return code != b'\x00' and code != b''
 
 
 def call_concurrently(*funcs: Union[Callable, ContractFunction], retry: bool = False) -> List[Any]:
