@@ -11,7 +11,7 @@ from .types import TZDateTime, Uint256, now_in_utc
 TRANSFER_LATE_DEPOSITED_CUTOFF = timedelta(hours=2)
 TRANSFER_LATE_UPDATED_CUTOFF = timedelta(minutes=45)
 WEI_IN_SATOSHI = 10_000_000_000
-SATOSHI_IN_BTC = 10_000_000
+SATOSHI_IN_BTC = 100_000_000
 
 
 class TransferStatus(enum.IntEnum):
