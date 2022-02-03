@@ -9,16 +9,13 @@ import functools
 import logging
 import os
 import time
-from concurrent.futures import ThreadPoolExecutor
 
-from alembic import op
 import sqlalchemy as sa
-
-
+from alembic import op
 # revision identifiers, used by Alembic.
-from sqlalchemy.orm import Session
+from sqlalchemy import Column, Integer, MetaData, Text
+from sqlalchemy.orm import Session, declarative_base
 
-from bridge_monitor.models import Transfer
 from bridge_monitor.business_logic.utils import get_web3
 
 revision = 'ee8ba2921a34'
@@ -54,7 +51,29 @@ def upgrade():
     op.add_column('transfer', sa.Column('event_block_timestamp', sa.Integer(), nullable=True))
     op.add_column('transfer', sa.Column('executed_block_timestamp', sa.Integer(), nullable=True))
 
-    dbsession = Session(bind=op.get_bind())
+    bind = op.get_bind()
+
+    metadata = MetaData(bind=bind)
+    Base = declarative_base(metadata=metadata)
+
+    # Copy the table here with keep_existing to avoid the situation where it changes
+    class Transfer(Base):
+        __tablename__ = 'transfer'
+        __table_args__ = {
+            'autoload_with': bind,
+            'keep_existing': True,
+        }
+
+        id = Column(Integer, primary_key=True)
+
+        from_chain = Column(Text, nullable=False)
+        to_chain = Column(Text, nullable=False)
+        event_block_hash = Column(Text, nullable=False)
+        event_block_timestamp = Column(Integer, nullable=False, index=True)
+        executed_block_hash = Column(Text, nullable=True)
+        executed_block_timestamp = Column(Integer, nullable=True)
+
+    dbsession = Session(bind=bind)
     with dbsession:
         transfers = dbsession.query(Transfer).all()
         if transfers:
