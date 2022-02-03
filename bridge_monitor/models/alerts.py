@@ -8,6 +8,7 @@ from .types import TZDateTime, now_in_utc
 
 class AlertType(enum.Enum):
     late_transfers = 'late_transfers'
+    bidi_fastbtc_late_transfers = 'bidi_fastbtc_late_transfers'
     other = 'other'
 
 
