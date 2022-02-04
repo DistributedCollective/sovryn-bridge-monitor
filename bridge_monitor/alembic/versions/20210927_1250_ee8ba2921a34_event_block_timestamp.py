@@ -12,9 +12,8 @@ import time
 
 import sqlalchemy as sa
 from alembic import op
-# revision identifiers, used by Alembic.
-from sqlalchemy import Column, Integer, MetaData, Text
-from sqlalchemy.orm import Session, declarative_base
+from sqlalchemy.ext.automap import automap_base
+from sqlalchemy.orm import Session
 
 from bridge_monitor.business_logic.utils import get_web3
 
@@ -47,31 +46,17 @@ def get_block_timestamp(chain_name, block_hash) -> int:
     return block.timestamp
 
 
+Base = automap_base()
+
+
 def upgrade():
     op.add_column('transfer', sa.Column('event_block_timestamp', sa.Integer(), nullable=True))
     op.add_column('transfer', sa.Column('executed_block_timestamp', sa.Integer(), nullable=True))
 
+    # Reflect the ORM model like it's in the database right now in the migration
     bind = op.get_bind()
-
-    metadata = MetaData(bind=bind)
-    Base = declarative_base(metadata=metadata)
-
-    # Copy the table here with keep_existing to avoid the situation where it changes
-    class Transfer(Base):
-        __tablename__ = 'transfer'
-        __table_args__ = {
-            'autoload_with': bind,
-            'keep_existing': True,
-        }
-
-        id = Column(Integer, primary_key=True)
-
-        from_chain = Column(Text, nullable=False)
-        to_chain = Column(Text, nullable=False)
-        event_block_hash = Column(Text, nullable=False)
-        event_block_timestamp = Column(Integer, nullable=False, index=True)
-        executed_block_hash = Column(Text, nullable=True)
-        executed_block_timestamp = Column(Integer, nullable=True)
+    Base.prepare(bind, reflect=True)
+    Transfer = Base.classes.transfer
 
     dbsession = Session(bind=bind)
     with dbsession:
