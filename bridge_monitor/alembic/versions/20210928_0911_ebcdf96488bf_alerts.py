@@ -30,6 +30,7 @@ def upgrade():
 
 def downgrade():
     op.drop_table('alert')
+    op.execute('DROP TYPE alerttype;')
 
 
 class TZDateTime(types.TypeDecorator):

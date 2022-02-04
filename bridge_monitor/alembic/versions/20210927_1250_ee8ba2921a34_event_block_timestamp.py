@@ -55,7 +55,7 @@ def upgrade():
 
     # Reflect the ORM model like it's in the database right now in the migration
     bind = op.get_bind()
-    Base.prepare(bind, reflect=True)
+    Base.prepare(autoload_with=bind)
     Transfer = Base.classes.transfer
 
     dbsession = Session(bind=bind)
