@@ -173,7 +173,7 @@ def retryable(*, max_attempts: int = 10):
                     return func(*args, **kwargs)
                 except Exception as e:
                     if attempt >= max_attempts:
-                        logger.warning('max attempts (%s) exhausted for error: %s', max_attempts, e)
+                        logger.exception('max attempts (%s) exhausted for error: %s', max_attempts, e)
                         raise
                     logger.warning(
                         'Retryable error (attempt: %s/%s): %s',
