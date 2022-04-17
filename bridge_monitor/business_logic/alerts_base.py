@@ -69,7 +69,7 @@ def handle_late_transfer_alerts(
                 if success:
                     messager.send_message(dedent(f"""\
                     **🚨 Alert! 🚨**
-                    There are **{num}** late transfers on {alert_source}.
+                    There are **{num}** late transfers on {alert_source}. (ping @Rainer @Hantti)
                     """))
                 else:
                     logger.error("Transaction failure, not sending message")
