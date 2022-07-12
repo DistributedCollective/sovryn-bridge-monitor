@@ -113,6 +113,9 @@
                                 {% if transfer.executed_on %}
                                 executed <time class="timeago" datetime="{{ transfer.executed_on.isoformat() }}">{{ transfer.executed_on }}</time><br/>
                                 {% endif %}
+                                {% if transfer.seconds_from_deposit_to_execution %}
+                                time taken: <time>{{ (transfer.seconds_from_deposit_to_execution/60)|round(2) }} min</time><br/>
+                                {% endif %}
                                 updated <time class="timeago" datetime="{{ transfer.updated_on.isoformat() }}">{{ transfer.updated_on }}</time><br/>
                                 first seen <time class="timeago" datetime="{{ transfer.created_on.isoformat() }}">{{ transfer.seen_on }}</time>
                             </small>

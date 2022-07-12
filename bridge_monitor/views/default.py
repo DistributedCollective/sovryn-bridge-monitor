@@ -24,6 +24,16 @@ def bridge_transfers(request):
     elif transfer_filter_name == 'ignored':
         transfer_filter = [Transfer.ignored]
 
+    symbols = request.params.get('symbols', None)
+    if symbols:
+        symbols = symbols.split(',')
+        transfer_filter.append(Transfer.symbol.in_(symbols))
+
+    time_taken_gte = request.params.get('time_taken_gte', None)
+    if time_taken_gte:
+        time_taken_gte = int(time_taken_gte)
+        transfer_filter.append(Transfer.seconds_from_deposit_to_execution >= time_taken_gte)
+
     ordering = [Transfer.event_block_timestamp.desc()]
 
     rsk_eth_transfers = dbsession.query(Transfer).filter(

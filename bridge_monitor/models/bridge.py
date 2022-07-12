@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from sqlalchemy import Boolean, Column, Integer, Text
-from sqlalchemy.ext.hybrid import hybrid_method
+from sqlalchemy.ext.hybrid import hybrid_method, hybrid_property
 
 from .meta import Base
 from .types import TZDateTime, Uint256, now_in_utc
@@ -60,6 +60,16 @@ class Transfer(Base):
         if not self.executed_block_timestamp:
             return None
         return datetime.utcfromtimestamp(self.executed_block_timestamp).replace(tzinfo=timezone.utc)
+
+    @hybrid_property
+    def seconds_from_deposit_to_execution(self):
+        if not self.executed_block_timestamp:
+            return None
+        return self.executed_block_timestamp - self.event_block_timestamp
+
+    @seconds_from_deposit_to_execution.expression
+    def seconds_from_deposit_to_execution(self):
+        return self.executed_block_timestamp - self.event_block_timestamp
 
     @hybrid_method
     def is_late(self, now: datetime = None):
