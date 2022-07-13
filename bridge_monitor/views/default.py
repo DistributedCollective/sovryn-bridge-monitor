@@ -27,7 +27,7 @@ def bridge_transfers(request):
     symbols = request.params.get('symbols', None)
     if symbols:
         symbols = symbols.split(',')
-        transfer_filter.append(Transfer.symbol.in_(symbols))
+        transfer_filter.append(Transfer.token_symbol.in_(symbols))
 
     time_taken_gte = request.params.get('time_taken_gte', None)
     if time_taken_gte:
