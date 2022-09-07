@@ -20,14 +20,14 @@ BRIDGES: Dict[str, Dict[str, BridgeConfig]] = {
     'rsk_eth_mainnet': {
         'rsk': {
             'bridge_address': '0x1ccad820b6d031b41c54f1f3da11c0d48b399581',
-            'federation_address': '0x5e2ee3cd18421838d066bd1dc02fb1f767d834dd',
+            'federation_address': '0x32593e4f7a4991c2fe17459dae9920fd612855b4',
             #'bridge_start_block': 3373266,
             'bridge_start_block': 3600000,
             'chain': 'rsk_mainnet',
         },
         'other': {
             'bridge_address': '0x33c0d33a0d4312562ad622f91d12b0ac47366ee1',
-            'federation_address': '0x74aa9b461CAd174cA066fc80AF2151c96Bd4D45f',
+            'federation_address': '0xD77b76A65a19715BDcB5eE223928af2919836A3E',
             #'bridge_start_block': 12485023,
             'bridge_start_block': 13100000,
             'chain': 'eth_mainnet',
