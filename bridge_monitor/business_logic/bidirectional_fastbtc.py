@@ -80,7 +80,7 @@ def update_bidi_fastbtc_transfers(
         from_block=from_block,
         to_block=to_block,
     )
-    print("Found %s BitcoinTransferStatusUpdated events", len(bitcoin_transfer_status_updated_events))
+    logger.info("Found %s BitcoinTransferStatusUpdated events", len(bitcoin_transfer_status_updated_events))
 
     # Prepare a list of TransferBatchSending events for each transaction
     transfer_batch_sending_events_by_tx_hash = defaultdict(list)
@@ -136,10 +136,14 @@ def update_bidi_fastbtc_transfers(
         for event in bitcoin_transfer_status_updated_events:
             transfer_id = to_hex(event.args.transferId)
             event_block = blocks_by_block_hash[event.blockHash]
-            transfer = dbsession.query(BidirectionalFastBTCTransfer).filter_by(
-                chain=chain_name,
-                transfer_id=transfer_id,
-            ).one()
+            try:
+                transfer = dbsession.query(BidirectionalFastBTCTransfer).filter_by(
+                    chain=chain_name,
+                    transfer_id=transfer_id,
+                ).one()
+            except Exception:
+                logger.error("Could not find transfer with id %s, chain %s", transfer_id, chain_name)
+                raise
 
             status = TransferStatus(event.args.newStatus)
             if status == TransferStatus.SENDING:
