@@ -12,7 +12,7 @@ from bridge_monitor.models.bidirectional_fastbtc import (
 def bidirectional_fastbtc(request):
     dbsession: Session = request.dbsession
     key_value_store = KeyValueStore(dbsession)
-    chain_name = 'rsk_mainnet'
+    chain_name = 'rsk_testnet'
     #chain_name = 'rsk_testnet'  # For testing
 
     try:

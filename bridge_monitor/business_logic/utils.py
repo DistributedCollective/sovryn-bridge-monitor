@@ -29,6 +29,7 @@ RPC_URLS = {
     'bsc_testnet': 'https://data-seed-prebsc-1-s1.binance.org:8545/',
     'eth_mainnet': os.getenv('ETH_NODE_URL', f'https://mainnet.infura.io/v3/{INFURA_API_KEY}'),
     'eth_testnet_ropsten': f'https://ropsten.infura.io/v3/{INFURA_API_KEY}',
+    'eth_testnet': f'https://ropsten.infura.io/v3/{INFURA_API_KEY}',
 }
 
 
@@ -163,7 +164,7 @@ def exponential_sleep(attempt, max_sleep_time=256.0):
     sleep(sleep_time)
 
 
-def retryable(*, max_attempts: int = 10):
+def retryable(*, max_attempts: int = 0):
     def decorator(func):
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
@@ -173,7 +174,7 @@ def retryable(*, max_attempts: int = 10):
                     return func(*args, **kwargs)
                 except Exception as e:
                     if attempt >= max_attempts:
-                        logger.warning('max attempts (%s) exhausted for error: %s', max_attempts, e)
+                        logger.exception('max attempts (%s) exhausted for error: %s', max_attempts, e)
                         raise
                     logger.warning(
                         'Retryable error (attempt: %s/%s): %s',
@@ -194,6 +195,14 @@ def is_contract(*, web3: Web3, address: str) -> bool:
 
 
 def call_concurrently(*funcs: Union[Callable, ContractFunction], retry: bool = False) -> List[Any]:
+    res = []
+    for func in funcs:
+        if hasattr(func, 'call'):
+            res.append(func.call())
+        else:
+            res.append(func())
+    return res
+
     def _call():
         futures = []
         with ThreadPoolExecutor() as executor:

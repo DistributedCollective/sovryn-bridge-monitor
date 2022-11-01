@@ -27,22 +27,22 @@ def bridge_transfers(request):
     ordering = [Transfer.event_block_timestamp.desc()]
 
     rsk_eth_transfers = dbsession.query(Transfer).filter(
-        (((Transfer.from_chain == 'rsk_mainnet') & (Transfer.to_chain == 'eth_mainnet')) |
-         ((Transfer.from_chain == 'eth_mainnet') & (Transfer.to_chain == 'rsk_mainnet')))
+        (((Transfer.from_chain == 'rsk_testnet') & (Transfer.to_chain == 'eth_testnet')) |
+         ((Transfer.from_chain == 'eth_testnet') & (Transfer.to_chain == 'rsk_testnet')))
     ).filter(
         *transfer_filter
     ).order_by(*ordering).limit(max_transfers).all()
 
     rsk_bsc_transfers = dbsession.query(Transfer).filter(
-        (((Transfer.from_chain == 'rsk_mainnet') & (Transfer.to_chain == 'bsc_mainnet')) |
-         ((Transfer.from_chain == 'bsc_mainnet') & (Transfer.to_chain == 'rsk_mainnet')))
+        (((Transfer.from_chain == 'rsk_testnet') & (Transfer.to_chain == 'bsc_testnet')) |
+         ((Transfer.from_chain == 'bsc_testnet') & (Transfer.to_chain == 'rsk_testnet')))
     ).filter(
         *transfer_filter
     ).order_by(*ordering).limit(max_transfers).all()
 
     last_updated = {
-        'rsk_eth': key_value_store.get_value('last-updated:rsk_eth_mainnet', None),
-        'rsk_bsc': key_value_store.get_value('last-updated:rsk_bsc_mainnet', None),
+        'rsk_eth': key_value_store.get_value('last-updated:rsk_eth_testnet', None),
+        'rsk_bsc': key_value_store.get_value('last-updated:rsk_bsc_testnet', None),
     }
 
     return {

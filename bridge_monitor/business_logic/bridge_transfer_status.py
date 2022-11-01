@@ -148,10 +148,20 @@ def fetch_state(
         logger.info("Progress: %.2f %%", index / len(cross_events) * 100)
         #logger.debug('event %s: %s', index, event)
 
+        def get_tx_id_u():
+            return federation_contract.functions.getTransactionIdU(*tx_id_args).call()
+            try:
+                return federation_contract.functions.getTransactionIdU(*tx_id_args).call()
+            except Exception as e:
+                logger.error('Error calling getTransactionIdU for main %s side %s, falling back', main_chain, side_chain)
+                if 'transaction reverted' in str(e) or 'execution reverted' in str(e):
+                    return federation_contract.functions.getTransactionId(*tx_id_args_old).call()
+                raise
+
         event_receipt, event_block, transaction_id, transaction_id_old = call_concurrently(
             lambda: main_web3.eth.get_transaction_receipt(event.transactionHash),
             lambda: _get_block(main_web3, event.blockHash),
-            federation_contract.functions.getTransactionIdU(*tx_id_args),
+            get_tx_id_u,
             federation_contract.functions.getTransactionId(*tx_id_args_old),
             retry=True
         )

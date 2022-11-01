@@ -28,7 +28,8 @@ def update_transfers_from_all_bridges(
     update_last_processed_blocks_first: bool = False
 ):
     # TODO: these are hardcoded :f
-    for bridge_name in ['rsk_eth_mainnet', 'rsk_bsc_mainnet']:
+    #for bridge_name in ['rsk_eth_mainnet', 'rsk_bsc_mainnet']:
+    for bridge_name in ['rsk_eth_testnet', 'rsk_bsc_testnet']:
         update_transfers(
             bridge_name=bridge_name,
             session_factory=session_factory,
