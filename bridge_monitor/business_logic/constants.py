@@ -51,18 +51,18 @@ BRIDGES: Dict[str, Dict[str, BridgeConfig]] = {
     },
     'rsk_eth_testnet': {
         'rsk': {
-            'bridge_address': '0xc0e7a7fff4aba5e7286d5d67dd016b719dcc9156',
+            'bridge_address': '0xfbd57ab1dce7b4fe191ff947ddbb5118e4318207',
             #'federation_address': '0xd37b3876f4560cec6d8ef39ce4cb28ffd645b51a',
             #'federation_address': '0x6285DaDd35BA18F671cd1b73D708cE00d5B9cfEa', # this was used before 2022-07-02
-            'federation_address': '0xe9FDF7Cf757EB5A418B01d8862df177A20FbBF76', # this should be the correct v6 one
-            'bridge_start_block': 2600000,
+            'federation_address': '0x2610c700e5ea8a75e3a5c43657ac91c0539d48db',
+            'bridge_start_block': 3305002,
             'chain': 'rsk_testnet',
         },
         'other': {
-            'bridge_address': '0x2b456e230225c4670fbf10b9da506c019a24cac7',
+            'bridge_address': '0xe7d8ed038deb475b3705c67934d0bcfc2d462ba3',
             #'federation_address': '0x48a8f0efc6406674d4b3067ea49bda41f7ac2621',
-            'federation_address': '0xED73Ad8a2d649D903DB10906e39AfFcc2b941416',
-            'bridge_start_block': 11970000,
+            'federation_address': '0x71a4df7326925ca068ade61ea85ba9997c11102b',
+            'bridge_start_block': 2206447,
             'chain': 'eth_testnet',
         }
     },

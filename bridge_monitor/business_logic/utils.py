@@ -29,7 +29,7 @@ RPC_URLS = {
     'bsc_testnet': 'https://data-seed-prebsc-1-s1.binance.org:8545/',
     'eth_mainnet': os.getenv('ETH_NODE_URL', f'https://mainnet.infura.io/v3/{INFURA_API_KEY}'),
     'eth_testnet_ropsten': f'https://ropsten.infura.io/v3/{INFURA_API_KEY}',
-    'eth_testnet': f'https://ropsten.infura.io/v3/{INFURA_API_KEY}',
+    'eth_testnet': f'https://sepolia.infura.io/v3/{INFURA_API_KEY}',
 }
 
 
