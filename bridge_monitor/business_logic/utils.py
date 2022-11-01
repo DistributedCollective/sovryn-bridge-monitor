@@ -22,11 +22,11 @@ logger = logging.getLogger(__name__)
 
 INFURA_API_KEY = os.getenv('INFURA_API_KEY', 'INFURA_API_KEY_NOT_SET')
 RPC_URLS = {
-    'rsk_mainnet': os.getenv('RSK_NODE_URL', 'https://mainnet.sovryn.app/rpc'),
+    'rsk_mainnet': os.getenv('RSK_NODE_URL', 'https://rsk-internal.sovryn.app/rpc'),
     'rsk_mainnet_iov': 'https://public-node.rsk.co',
-    'bsc_mainnet': os.getenv('BSC_NODE_URL', 'https://bsc-dataseed.binance.org/'),
-    'rsk_testnet': 'https://testnet2.sovryn.app/rpc',
-    'bsc_testnet': 'https://data-seed-prebsc-1-s1.binance.org:8545/',
+    'bsc_mainnet': os.getenv('BSC_NODE_URL', 'https://bsc.sovryn.app/mainnet'),
+    'rsk_testnet': 'https://testnet.sovryn.app/rpc',
+    'bsc_testnet': 'https://bsc.sovryn.app/testnet',
     'eth_mainnet': os.getenv('ETH_NODE_URL', f'https://mainnet.infura.io/v3/{INFURA_API_KEY}'),
     'eth_testnet_ropsten': f'https://ropsten.infura.io/v3/{INFURA_API_KEY}',
     'eth_testnet': f'https://sepolia.infura.io/v3/{INFURA_API_KEY}',
