@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 INFURA_API_KEY = os.getenv('INFURA_API_KEY', 'INFURA_API_KEY_NOT_SET')
 RPC_URLS = {
-    'rsk_mainnet': os.getenv('RSK_NODE_URL', 'https://mainnet.sovryn.app/rpc'),
+    'rsk_mainnet': os.getenv('RSK_NODE_URL', 'https://rsk-internal.sovryn.app/rpc'),
     'rsk_mainnet_iov': 'https://public-node.rsk.co',
     'bsc_mainnet': os.getenv('BSC_NODE_URL', 'https://bsc-dataseed1.binance.org/'),
     'rsk_testnet': 'https://testnet2.sovryn.app/rpc',
