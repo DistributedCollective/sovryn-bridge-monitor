@@ -1,6 +1,6 @@
 from typing import Dict, Literal, NewType, TypedDict
 
-from .utils import load_abi
+from .utils import load_abi, to_address
 
 Chain = NewType(
     'Chain',
@@ -95,3 +95,21 @@ BIDI_FASTBTC_CONFIGS = {
     },
 }
 BIDI_FASTBTC_ABI = load_abi('bidirectional_fastbtc/FastBTCBridge')
+
+
+FASTBTC_IN_CONFIGS = {
+    'rsk_mainnet': {
+        'multisig_address': to_address('0x0f279e810b95e0d425622b9b40d7bcd0b5c4b19d'),
+        'managedwallet_address': to_address('0xE43cafBDd6674DF708CE9DFF8762AF356c2B454d'),
+        'chain': 'rsk_mainnet',
+        'start_block': 5388100,
+    },
+    'rsk_testnet': {
+        'multisig_address': to_address('0x1d67bda1144cacdbeff1782f0e5b43d7b50bbfe0'),
+        'managedwallet_address': to_address('0xACBE05e7236F7d073295C99E629620DA58284AaD'),
+        'chain': 'rsk_testnet',
+        'start_block': 2425099,
+    },
+}
+FASTBTC_IN_MULTISIG_ABI = load_abi('fastbtc_in/Multisig')
+FASTBTC_IN_MANAGEDWALLET_ABI = load_abi('fastbtc_in/ManagedWallet')
