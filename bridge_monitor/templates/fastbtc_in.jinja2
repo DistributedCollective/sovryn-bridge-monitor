@@ -1,0 +1,123 @@
+{% extends "layout.jinja2" %}
+
+{% block content %}
+<div class="content">
+    <h1>FastBTC-in Transfers <small>(BTC&rarr;RSK)</small></h1>
+    <nav>
+        Show
+        {% for value in [10, 50, 1000] %}
+            {% if loop.index0 != 0 %}| {% endif %}<a href="{{ request.current_route_path(_query={
+                'filter': request.params.get('filter'),
+                'count': value,
+            }) }}">{{ value }}</a>
+        {% endfor %}
+        transfers
+    </nav>
+    <nav>
+        Filters:
+        <a href="{{ request.current_route_path(_query={
+            'filter': '',
+            'count': request.params.get('count'),
+        }) }}">all</a> |
+        <a href="{{ request.current_route_path(_query={
+            'filter': 'unprocessed',
+            'count': request.params.get('count'),
+        }) }}">unprocessed</a> |
+        <a href="{{ request.current_route_path(_query={
+            'filter': 'ignored',
+            'count': request.params.get('count'),
+        }) }}">ignored</a>
+    </nav>
+
+    <div>
+        <a href="#" style="float:right">top</a>
+        <h2 id="{{ bridge_name }}">Last {{ transfers|length }} {{ filter_name }} transfers </h2>
+    </div>
+    <p>
+        {% if updated_on %}
+            Updated <time class="timeago" datetime="{{ updated_on }}">{{ updated_on }}</time>
+        {% else %}
+            Never updated.
+        {% endif %}
+    </p>
+
+    <table class="table mb-4">
+        <thead>
+            <tr>
+                <th></th>
+                <th>amount</th>
+                <th>status</th>
+                <th>timestamps</th>
+                <th>details</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for transfer in transfers  %}
+                <tr>
+                    <td>
+                        {% if transfer.ignored %}
+                            <i
+                                class="glyphicon glyphicon-question-sign"
+                                title="ignored"
+                                style="color: yellow"
+                            ></i>
+                        {% elif transfer.was_processed %}
+                            <i class="glyphicon glyphicon-ok" title="processed"></i>
+                        {% elif transfer.is_late() %}
+                            <i
+                                class="glyphicon glyphicon-remove"
+                                title="not processed, late"
+                                style="color: red"
+                            ></i>
+                        {% endif %}
+                    </td>
+                    <td
+                        title="{{  transfer.net_amount_wei }} wei"
+                    >
+                        <code>{{ transfer.formatted_net_amount }}&nbsp;BTC</code><br/>
+                        {% if transfer.fee_wei %}
+                            <small>fee: <code>{{ transfer.formatted_fee }}&nbsp;BTC</code></small><br/>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if transfer.bitcoin_tx_hash %}
+                            <a href="{{ btc_explorer_base_url }}/tx/{{ transfer.bitcoin_tx_hash }}" target="_blank">
+                                {{ transfer.status.name }}
+                            </a>
+                        {% else %}
+                            {{ transfer.status.name }}
+                        {% endif %}
+                        <br/><small><strong>{{ transfer.num_confirmations }}</strong> confirmations</small>
+                    </td>
+                    <td>
+                        <small>
+                            {%  if transfer.submitted_on  %}
+                                submitted <time class="timeago" datetime="{{ transfer.submitted_on.isoformat() }}">{{ transfer.submitted_on }}</time><br/>
+                            {% endif %}
+                            {% if transfer.executed_on %}
+                                executed
+                                <time class="timeago" datetime="{{ transfer.executed_on.isoformat() }}">{{ transfer.executed_on }}</time><br/>
+                            {% endif %}
+                            updated <time class="timeago" datetime="{{ transfer.updated_on.isoformat() }}">{{ transfer.updated_on }}</time><br/>
+                            first seen <time class="timeago" datetime="{{ transfer.created_on.isoformat() }}">{{ transfer.created_on }}</time>
+                        </small>
+                    </td>
+                    <td class="details">
+                        <span>MultisigTxID:</span><code>{{ transfer.multisig_tx_id }}</code><br/>
+                        <span>Func:</span><code>{{ transfer.transfer_function }}</code><br/>
+                        <span>RskReceiver:</span><code>{{ transfer.rsk_receiver_address }}</code><br/>
+                        <span>BtcTxHash:</span><code>{{ transfer.bitcoin_tx_hash }}</code><br/>
+                        <span>BtcTxVout:</span><code>{{ transfer.bitcoin_tx_vout }}</code><br/>
+                        {% if transfer.submission_transaction_hash %}
+                            <span>SubmissionTx:</span><code>{{ transfer.submission_transaction_hash }}</code><br/>
+                        {% endif %}
+                        {% if transfer.executed_transaction_hash %}
+                            <span>ExecutionTx:</span><code>{{ transfer.executed_transaction_hash }}</code><br/>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor  %}
+        </tbody>
+    </table>
+</div>
+{% endblock content %}
