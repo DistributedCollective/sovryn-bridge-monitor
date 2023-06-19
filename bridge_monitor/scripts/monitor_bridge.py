@@ -13,6 +13,7 @@ from bridge_monitor.business_logic.fastbtc_in import update_fastbtc_in_transfers
 from ..business_logic.bridge_transfer_updater import update_transfers_from_all_bridges
 from ..business_logic.bridge_alerts import handle_bridge_alerts
 from ..business_logic.bidirectional_fastbtc import update_bidi_fastbtc_transfers
+from ..business_logic.fastbtc_in_alerts import handle_fastbtc_in_alerts
 
 
 logger = logging.getLogger(__name__)
@@ -178,6 +179,7 @@ def main(argv=sys.argv):
                 raise
             except Exception:  # noqa
                 logger.exception("Got exception sending bridge alerts")
+
             try:
                 handle_bidi_fastbtc_alerts(
                     transaction_manager=request.tm,
@@ -191,7 +193,18 @@ def main(argv=sys.argv):
             except Exception:  # noqa
                 logger.exception("Got exception sending bidi fastbtc alerts")
 
-            # TODO: fastbtc-in alerts!
+            try:
+                handle_fastbtc_in_alerts(
+                    transaction_manager=request.tm,
+                    session_factory=session_factory,
+                    discord_webhook_url=bidi_fastbtc_discord_webhook_url,
+                    **extra_args,
+                )
+            except KeyboardInterrupt:
+                logger.info("Quitting!")
+                raise
+            except Exception:  # noqa
+                logger.exception("Got exception sending fastbtc-in alerts")
 
         if args.one_off:
             return
