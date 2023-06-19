@@ -1,6 +1,7 @@
 import enum
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from typing import Union
 
 from eth_utils import to_hex
 from sqlalchemy import Boolean, Column, Index, Integer, Text, Enum
@@ -119,9 +120,9 @@ class FastBTCInTransfer(Base):
 
     @property
     def executed_on(self):
-        if not self.marked_as_mined_block_timestamp:
+        if not self.executed_block_timestamp:
             return None
-        return datetime.utcfromtimestamp(self.marked_as_mined_block_timestamp).replace(tzinfo=timezone.utc)
+        return datetime.utcfromtimestamp(self.executed_block_timestamp).replace(tzinfo=timezone.utc)
 
     @hybrid_property
     def was_processed(self):
@@ -147,10 +148,6 @@ class FastBTCInTransfer(Base):
         )
 
     @property
-    def formatted_amount(self):
-        return Decimal(self.total_amount_satoshi) / WEI_IN_RBTC
-
-    @property
     def formatted_fee(self):
         return Decimal(self.fee_wei) / WEI_IN_RBTC
 
@@ -171,20 +168,20 @@ class FastBTCInTransfer(Base):
     def mark_submitted(
         self,
         *,
-        tx_hash: str,
+        tx_hash: Union[str, bytes],
         timestamp: int,
         block_number: int,
-        block_hash: str,
+        block_hash: Union[str, bytes],
         log_index: int
     ):
         self.update_status(FastBTCInTransferStatus.SUBMITTED)
-        self.submission_transaction_hash = tx_hash
+        self.submission_transaction_hash = to_hex_if_bytes(tx_hash)
         self.submission_block_timestamp = timestamp
         self.submission_block_number = block_number
-        self.submission_block_hash = block_hash
+        self.submission_block_hash = to_hex_if_bytes(block_hash)
         self.submission_log_index = log_index
 
-    def add_confirmation(self, *, sender: str, tx_hash: str):
+    def add_confirmation(self, *, sender: str, tx_hash: Union[bytes, str]):
         if not 'confirmations' in self.extra_data:
             self.extra_data['confirmations'] = []
 
@@ -192,18 +189,18 @@ class FastBTCInTransfer(Base):
 
         for confirmation in self.extra_data['confirmations']:
             if confirmation['sender'].lower() == sender.lower():
-                confirmation['tx_hash'] = to_hex(tx_hash)
+                confirmation['tx_hash'] = to_hex_if_bytes(tx_hash)
                 return
 
         self.extra_data['confirmations'].append({
             'sender': sender,
-            'tx_hash': to_hex(tx_hash),
+            'tx_hash': to_hex_if_bytes(tx_hash),
         })
         self.update_status(FastBTCInTransferStatus.PARTIALLY_CONFIRMED)
         self.num_confirmations = len(self.extra_data['confirmations'])
         self.updated_on = now_in_utc()
 
-    def revoke_confirmation(self, *, sender: str, tx_hash: str):
+    def revoke_confirmation(self, *, sender: str, tx_hash: Union[bytes, str]):
         if not 'confirmations' in self.extra_data:
             self.extra_data['confirmations'] = []
         if not 'revocations' in self.extra_data:
@@ -227,7 +224,7 @@ class FastBTCInTransfer(Base):
 
         self.extra_data['revocations'].append({
             'sender': sender,
-            'tx_hash': to_hex(tx_hash),
+            'tx_hash': to_hex_if_bytes(tx_hash),
         })
         self.num_confirmations = len(self.extra_data['confirmations'])
         self.updated_on = now_in_utc()
@@ -235,23 +232,23 @@ class FastBTCInTransfer(Base):
     def mark_executed(
         self,
         *,
-        tx_hash: str,
+        tx_hash: Union[str, bytes],
         timestamp: int,
         block_number: int,
-        block_hash: str,
+        block_hash: Union[str, bytes],
         log_index: int
     ):
         self.update_status(FastBTCInTransferStatus.EXECUTED)
-        self.executed_transaction_hash = tx_hash
+        self.executed_transaction_hash = to_hex_if_bytes(tx_hash)
         self.executed_block_timestamp = timestamp
         self.executed_block_number = block_number
-        self.executed_block_hash = block_hash
+        self.executed_block_hash = to_hex_if_bytes(block_hash)
         self.executed_log_index = log_index
 
     def mark_execution_failure(
         self,
         *,
-        tx_hash: str,
+        tx_hash: Union[str, bytes]
     ):
         self.has_execution_failure = True
         if not 'execution_failures' in self.extra_data:
@@ -260,6 +257,11 @@ class FastBTCInTransfer(Base):
         flag_modified(self, 'extra_data')  # have to flag it as modified for sqlalchemy to save
 
         self.extra_data['execution_failures'].append({
-            'tx_hash': to_hex(tx_hash),
+            'tx_hash': to_hex_if_bytes(tx_hash),
         })
 
+
+def to_hex_if_bytes(val: Union[str, bytes]) -> str:
+    if isinstance(val, bytes):
+        return to_hex(val)
+    return val

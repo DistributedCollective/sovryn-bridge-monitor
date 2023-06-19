@@ -119,6 +119,9 @@ def update_fastbtc_in_transfers(
                             managed_wallet_func.function_identifier)
                 continue
 
+            bitcoin_tx_hash = managed_wallet_args.get('btcTxHash')
+            if bitcoin_tx_hash:
+                bitcoin_tx_hash = bitcoin_tx_hash.hex()
             transfer = FastBTCInTransfer.get_or_create(
                 dbsession=dbsession,
                 chain=chain_name,
@@ -128,7 +131,7 @@ def update_fastbtc_in_transfers(
                 # amount is available in all functions, the rest only in transferToUser
                 net_amount_wei=managed_wallet_args.get('amount'),
                 fee_wei=managed_wallet_args.get('fee'),
-                bitcoin_tx_hash=managed_wallet_args.get('btcTxHash'),
+                bitcoin_tx_hash=bitcoin_tx_hash,
                 bitcoin_tx_vout=managed_wallet_args.get('btcTxVout'),
             )
 
