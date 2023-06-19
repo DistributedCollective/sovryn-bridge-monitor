@@ -53,7 +53,7 @@ def fastbtc_in(request):
             else 'https://explorer.rsk.co'
         ),
         'updated_on': key_value_store.get_value(
-            f'fasbtc-in:last-updated:{chain_name}',
+            f'fastbtc-in:last-updated:{chain_name}',
             None
         ),
     }
