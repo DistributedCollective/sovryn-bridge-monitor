@@ -48,6 +48,10 @@ def fastbtc_in(request):
             'https://www.blockchain.com/btc-testnet' if chain_name.endswith('_testnet')
             else 'https://www.blockchain.com/btc'
         ),
+        'rsk_explorer_base_url': (
+            'https://explorer.testnet.rsk.co' if chain_name.endswith('_testnet')
+            else 'https://explorer.rsk.co'
+        ),
         'updated_on': key_value_store.get_value(
             f'fasbtc-in:last-updated:{chain_name}',
             None
