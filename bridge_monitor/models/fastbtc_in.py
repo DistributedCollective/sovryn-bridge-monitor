@@ -143,7 +143,7 @@ class FastBTCInTransfer(Base):
             now = now_in_utc()
         now_ts = int(now.timestamp())
         return ~self.was_processed & (
-            (now_ts - self.submitted_block_timestamp > FASTBTC_IN_TRANSFER_LATE_DEPOSITED_CUTOFF.total_seconds()) |
+            (now_ts - self.submission_block_timestamp > FASTBTC_IN_TRANSFER_LATE_DEPOSITED_CUTOFF.total_seconds()) |
             (now - self.updated_on > FASTBTC_IN_TRANSFER_LATE_UPDATED_CUTOFF)
         )
 
