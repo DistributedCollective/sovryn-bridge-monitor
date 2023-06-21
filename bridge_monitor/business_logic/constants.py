@@ -114,7 +114,7 @@ FASTBTC_IN_CONFIGS = {
         'multisig_address': to_address('0x1d67bda1144cacdbeff1782f0e5b43d7b50bbfe0'),
         'managedwallet_address': to_address('0xACBE05e7236F7d073295C99E629620DA58284AaD'),
         'chain': 'rsk_testnet',
-        'start_block': 2425099,
+        'start_block': 3656700,
     },
 }
 FASTBTC_IN_MULTISIG_ABI = load_abi('fastbtc_in/Multisig')

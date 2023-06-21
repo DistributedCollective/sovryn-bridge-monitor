@@ -152,7 +152,8 @@ def main(argv=sys.argv):
             if not args.no_fastbtc_in:
                 try:
                     update_fastbtc_in_transfers(
-                        config_name='rsk_mainnet',
+                        config_name='rsk_testnet',  # For testing
+                        #config_name='rsk_mainnet',
                         transaction_manager=request.tm,
                         session_factory=session_factory,
                         max_blocks=args.max_blocks,
