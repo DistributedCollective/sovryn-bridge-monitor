@@ -15,6 +15,8 @@ from eth_utils import to_checksum_address
 from web3 import Web3
 from web3.contract import Contract, ContractEvent, ContractFunction
 from web3.middleware import construct_sign_and_send_raw_middleware, geth_poa_middleware
+from web3.exceptions import MismatchedABI
+from .retry_middleware import http_retry_request_middleware
 
 THIS_DIR = os.path.dirname(__file__)
 ABI_DIR = os.path.join(THIS_DIR, 'abi')
@@ -54,6 +56,8 @@ def get_web3(chain_name: str, *, account: Optional[LocalAccount] = None) -> Web3
     # The field extraData is 97 bytes, but should be 32. It is quite likely that  you are connected to a POA chain.
     # Refer to http://web3py.readthedocs.io/en/stable/middleware.html#geth-style-proof-of-authority for more details.
     web3.middleware_onion.inject(geth_poa_middleware, layer=0)
+
+    web3.middleware_onion.add(http_retry_request_middleware)
 
     return web3
 
@@ -143,6 +147,55 @@ def get_events(
     return ret
 
 
+def get_all_contract_events(
+    *,
+    contract: Contract,
+    from_block: int,
+    to_block: int,
+    batch_size: int = None
+):
+    """Get all events of a single contract"""
+    if to_block < from_block:
+        raise ValueError(f'to_block {to_block} is smaller than from_block {from_block}')
+
+    if batch_size is None:
+        batch_size = 100
+
+    logger.info('fetching events for %s from %s to %s with batch size %s', contract.address, from_block, to_block, batch_size)
+
+    ret = []
+    batch_from_block = from_block
+    while batch_from_block <= to_block:
+        batch_to_block = min(batch_from_block + batch_size, to_block)
+        logger.info('fetching batch for %s from %s to %s (up to %s)', contract.address, batch_from_block, batch_to_block, to_block)
+
+        logs = get_log_batch_with_retries(
+            contract_address=contract.address,
+            web3=contract.web3,
+            from_block=batch_from_block,
+            to_block=batch_to_block,
+        )
+        if len(logs) > 0:
+            logger.info(f'found %s events in batch', len(logs))
+            parsed_events = []
+            for log in logs:
+                parsed = None
+                for event in contract.events:
+                    try:
+                        parsed = event().processLog(log)
+                        if parsed is not None:
+                            break
+                    except MismatchedABI:
+                        pass
+                if not parsed:
+                    raise ValueError(f'could not parse event {log} for contract {contract.address}')
+                parsed_events.append(parsed)
+            ret.extend(parsed_events)
+        batch_from_block = batch_to_block + 1
+    logger.info(f'found %s events in total', len(ret))
+    return ret
+
+
 def get_event_batch_with_retries(event, from_block, to_block, *, retries=6):
     original_retries = retries
     while True:
@@ -155,6 +208,24 @@ def get_event_batch_with_retries(event, from_block, to_block, *, retries=6):
             if retries <= 0:
                 raise e
             logger.warning('error in get_all_entries: %s, retrying (%s)', e, retries)
+            retries -= 1
+            attempt = original_retries - retries
+            exponential_sleep(attempt)
+
+
+def get_log_batch_with_retries(web3: Web3, contract_address: str, from_block, to_block, *, retries=6):
+    original_retries = retries
+    while True:
+        try:
+            return web3.eth.getLogs(dict(
+                address=contract_address,
+                fromBlock=from_block,
+                toBlock=to_block,
+            ))
+        except ValueError as e:
+            if retries <= 0:
+                raise e
+            logger.warning('error in web3.eth.getLogs: %s, retrying (%s)', e, retries)
             retries -= 1
             attempt = original_retries - retries
             exponential_sleep(attempt)
@@ -219,4 +290,3 @@ def call_concurrently(*funcs: Union[Callable, ContractFunction], retry: bool = F
         _call = retryable()(_call)
 
     return _call()
-

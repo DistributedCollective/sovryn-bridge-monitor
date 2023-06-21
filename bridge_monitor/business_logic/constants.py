@@ -1,6 +1,6 @@
 from typing import Dict, Literal, NewType, TypedDict
 
-from .utils import load_abi
+from .utils import load_abi, to_address
 
 Chain = NewType(
     'Chain',
@@ -20,14 +20,14 @@ BRIDGES: Dict[str, Dict[str, BridgeConfig]] = {
     'rsk_eth_mainnet': {
         'rsk': {
             'bridge_address': '0x1ccad820b6d031b41c54f1f3da11c0d48b399581',
-            'federation_address': '0x5e2ee3cd18421838d066bd1dc02fb1f767d834dd',
+            'federation_address': '0x32593e4f7a4991c2fe17459dae9920fd612855b4',
             #'bridge_start_block': 3373266,
             'bridge_start_block': 3600000,
             'chain': 'rsk_mainnet',
         },
         'other': {
             'bridge_address': '0x33c0d33a0d4312562ad622f91d12b0ac47366ee1',
-            'federation_address': '0x74aa9b461CAd174cA066fc80AF2151c96Bd4D45f',
+            'federation_address': '0xD77b76A65a19715BDcB5eE223928af2919836A3E',
             #'bridge_start_block': 12485023,
             'bridge_start_block': 13100000,
             'chain': 'eth_mainnet',
@@ -36,14 +36,14 @@ BRIDGES: Dict[str, Dict[str, BridgeConfig]] = {
     'rsk_bsc_mainnet': {
         'rsk': {
             'bridge_address': '0x971b97c8cc82e7d27bc467c2dc3f219c6ee2e350',
-            'federation_address': '0xa7938270c2bf99a9cf033c9d35156d2ddb097b12',
+            'federation_address': '0xD1E45F51C8f09B139218FC75D26409096316971C',
             #'bridge_start_block': 3399221,
             'bridge_start_block': 3600000,
             'chain': 'rsk_mainnet',
         },
         'other': {
             'bridge_address': '0xdfc7127593c8af1a17146893f10e08528f4c2aa7',
-            'federation_address': '0x33f8743d5afa519dd373a75e7aa5c255e2c82468',
+            'federation_address': '0x502fBCe27973d4bE1E69a4099046762251D005B4',
             #'bridge_start_block': 7917126,
             'bridge_start_block': 10300000,
             'chain': 'bsc_mainnet',
@@ -101,3 +101,21 @@ BIDI_FASTBTC_CONFIGS = {
     },
 }
 BIDI_FASTBTC_ABI = load_abi('bidirectional_fastbtc/FastBTCBridge')
+
+
+FASTBTC_IN_CONFIGS = {
+    'rsk_mainnet': {
+        'multisig_address': to_address('0x0f279e810b95e0d425622b9b40d7bcd0b5c4b19d'),
+        'managedwallet_address': to_address('0xE43cafBDd6674DF708CE9DFF8762AF356c2B454d'),
+        'chain': 'rsk_mainnet',
+        'start_block': 5388100,
+    },
+    'rsk_testnet': {
+        'multisig_address': to_address('0x1d67bda1144cacdbeff1782f0e5b43d7b50bbfe0'),
+        'managedwallet_address': to_address('0xACBE05e7236F7d073295C99E629620DA58284AaD'),
+        'chain': 'rsk_testnet',
+        'start_block': 2425099,
+    },
+}
+FASTBTC_IN_MULTISIG_ABI = load_abi('fastbtc_in/Multisig')
+FASTBTC_IN_MANAGEDWALLET_ABI = load_abi('fastbtc_in/ManagedWallet')

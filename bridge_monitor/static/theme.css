@@ -39,9 +39,14 @@ td.details {
 }
 td.details span {
   display: inline-block;
+  vertical-align: top;
   min-width: 60px;
 }
 td.details code {
+  display: inline-block;
+  vertical-align: top;
+  max-width: 430px;
+  word-wrap: break-word;
   padding-top: 0;
   padding-bottom: 0;
   color: white;

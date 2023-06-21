@@ -9,9 +9,11 @@ from pyramid.paster import bootstrap, setup_logging
 from pyramid.request import Request
 
 from bridge_monitor.business_logic.bidirectional_fastbtc_alerts import handle_bidi_fastbtc_alerts
+from bridge_monitor.business_logic.fastbtc_in import update_fastbtc_in_transfers
 from ..business_logic.bridge_transfer_updater import update_transfers_from_all_bridges
 from ..business_logic.bridge_alerts import handle_bridge_alerts
 from ..business_logic.bidirectional_fastbtc import update_bidi_fastbtc_transfers
+from ..business_logic.fastbtc_in_alerts import handle_fastbtc_in_alerts
 
 
 logger = logging.getLogger(__name__)
@@ -83,7 +85,13 @@ def parse_args(argv):
         '--no-fastbtc',
         action='store_true',
         default=False,
-        help="Don't monitor (bidirectional) FastBTC",
+        help="Don't monitor bidirectional FastBTC",
+    )
+    parser.add_argument(
+        '--no-fastbtc-in',
+        action='store_true',
+        default=False,
+        help="Don't monitor FastBTC-in",
     )
     parser.add_argument(
         '--no-bridge',
@@ -141,6 +149,20 @@ def main(argv=sys.argv):
                 except Exception:  # noqa
                     logger.exception("Got exception getting bridge transfers")
 
+            if not args.no_fastbtc_in:
+                try:
+                    update_fastbtc_in_transfers(
+                        config_name='rsk_mainnet',
+                        transaction_manager=request.tm,
+                        session_factory=session_factory,
+                        max_blocks=args.max_blocks,
+                    )
+                except KeyboardInterrupt:
+                    logger.info("Quitting!")
+                    raise
+                except Exception:  # noqa
+                    logger.exception("Got exception getting bridge transfers")
+
         if not args.no_alerts:
             extra_args = {}
             if args.alert_interval_minutes is not None:
@@ -157,6 +179,7 @@ def main(argv=sys.argv):
                 raise
             except Exception:  # noqa
                 logger.exception("Got exception sending bridge alerts")
+
             try:
                 handle_bidi_fastbtc_alerts(
                     transaction_manager=request.tm,
@@ -169,6 +192,19 @@ def main(argv=sys.argv):
                 raise
             except Exception:  # noqa
                 logger.exception("Got exception sending bidi fastbtc alerts")
+
+            try:
+                handle_fastbtc_in_alerts(
+                    transaction_manager=request.tm,
+                    session_factory=session_factory,
+                    discord_webhook_url=bidi_fastbtc_discord_webhook_url,
+                    **extra_args,
+                )
+            except KeyboardInterrupt:
+                logger.info("Quitting!")
+                raise
+            except Exception:  # noqa
+                logger.exception("Got exception sending fastbtc-in alerts")
 
         if args.one_off:
             return
