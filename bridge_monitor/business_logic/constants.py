@@ -1,4 +1,4 @@
-from typing import Dict, Literal, NewType, TypedDict
+from typing import Dict, Literal, NewType, Optional, TypedDict
 
 from .utils import load_abi, to_address
 
@@ -8,11 +8,18 @@ Chain = NewType(
 )
 
 
+# Testnet might not have transactions for a month, so we limit the number of blocks we process to
+# be the last N days at maximum
+# This reduces strain on the infura node (and other nodes)
+TESTNET_MAX_SECONDS_FROM_NOW = 2 * 24 * 60 * 60  # 7 days
+
+
 class BridgeConfig(TypedDict):
     bridge_address: str
     federation_address: str
     bridge_start_block: int
     chain: Chain
+    max_blocks_from_now: Optional[int]
 
 
 # TODO: Make these configurable instead of having a hard-coded dict here
@@ -55,12 +62,15 @@ BRIDGES: Dict[str, Dict[str, BridgeConfig]] = {
             'federation_address': '0xd37b3876f4560cec6d8ef39ce4cb28ffd645b51a',
             'bridge_start_block': 1839957,
             'chain': 'rsk_testnet',
+            'max_blocks_from_now': TESTNET_MAX_SECONDS_FROM_NOW // 30,
         },
         'other': {
-            'bridge_address': '0x2b456e230225c4670fbf10b9da506c019a24cac7',
-            'federation_address': '0x48a8f0efc6406674d4b3067ea49bda41f7ac2621',
-            'bridge_start_block': 10222073,
-            'chain': 'eth_testnet_ropsten',
+            'bridge_address': '0xe7d8ed038deb475b3705c67934d0bcfc2d462ba3',
+            #'federation_address': '0x48a8f0efc6406674d4b3067ea49bda41f7ac2621',
+            'federation_address': '0x71a4df7326925ca068ade61ea85ba9997c11102b',
+            'bridge_start_block': 2206447,
+            'chain': 'eth_testnet',
+            'max_blocks_from_now': TESTNET_MAX_SECONDS_FROM_NOW // 10,
         }
     },
     'rsk_bsc_testnet': {
@@ -69,12 +79,14 @@ BRIDGES: Dict[str, Dict[str, BridgeConfig]] = {
             'federation_address': '0x92f791b72842f479888aefba975eff2ed74700b7',
             'bridge_start_block': 1884421,
             'chain': 'rsk_testnet',
+            'max_blocks_from_now': TESTNET_MAX_SECONDS_FROM_NOW // 30,
         },
         'other': {
             'bridge_address': '0x862e8aff917319594cc7faaae5350d21196c086f',
             'federation_address': '0x2b456e230225c4670fbf10b9da506c019a24cac7',
             'bridge_start_block': 9290364,
             'chain': 'bsc_testnet',
+            'max_blocks_from_now': TESTNET_MAX_SECONDS_FROM_NOW // 5,
         }
     },
 }
@@ -93,6 +105,7 @@ BIDI_FASTBTC_CONFIGS = {
         #'start_block': 2417524,
         'start_block': 2425099,
         'chain': 'rsk_testnet',
+        'max_blocks_from_now': TESTNET_MAX_SECONDS_FROM_NOW // 30,
     },
 }
 BIDI_FASTBTC_ABI = load_abi('bidirectional_fastbtc/FastBTCBridge')
@@ -110,6 +123,7 @@ FASTBTC_IN_CONFIGS = {
         'managedwallet_address': to_address('0xACBE05e7236F7d073295C99E629620DA58284AaD'),
         'chain': 'rsk_testnet',
         'start_block': 3656700,
+        'max_blocks_from_now': TESTNET_MAX_SECONDS_FROM_NOW // 30,
     },
 }
 FASTBTC_IN_MULTISIG_ABI = load_abi('fastbtc_in/Multisig')

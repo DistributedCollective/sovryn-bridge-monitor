@@ -70,9 +70,19 @@ def fetch_state(
         address=to_address(bridge_address),
         abi=BRIDGE_ABI,
     )
+
+    bridge_end_block = main_web3.eth.get_block_number() - min_block_confirmations
+
+    main_max_blocks_from_now = main_bridge_config.get('max_blocks_from_now')
+    if main_max_blocks_from_now and bridge_end_block - main_max_blocks_from_now > bridge_start_block:
+        logger.info("Limiting bridge start block to %s from now (%s instead of %s)",
+                    main_max_blocks_from_now,
+                    bridge_end_block - main_max_blocks_from_now,
+                    bridge_start_block)
+        bridge_start_block = bridge_end_block - main_max_blocks_from_now
+
     # Note: we need to get the Cross events right -- other parts are less important (and updates will be handled
     # for them). So we only care for confirmations for the bridge.
-    bridge_end_block = main_web3.eth.get_block_number() - min_block_confirmations
     if max_blocks:
         bridge_end_block = min(bridge_start_block + max_blocks, bridge_end_block)
 
@@ -87,7 +97,17 @@ def fetch_state(
         address=to_address(federation_address),
         abi=FEDERATION_ABI,
     )
+
     federation_end_block = side_web3.eth.get_block_number()
+
+    federation_max_blocks_from_now = side_bridge_config.get('max_blocks_from_now')
+    if federation_max_blocks_from_now and federation_end_block - federation_max_blocks_from_now > federation_start_block:
+        logger.info("Limiting federation start block to %s from now (%s instead of %s)",
+                    federation_max_blocks_from_now,
+                    federation_end_block - federation_max_blocks_from_now,
+                    federation_start_block)
+        federation_start_block = federation_end_block - federation_max_blocks_from_now
+
     if max_blocks:
         federation_end_block = min(federation_start_block + max_blocks, federation_end_block)
 

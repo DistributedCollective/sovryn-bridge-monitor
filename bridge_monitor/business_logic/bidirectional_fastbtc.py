@@ -48,6 +48,16 @@ def update_bidi_fastbtc_transfers(
 
     from_block = last_processed_block + 1
     to_block = web3.eth.get_block_number() - min_block_confirmations
+
+    max_blocks_from_now = config.get('max_blocks_from_now')
+    if max_blocks_from_now and to_block - max_blocks_from_now > from_block:
+        logger.info("Limiting bidi-FastBTC start block to %s blocks from now (%s instead of %s)",
+                    max_blocks_from_now,
+                    to_block - max_blocks_from_now,
+                    from_block)
+        from_block = to_block - max_blocks_from_now
+
+
     now = now_in_utc()
     if max_blocks:
         to_block = min(from_block + max_blocks, to_block)
