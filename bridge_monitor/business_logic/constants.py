@@ -101,9 +101,9 @@ BIDI_FASTBTC_CONFIGS = {
         'chain': 'rsk_mainnet',
     },
     'rsk_testnet': {
-        'contract_address': '0x10C848e9495a32acA95F6c23C92eCA2b2bE9903A',
-        #'start_block': 2417524,
-        'start_block': 2425099,
+        # 'contract_address': '0x10C848e9495a32acA95F6c23C92eCA2b2bE9903A',  # from 2425099 or 2417524
+        'contract_address': '0xb3E92Db36eeac0627385Fa4F39F615a85eA5E911',  # from much later, 4062249 or so
+        'start_block': 4062249,
         'chain': 'rsk_testnet',
         'max_blocks_from_now': TESTNET_MAX_SECONDS_FROM_NOW // 30,
     },
