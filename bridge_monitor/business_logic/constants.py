@@ -83,7 +83,8 @@ FEDERATION_ABI = load_abi('token_bridge/Federation')
 
 BIDI_FASTBTC_CONFIGS = {
     'rsk_mainnet': {
-        'contract_address': '0x0D5006330289336ebdF9d0AC9E0674f91b4851eA',
+        #'contract_address': '0x0D5006330289336ebdF9d0AC9E0674f91b4851eA',
+        'contract_address': '0x1A8E78B41bc5Ab9Ebb6996136622B9b41A601b5C',
         'start_block': 4029878,
         'chain': 'rsk_mainnet',
     },
