@@ -1,4 +1,5 @@
 from pyramid.config import Configurator
+import logging
 
 
 def main(global_config, **settings):
@@ -9,6 +10,11 @@ def main(global_config, **settings):
         config.include('.routes')
         config.include('.models')
         config.include('.auth')
+
+        config.registry['chain_env'] = settings.get('monitor.chain_env', 'mainnet')
+        logging.info("Chain env: %s", config.registry['chain_env'])
+
+
         config.scan()
 
     return config.make_wsgi_app()
