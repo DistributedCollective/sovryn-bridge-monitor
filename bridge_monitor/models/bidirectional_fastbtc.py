@@ -7,6 +7,7 @@ from sqlalchemy.ext.hybrid import hybrid_method, hybrid_property
 
 from .meta import Base
 from .types import TZDateTime, Uint256, now_in_utc
+from .pnl import HasPnL
 
 TRANSFER_LATE_DEPOSITED_CUTOFF = timedelta(hours=2, minutes=30)
 TRANSFER_LATE_UPDATED_CUTOFF = timedelta(minutes=45 + 30)
@@ -24,7 +25,7 @@ class TransferStatus(enum.IntEnum):
     INVALID = 255
 
 
-class BidirectionalFastBTCTransfer(Base):
+class BidirectionalFastBTCTransfer(HasPnL, Base):
     __tablename__ = 'bidi_fastbtc_transfer'
     id = Column(Integer, primary_key=True)
 

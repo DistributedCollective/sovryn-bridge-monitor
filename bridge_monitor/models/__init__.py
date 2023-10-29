@@ -10,6 +10,7 @@ from .key_value_store import KeyValuePair  # flake8: noqa
 from .alerts import Alert, AlertType  # flake8: noqa
 from .bidirectional_fastbtc import BidirectionalFastBTCTransfer, TransferStatus  # flake8: noqa
 from .fastbtc_in import FastBTCInTransfer, FastBTCInTransferStatus  # flake8: noqa
+from .pnl import ProfitCalculation, PnLTransaction  # flake8: noqa
 
 # Run ``configure_mappers`` after defining all of the models to ensure
 # all relationships can be setup.

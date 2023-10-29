@@ -1,0 +1,110 @@
+{% extends "layout.jinja2" %}
+
+{% block content %}
+<div class="content">
+    <h1>Profit and Loss</h1>
+    {# TODO: enable filters on the view #}
+    {#
+    <nav>
+        Show
+        {% for value in [10, 50, 1000] %}
+            {% if loop.index0 != 0 %}| {% endif %}<a href="{{ request.current_route_path(_query={
+                'filter': request.params.get('filter'),
+                'count': value,
+            }) }}">{{ value }}</a>
+        {% endfor %}
+        transfers
+    </nav>
+    <nav>
+        Filters:
+        <a href="{{ request.current_route_path(_query={
+            'filter': '',
+            'count': request.params.get('count'),
+        }) }}">all</a> |
+        <a href="{{ request.current_route_path(_query={
+            'filter': 'unprocessed',
+            'count': request.params.get('count'),
+        }) }}">unprocessed</a> |
+        <a href="{{ request.current_route_path(_query={
+            'filter': 'ignored',
+            'count': request.params.get('count'),
+        }) }}">ignored</a>
+    </nav>
+    #}
+
+    <div>
+        <a href="#" style="float:right">top</a>
+        <h2 id="summary">Summary</h2>
+    </div>
+
+    {#  TODO: calculate these and show from the view#}
+    {#
+    <p>
+        {% if updated_on %}
+            Updated <time class="timeago" datetime="{{ updated_on }}">{{ updated_on }}</time>
+        {% else %}
+            Never updated.
+        {% endif %}
+    </p>
+    #}
+
+    <table class="table mb-4">
+        <thead>
+            <tr>
+                <th>service</th>
+                <th>transfer volume</th>
+                <th>fees paid by users</th>
+                <th>transaction costs</th>
+                <th>profit/loss</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for calculation in by_service + [totals] %}
+            <tr
+                {%  if loop.last %}
+                    style="font-weight: bold;"
+                {% endif %}
+            >
+                <td>
+                    {% if service == "bidi_fastbtc" %}
+                        Bidirectional FastBTC (RSK&rarr;BTC)
+                    {% elif service == "fastbtc_in" %}
+                        FastBTC-in (BTC&rarr;RSK)
+                    {% else  %}
+                        {{ calculation.service  }}
+                    {% endif %}
+                </td>
+                <td
+                    title="{{ calculation.volume_btc }} BTC"
+                >
+                    <code>
+                        {{ "%.6f BTC"|format(calculation.volume_btc) }}
+                    </code>
+                </td>
+                <td
+                    title="{{ calculation.fees_btc }} BTC"
+                >
+                    <code>
+                        {{ "%.6f BTC"|format(calculation.gross_profit_btc) }}
+                    </code>
+                </td>
+                <td
+                    title="{{ calculation.cost_btc }} BTC"
+                >
+                    <code>
+                        {{ "%.6f BTC"|format(calculation.cost_btc) }}
+                    </code>
+                </td>
+                <td
+                    title="{{ calculation.net_profit_btc }} BTC"
+                >
+                    <code>
+                        {{ "%.6f BTC"|format(calculation.net_profit_btc) }}
+                    </code>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock content %}
