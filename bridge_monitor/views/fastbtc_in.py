@@ -13,7 +13,6 @@ def fastbtc_in(request):
     dbsession: Session = request.dbsession
     key_value_store = KeyValueStore(dbsession)
     chain_name = 'rsk_mainnet'
-    #chain_name = 'rsk_testnet'  # For testing
 
     try:
         max_transfers = int(request.params.get('count', 10))
