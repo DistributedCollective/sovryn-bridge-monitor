@@ -27,6 +27,14 @@ class ProfitCalculation(Base):
     def net_profit_btc(self):
         return self.gross_profit_btc - self.cost_btc
 
+    def __repr__(self):
+        return (
+            f'<{self.__class__.__name__}('
+            f'{self.service}-{self.config_chain}@{self.timestamp.isoformat()}: '
+            f'volume: {self.volume_btc:.6f}, grossprofit: {self.net_profit_btc:.6f}, cost: {self.cost_btc:.6f}, netprofit: {self.net_profit_btc:.6f}'
+            f')>'
+        )
+
 
 class PnLTransaction(Base):
     __tablename__ = 'pnl_transaction'

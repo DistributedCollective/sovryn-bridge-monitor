@@ -77,11 +77,11 @@ class PnLService:
         chain = batch['chain']
         sending_tx_hash = batch['marked_as_sending_transaction_hash']
         mined_tx_hashes = batch['mined_tx_hashes']
-        if not len(mined_tx_hashes) == 1:
+        if not len(set(mined_tx_hashes)) == 1:
             raise Exception(f"Expected exactly one mined tx hash, got {mined_tx_hashes}")
         mined_tx_hash = mined_tx_hashes[0]
         bitcoin_tx_ids = batch['bitcoin_tx_ids']
-        if not len(bitcoin_tx_ids) == 1:
+        if not len(set(bitcoin_tx_ids)) == 1:
             raise Exception(f"Expected exactly one bitcoin tx id, got {bitcoin_tx_ids}")
         bitcoin_tx_id = bitcoin_tx_ids[0]
 
@@ -105,8 +105,6 @@ class PnLService:
             # Sanity check, should never happen
             raise Exception(f"Expected all transfers to have bitcoin tx id {bitcoin_tx_id}")
 
-        print(chain, transfer_ids)
-
         sending_tx = self._create_evm_pnl_transaction(chain, sending_tx_hash, comment="mark_transfers_as_sending")
         mined_tx = self._create_evm_pnl_transaction(chain, mined_tx_hash, comment="mark_transfers_as_mined")
         bitcoin_tx = self._create_bitcoin_pnl_transaction(chain, bitcoin_tx_id, comment="bitcoin_tx")
@@ -126,6 +124,7 @@ class PnLService:
             cost_btc=sum(t.cost_btc for t in chain_transactions),
             transactions=chain_transactions,
         )
+        logger.info("%s", profit_calculation)
         dbsession.add(profit_calculation)
 
         for transfer in transfers:
@@ -238,6 +237,7 @@ class PnLService:
             cost_btc=sum(t.cost_btc for t in transactions),
             transactions=transactions,
         )
+        logger.info("%s", profit_calculation)
         dbsession.add(profit_calculation)
         transfer.profit_calculation = profit_calculation
         dbsession.flush()
