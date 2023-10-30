@@ -14,6 +14,7 @@ from ..business_logic.bridge_transfer_updater import update_transfers_from_all_b
 from ..business_logic.bridge_alerts import handle_bridge_alerts
 from ..business_logic.bidirectional_fastbtc import update_bidi_fastbtc_transfers
 from ..business_logic.fastbtc_in_alerts import handle_fastbtc_in_alerts
+from ..business_logic.pnl import PnLService
 
 
 logger = logging.getLogger(__name__)
@@ -98,6 +99,12 @@ def parse_args(argv):
         action='store_true',
         default=False,
         help="Only monitor (bidirectional) FastBTC - no token bridge",
+    )
+    parser.add_argument(
+        '--no-pnl',
+        action='store_true',
+        default=False,
+        help="Don't update profit-and-loss calculations",
     )
 
     return parser.parse_args(argv[1:])
@@ -212,6 +219,19 @@ def main(argv=sys.argv):
                 raise
             except Exception:  # noqa
                 logger.exception("Got exception sending fastbtc-in alerts")
+
+        if not args.no_pnl:
+            try:
+                pnl_service = PnLService(
+                    transaction_manager=request.tm,
+                    session_factory=session_factory,
+                )
+                pnl_service.update_pnl()
+            except KeyboardInterrupt:
+                logger.info("Quitting!")
+                raise
+            except Exception:
+                logger.exception("Got exception updating PnL")
 
         if args.one_off:
             return

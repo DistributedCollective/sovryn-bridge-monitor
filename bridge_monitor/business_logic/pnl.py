@@ -1,30 +1,24 @@
 import logging
 from datetime import datetime, timezone
 from decimal import Decimal
-
 from functools import lru_cache
+
+import requests
 from pyramid.paster import setup_logging
-from sqlalchemy.orm import Query
 from sqlalchemy import func
 from sqlalchemy.orm.session import Session
 from transaction import TransactionManager
-import requests
 from web3 import Web3
 
+from .utils import get_web3
 from ..models import get_tm_session
-from ..models.pnl import ProfitCalculation, PnLTransaction
-from ..models.bidirectional_fastbtc import (
-    BidirectionalFastBTCTransfer,
-    TransferStatus as BidiFastBTCTransferStatus,
-    SATOSHI_IN_BTC,
-)
+from ..models.bidirectional_fastbtc import (BidirectionalFastBTCTransfer, SATOSHI_IN_BTC,
+                                            TransferStatus as BidiFastBTCTransferStatus)
 from ..models.fastbtc_in import (
     FastBTCInTransfer,
     FastBTCInTransferStatus,
 )
-
-from .utils import get_web3
-
+from ..models.pnl import PnLTransaction, ProfitCalculation
 
 logger = logging.getLogger(__name__)
 
