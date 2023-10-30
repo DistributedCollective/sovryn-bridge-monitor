@@ -1,15 +1,14 @@
-from types import SimpleNamespace
-from pyramid.view import view_config
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
 from datetime import datetime, timezone
+from types import SimpleNamespace
+
 from dateutil.relativedelta import relativedelta
-from urllib.parse import urlencode
+from pyramid.view import view_config
+from sqlalchemy import func
+from sqlalchemy.orm import Session, joinedload
+
+from bridge_monitor.models.pnl import ProfitCalculation
 from .utils import get_explorer_tx_url
 
-
-from bridge_monitor.models.pnl import ProfitCalculation, PnLTransaction
-from bridge_monitor.business_logic.key_value_store import KeyValueStore
 
 @view_config(route_name='pnl', renderer='bridge_monitor:templates/pnl.jinja2')
 def pnl(request):
@@ -79,20 +78,27 @@ def pnl(request):
         net_profit_btc=sum(c.net_profit_btc for c in calculations_by_service),
     )
 
-    details = dbsession.query(
-        ProfitCalculation,
-    ).filter(
-        ProfitCalculation.config_chain == chain,
-        *time_filter
-    ).options(
-        joinedload(ProfitCalculation.transactions),
-    ).order_by(
-        ProfitCalculation.timestamp,
-    ).all()
+    show_details = request.params.get('show_details') in ('1', 'true')
+    if not show_details:
+        show_details = bool(start and end and (end - start).days < 100)
+    if show_details:
+        details = dbsession.query(
+            ProfitCalculation,
+        ).filter(
+            ProfitCalculation.config_chain == chain,
+            *time_filter
+        ).options(
+            joinedload(ProfitCalculation.transactions),
+        ).order_by(
+            ProfitCalculation.timestamp,
+        ).all()
+    else:
+        details = []
 
     return {
         'by_service': calculations_by_service,
         'totals': totals,
+        'show_details': show_details,
         'details': details,
         'time_filter_options': time_filter_options,
         'start': start,

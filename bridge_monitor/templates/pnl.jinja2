@@ -122,11 +122,26 @@
         </tbody>
     </table>
 
-    {% if details %}
-        <div>
-            <a href="#" style="float:right">top</a>
-            <h3 id="details">Details</h3>
-        </div>
+    <div>
+        <a href="#" style="float:right">top</a>
+        <h3 id="details">Details</h3>
+    </div>
+    {% if not show_details  %}
+        <p>
+            Details are hidden because the selected time period is too long. Select a shorter time period (less than
+            100 days) or <a href="{{ request.current_route_path(_query={
+                'show_details': '1',
+                'start': start.isoformat() if start else None,
+                'end': end.isoformat() if end else None,
+            }) }}">show details anyway</a>
+            (will be slow)
+        </p>
+    {%  elif not details %}
+        <p>
+            No details to show.
+        </p>
+    {% endif  %}
+    {% if details and show_details %}
         <table class="pnl-details table mb-4">
             <thead>
                 <tr>
