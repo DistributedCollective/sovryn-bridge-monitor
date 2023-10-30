@@ -10,7 +10,7 @@ from eth_utils import to_hex
 from web3.logs import DISCARD
 
 from .constants import BRIDGE_ABI, BridgeConfig, FEDERATION_ABI
-from .utils import call_concurrently, get_events, get_web3, to_address
+from .utils import call_concurrently, call_sequentially, get_events, get_web3, to_address
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +64,14 @@ def fetch_state(
     federation_address = side_bridge_config['federation_address']
     main_chain = main_bridge_config['chain']
     side_chain = side_bridge_config['chain']
+
+    if main_chain.endswith('testnet') or side_chain.endswith('testnet'):
+        logger.info("Using call_sequentially since we're on testnet")
+        call_multiple = call_sequentially
+    else:
+        logger.info("Using call_concurrently since we're on mainnet")
+        call_multiple = call_concurrently
+
 
     main_web3 = get_web3(main_chain)
     bridge_contract = main_web3.eth.contract(
@@ -119,7 +127,7 @@ def fetch_state(
     logger.info(f'main: {main_chain}, side: {side_chain}, from: {bridge_start_block}, to: {bridge_end_block}')
 
     logger.info('getting Cross and Executed events')
-    cross_events, executed_events = call_concurrently(
+    cross_events, executed_events = call_multiple(
         lambda: get_events(
             event=bridge_contract.events.Cross,
             from_block=bridge_start_block,
@@ -178,7 +186,7 @@ def fetch_state(
                     return federation_contract.functions.getTransactionId(*tx_id_args_old).call()
                 raise
 
-        event_receipt, event_block, transaction_id, transaction_id_old = call_concurrently(
+        event_receipt, event_block, transaction_id, transaction_id_old = call_multiple(
             lambda: main_web3.eth.get_transaction_receipt(event.transactionHash),
             lambda: _get_block(main_web3, event.blockHash),
             get_tx_id_u,
@@ -197,7 +205,7 @@ def fetch_state(
         #logger.debug('related Executed event: %s', executed_event)
         executed_transaction_hash = executed_event.transactionHash.hex() if executed_event else None
 
-        num_votes, was_processed, executed_transaction_receipt, executed_block = call_concurrently(
+        num_votes, was_processed, executed_transaction_receipt, executed_block = call_multiple(
             federation_contract.functions.getTransactionCount(transaction_id),
             federation_contract.functions.transactionWasProcessed(transaction_id),
             lambda: (

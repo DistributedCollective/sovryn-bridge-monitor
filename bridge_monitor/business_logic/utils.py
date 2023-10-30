@@ -266,6 +266,16 @@ def is_contract(*, web3: Web3, address: str) -> bool:
     return code != b'\x00' and code != b''
 
 
+def call_sequentially(*funcs: Union[Callable, ContractFunction], retry: bool = False) -> List[Any]:
+    res = []
+    for func in funcs:
+        if hasattr(func, 'call'):
+            res.append(func.call())
+        else:
+            res.append(func())
+    return res
+
+
 def call_concurrently(*funcs: Union[Callable, ContractFunction], retry: bool = False) -> List[Any]:
     def _call():
         futures = []
