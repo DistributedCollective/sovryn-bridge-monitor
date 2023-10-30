@@ -24,6 +24,7 @@ requires = [
     'eth-utils',
     'web3',
     'requests',
+    'python-dateutil',
 ]
 
 tests_require = [
