@@ -5,32 +5,32 @@
     <h1>Profit and Loss</h1>
     {# TODO: enable filters on the view #}
     <nav>
+        <div
+            style="margin-bottom: .5em;"
+        >
         Time period
         {% for option in time_filter_options %}
             {% if loop.index0 != 0 %}| {% endif %}<a href="{{ request.current_route_path(_query=option.query) }}">
             {{ option.label }}
         </a>
         {% endfor %}
-        <br/>
-        All timestamps are UTC. FastBTC-in transfers are only counted starting from {{ earliest_timestamps.fastbtc_in }}.
+        </div>
+
+        <form
+            style="margin-bottom: .5em;"
+            method="GET"
+            action="{{ request.current_route_path() }}"
+        >
+            Start <input type="date" name="start" value="{{ start.isoformat() if start else '' }}" placeholder="start date">
+            End <input type="date" name="end" value="{{ end.isoformat() if end else '' }}" placeholder="end date">
+            <button
+                type="submit"
+            >Filter</button>
+        </form>
+        <div>
+            All timestamps are UTC. FastBTC-in transfers are only counted starting from {{ earliest_timestamps.fastbtc_in }}.
+        </div>
     </nav>
-    {#
-    <nav>
-        Filters:
-        <a href="{{ request.current_route_path(_query={
-            'filter': '',
-            'count': request.params.get('count'),
-        }) }}">all</a> |
-        <a href="{{ request.current_route_path(_query={
-            'filter': 'unprocessed',
-            'count': request.params.get('count'),
-        }) }}">unprocessed</a> |
-        <a href="{{ request.current_route_path(_query={
-            'filter': 'ignored',
-            'count': request.params.get('count'),
-        }) }}">ignored</a>
-    </nav>
-    #}
 
     <div>
         <h3>

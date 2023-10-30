@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 from types import SimpleNamespace
 
 from dateutil.relativedelta import relativedelta
@@ -21,20 +21,24 @@ def pnl(request):
     end = None
     try:
         if start_str := request.params.get('start'):
-            start = datetime.fromisoformat(start_str)
+            start = date.fromisoformat(start_str)
     except TypeError:
         errors.append('Invalid start date')
     try:
         if end_str := request.params.get('end'):
-            end = datetime.fromisoformat(end_str)
+            end = date.fromisoformat(end_str)
     except TypeError:
         errors.append('Invalid end date')
 
     time_filter = []
     if start:
-        time_filter.append(ProfitCalculation.timestamp >= start)
+        time_filter.append(
+            ProfitCalculation.timestamp >= datetime(start.year, start.month, start.day, tzinfo=timezone.utc)
+        )
     if end:
-        time_filter.append(ProfitCalculation.timestamp < end)
+        time_filter.append(
+            ProfitCalculation.timestamp < datetime(end.year, end.month, end.day, tzinfo=timezone.utc) + timedelta(days=1)
+        )
 
     calculations_by_service = dbsession.query(
         ProfitCalculation.service,
@@ -119,8 +123,8 @@ def _get_time_filter_options(earliest_timestamp: datetime):
         }
     ]
     while current_timestamp >= earliest_timestamp.replace(day=1, hour=0, minute=0, second=0, microsecond=0):
-        start = current_timestamp.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        end = start + relativedelta(months=1)
+        start = current_timestamp.replace(day=1).date()
+        end = start + relativedelta(months=1, days=-1)
         time_filter_options.append({
             'query': {
                 'start': start.isoformat(),
