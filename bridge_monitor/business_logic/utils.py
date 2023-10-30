@@ -231,7 +231,7 @@ def get_log_batch_with_retries(web3: Web3, contract_address: str, from_block, to
             exponential_sleep(attempt)
 
 
-def exponential_sleep(attempt, max_sleep_time=256.0):
+def exponential_sleep(attempt, max_sleep_time=512.0):
     sleep_time = min(2 ** attempt, max_sleep_time)
     sleep(sleep_time)
 
