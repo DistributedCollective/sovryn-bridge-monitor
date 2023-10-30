@@ -57,5 +57,6 @@ class HasPnL:
 
     @declared_attr
     def profit_calculation(cls):
-        return relationship(ProfitCalculation, backref=backref('transfers'))
+        backref_name = cls.__tablename__ + 's'
+        return relationship(ProfitCalculation, backref=backref(backref_name))
 

@@ -12,6 +12,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from .meta import Base
 from .types import TZDateTime, Uint256, now_in_utc
+from .pnl import HasPnL
 
 FASTBTC_IN_TRANSFER_LATE_DEPOSITED_CUTOFF = timedelta(hours=2, minutes=30)
 FASTBTC_IN_TRANSFER_LATE_UPDATED_CUTOFF = timedelta(minutes=45 + 30)
@@ -27,7 +28,7 @@ class FastBTCInTransferStatus(enum.IntEnum):
     INVALID = 255
 
 
-class FastBTCInTransfer(Base):
+class FastBTCInTransfer(HasPnL, Base):
     __tablename__ = 'fastbtc_in_transfer'
     id = Column(Integer, primary_key=True)
 
@@ -155,6 +156,14 @@ class FastBTCInTransfer(Base):
     def formatted_net_amount(self):
         return Decimal(self.net_amount_wei) / WEI_IN_RBTC
 
+    @property
+    def confirmations(self):
+        return self.extra_data.get('confirmations', [])
+
+    @property
+    def revocations(self):
+        return self.extra_data.get('revocations', [])
+
     def update_status(self, new_status: FastBTCInTransferStatus):
         # Only update upwards, except for INVALID
         if (
@@ -209,24 +218,23 @@ class FastBTCInTransfer(Base):
         flag_modified(self, 'extra_data')  # have to flag it as modified for sqlalchemy to save
 
         new_confirmations = []
-        bail = True
+        revoked_confirmation_tx_hash = None
         for confirmation in self.extra_data['confirmations']:
             if confirmation['sender'].lower() == sender.lower():
-                bail = False
+                revoked_confirmation_tx_hash = confirmation['tx_hash']
             else:
                 new_confirmations.append(confirmation)
 
-        if bail:
-            # not confirmed by sender, return
-            return
+        if revoked_confirmation_tx_hash is not None:
+            # Previously confirmed by sender, update confirmations
+            self.extra_data['confirmations'] = new_confirmations
+            self.num_confirmations = len(self.extra_data['confirmations'])
 
-        self.extra_data['confirmations'] = new_confirmations
-
-        self.extra_data['revocations'].append({
-            'sender': sender,
-            'tx_hash': to_hex_if_bytes(tx_hash),
-        })
-        self.num_confirmations = len(self.extra_data['confirmations'])
+            self.extra_data['revocations'].append({
+                'sender': sender,
+                'tx_hash': to_hex_if_bytes(tx_hash),
+                'revoked_confirmation_tx_hash': revoked_confirmation_tx_hash,
+            })
         self.updated_on = now_in_utc()
 
     def mark_executed(

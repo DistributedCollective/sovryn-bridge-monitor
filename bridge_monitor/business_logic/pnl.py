@@ -13,7 +13,15 @@ from web3 import Web3
 
 from ..models import get_tm_session
 from ..models.pnl import ProfitCalculation, PnLTransaction
-from ..models.bidirectional_fastbtc import BidirectionalFastBTCTransfer, TransferStatus, SATOSHI_IN_BTC
+from ..models.bidirectional_fastbtc import (
+    BidirectionalFastBTCTransfer,
+    TransferStatus as BidiFastBTCTransferStatus,
+    SATOSHI_IN_BTC,
+)
+from ..models.fastbtc_in import (
+    FastBTCInTransfer,
+    FastBTCInTransferStatus,
+)
 
 from .utils import get_web3
 
@@ -35,6 +43,7 @@ class PnLService:
 
     def update_pnl(self):
         self.update_pnl_for_bidi_fastbtc_transfers()
+        self.update_pnl_for_fastbtc_in_transfers()
 
     def update_pnl_for_bidi_fastbtc_transfers(self):
         logger.info('Retrieving bidi-fastbtc transfer batches with unprocessed PnL calculations')
@@ -49,7 +58,7 @@ class PnLService:
                 func.array_agg(BidirectionalFastBTCTransfer.id).label('ids'),
             ).filter(
                 BidirectionalFastBTCTransfer.profit_calculation_id.is_(None),
-                BidirectionalFastBTCTransfer.status == TransferStatus.MINED,
+                BidirectionalFastBTCTransfer.status == BidiFastBTCTransferStatus.MINED,
             ).group_by(
                 BidirectionalFastBTCTransfer.chain,
                 BidirectionalFastBTCTransfer.marked_as_sending_transaction_hash,
@@ -61,7 +70,7 @@ class PnLService:
                 num_transfers,
             )
         for i, batch in enumerate(mined_transfer_batches, start=1):
-            logger.info("Processing batch %d/%d", i, len(mined_transfer_batches))
+            logger.info("Updating PnL for bidi-fastbtc batch %d/%d", i, len(mined_transfer_batches))
             try:
                 with self._transaction_manager:
                     self._update_pnl_for_mined_bidi_transfer_batch(batch)
@@ -128,6 +137,115 @@ class PnLService:
         for transfer in transfers:
             transfer.profit_calculation = profit_calculation
 
+        dbsession.flush()
+
+    def update_pnl_for_fastbtc_in_transfers(self):
+        logger.info('Retrieving fastbtc-in transfers with unprocessed PnL calculations')
+        with self._transaction_manager:
+            dbsession = self._get_dbsession()
+            ids = self._get_unprocessed_object_ids(
+                dbsession,
+                FastBTCInTransfer,
+                FastBTCInTransfer.status == FastBTCInTransferStatus.EXECUTED,
+            )
+            logger.info(
+                "Got %d fastbtc-in transfers with unprocessed PnL calculations",
+                len(ids)
+            )
+
+        for i, transfer_id in enumerate(ids, start=1):
+            logger.info("Updating PnL for fastbtc-in transfer %d/%d", i, len(ids))
+            try:
+                with self._transaction_manager:
+                    self._update_pnl_for_fastbtc_in_transfer(transfer_id)
+            except Exception:
+                logger.exception("Error while processing transfer %d/%d", i, len(ids))
+                logger.error("Failed to process transfer %s, skipping", transfer_id)
+
+    def _update_pnl_for_fastbtc_in_transfer(self, transfer_id):
+        dbsession = self._get_dbsession()
+        transfer = dbsession.query(FastBTCInTransfer).get(transfer_id)
+        if transfer.profit_calculation_id is not None:
+            logger.warning("Transfer %s already has a PnL calculation, skipping", transfer_id)
+            return
+        if transfer.status != FastBTCInTransferStatus.EXECUTED:
+            raise Exception(f"Transfer {transfer_id} is not executed")
+
+        chain = transfer.chain
+        timestamp = transfer.executed_on
+        if not timestamp:
+            raise Exception(f"Transfer {transfer_id} has no executed_on timestamp")
+
+        submission_tx = self._create_evm_pnl_transaction(
+            chain=chain,
+            transaction_hash=transfer.submission_transaction_hash,
+            comment="submission",
+        )
+        execution_tx = self._create_evm_pnl_transaction(
+            chain=chain,
+            transaction_hash=transfer.executed_transaction_hash,
+            comment="execution",
+        )
+        all_tx_hashes = {submission_tx.transaction_id, execution_tx.transaction_id}
+
+        confirmation_txs = []
+        for confirmation in transfer.confirmations:
+            tx_hash = confirmation['tx_hash']
+            if tx_hash in all_tx_hashes:
+                # This confirmation is part of submission/execution tx
+                continue
+            confirmation_tx = self._create_evm_pnl_transaction(
+                chain=chain,
+                transaction_hash=tx_hash,
+                comment="confirmation",
+            )
+            confirmation_txs.append(confirmation_tx)
+            all_tx_hashes.add(tx_hash)
+
+        revocation_txs = []
+        for revocation in transfer.revocations:
+            tx_hash = revocation['tx_hash']
+            if tx_hash in all_tx_hashes:
+                continue
+            revocation_tx = self._create_evm_pnl_transaction(
+                chain=chain,
+                transaction_hash=tx_hash,
+                comment="revocation",
+            )
+            confirmation_txs.append(revocation_tx)
+            all_tx_hashes.add(tx_hash)
+            confirmation_tx_hash = revocation['revoked_confirmation_tx_hash']
+            if confirmation_tx_hash in all_tx_hashes:
+                # for some reason, this was already in confirmations...
+                continue
+            confirmation_tx = self._create_evm_pnl_transaction(
+                chain=chain,
+                transaction_hash=confirmation_tx_hash,
+                comment="revoked_confirmation",
+            )
+            confirmation_txs.append(confirmation_tx)
+            all_tx_hashes.add(confirmation_tx_hash)
+
+        transactions = [
+            submission_tx,
+            *confirmation_txs,
+            *revocation_txs,
+        ]
+        if execution_tx.transaction_id not in set(t.transaction_id for t in transactions):
+            # It might have been submitted and executed in the same tx
+            transactions.append(execution_tx)
+
+        profit_calculation = ProfitCalculation(
+            service="fastbtc_in",
+            config_chain=transfer.chain,
+            timestamp=timestamp,
+            volume_btc=transfer.formatted_net_amount + transfer.formatted_fee,
+            gross_profit_btc=transfer.formatted_fee,
+            cost_btc=sum(t.cost_btc for t in transactions),
+            transactions=transactions,
+        )
+        dbsession.add(profit_calculation)
+        transfer.profit_calculation = profit_calculation
         dbsession.flush()
 
     def _get_unprocessed_object_ids(self, dbsession, model, *extra_filter_args):
