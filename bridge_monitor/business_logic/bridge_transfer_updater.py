@@ -25,10 +25,11 @@ def update_transfers_from_all_bridges(
     session_factory,
     transaction_manager=transaction.manager,
     max_blocks: Optional[int] = None,
-    update_last_processed_blocks_first: bool = False
+    update_last_processed_blocks_first: bool = False,
+    chain_env: str = 'mainnet'
 ):
     # TODO: these are hardcoded :f
-    for bridge_name in ['rsk_eth_mainnet', 'rsk_bsc_mainnet']:
+    for bridge_name in [f'rsk_eth_{chain_env}', f'rsk_bsc_{chain_env}']:
         update_transfers(
             bridge_name=bridge_name,
             session_factory=session_factory,

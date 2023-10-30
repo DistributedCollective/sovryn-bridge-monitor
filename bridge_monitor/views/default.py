@@ -9,6 +9,7 @@ from bridge_monitor.models import Transfer
 def bridge_transfers(request):
     dbsession: Session = request.dbsession
     key_value_store = KeyValueStore(dbsession)
+    chain_env = request.registry.get('chain_env', 'mainnet')
 
     try:
         max_transfers = int(request.params.get('count', 10))
@@ -37,22 +38,22 @@ def bridge_transfers(request):
     ordering = [Transfer.event_block_timestamp.desc()]
 
     rsk_eth_transfers = dbsession.query(Transfer).filter(
-        (((Transfer.from_chain == 'rsk_mainnet') & (Transfer.to_chain == 'eth_mainnet')) |
-         ((Transfer.from_chain == 'eth_mainnet') & (Transfer.to_chain == 'rsk_mainnet')))
+        (((Transfer.from_chain == f'rsk_{chain_env}') & (Transfer.to_chain == f'eth_{chain_env}')) |
+         ((Transfer.from_chain == f'eth_{chain_env}') & (Transfer.to_chain == f'rsk_{chain_env}')))
     ).filter(
         *transfer_filter
     ).order_by(*ordering).limit(max_transfers).all()
 
     rsk_bsc_transfers = dbsession.query(Transfer).filter(
-        (((Transfer.from_chain == 'rsk_mainnet') & (Transfer.to_chain == 'bsc_mainnet')) |
-         ((Transfer.from_chain == 'bsc_mainnet') & (Transfer.to_chain == 'rsk_mainnet')))
+        (((Transfer.from_chain == f'rsk_{chain_env}') & (Transfer.to_chain == f'bsc_{chain_env}')) |
+         ((Transfer.from_chain == f'bsc_{chain_env}') & (Transfer.to_chain == f'rsk_{chain_env}')))
     ).filter(
         *transfer_filter
     ).order_by(*ordering).limit(max_transfers).all()
 
     last_updated = {
-        'rsk_eth': key_value_store.get_value('last-updated:rsk_eth_mainnet', None),
-        'rsk_bsc': key_value_store.get_value('last-updated:rsk_bsc_mainnet', None),
+        'rsk_eth': key_value_store.get_value(f'last-updated:rsk_eth_{chain_env}', None),
+        'rsk_bsc': key_value_store.get_value(f'last-updated:rsk_bsc_{chain_env}', None),
     }
 
     return {

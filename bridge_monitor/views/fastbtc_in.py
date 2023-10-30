@@ -12,7 +12,8 @@ from bridge_monitor.models.fastbtc_in import (
 def fastbtc_in(request):
     dbsession: Session = request.dbsession
     key_value_store = KeyValueStore(dbsession)
-    chain_name = 'rsk_mainnet'
+    chain_env = request.registry.get('chain_env', 'mainnet')
+    chain_name = f'rsk_{chain_env}'
 
     try:
         max_transfers = int(request.params.get('count', 10))

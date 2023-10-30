@@ -110,6 +110,13 @@ def main(argv=sys.argv):
     request: Request = env['request']
     session_factory = request.registry['dbsession_factory']
 
+    chain_env = request.registry.get('chain_env', 'unset')
+    if chain_env == 'unset':
+        logger.warning('chain_env not set in config, defaulting to mainnet')
+        chain_env = 'mainnet'
+
+    logger.info("chain_env: %s", chain_env)
+
     discord_webhook_url = args.discord_webhook_url or os.getenv('DISCORD_WEBHOOK_URL')
     bidi_fastbtc_discord_webhook_url = (
         args.bidi_fastbtc_discord_webhook_url or
@@ -127,6 +134,7 @@ def main(argv=sys.argv):
                         session_factory=session_factory,
                         max_blocks=args.max_blocks,
                         update_last_processed_blocks_first=args.update_last_processed_blocks_first,
+                        chain_env=chain_env,
                     )
                 except KeyboardInterrupt:
                     logger.info("Quitting!")
@@ -137,7 +145,7 @@ def main(argv=sys.argv):
             if not args.no_fastbtc:
                 try:
                     update_bidi_fastbtc_transfers(
-                        config_name='rsk_mainnet',
+                        config_name=f'rsk_{chain_env}',
                         transaction_manager=request.tm,
                         session_factory=session_factory,
                         max_blocks=args.max_blocks,
@@ -151,7 +159,7 @@ def main(argv=sys.argv):
             if not args.no_fastbtc_in:
                 try:
                     update_fastbtc_in_transfers(
-                        config_name='rsk_mainnet',
+                        config_name=f'rsk_{chain_env}',
                         transaction_manager=request.tm,
                         session_factory=session_factory,
                         max_blocks=args.max_blocks,

@@ -4,7 +4,7 @@ from .utils import load_abi, to_address
 
 Chain = NewType(
     'Chain',
-    Literal['rsk_mainnet', 'eth_mainnet', 'bsc_mainnet', 'rsk_testnet', 'bsc_testnet', 'eth_testnet_ropsten']
+    Literal['rsk_mainnet', 'eth_mainnet', 'bsc_mainnet', 'rsk_testnet', 'bsc_testnet', 'eth_testnet', 'eth_testnet_ropsten']
 )
 
 
@@ -58,9 +58,11 @@ BRIDGES: Dict[str, Dict[str, BridgeConfig]] = {
     },
     'rsk_eth_testnet': {
         'rsk': {
-            'bridge_address': '0xc0e7a7fff4aba5e7286d5d67dd016b719dcc9156',
-            'federation_address': '0xd37b3876f4560cec6d8ef39ce4cb28ffd645b51a',
-            'bridge_start_block': 1839957,
+            'bridge_address': '0xfbd57ab1dce7b4fe191ff947ddbb5118e4318207',
+            #'federation_address': '0xd37b3876f4560cec6d8ef39ce4cb28ffd645b51a',
+            #'federation_address': '0x6285DaDd35BA18F671cd1b73D708cE00d5B9cfEa', # this was used before 2022-07-02
+            'federation_address': '0x2610c700e5ea8a75e3a5c43657ac91c0539d48db',
+            'bridge_start_block': 3305002,
             'chain': 'rsk_testnet',
             'max_blocks_from_now': TESTNET_MAX_SECONDS_FROM_NOW // 30,
         },
@@ -76,15 +78,18 @@ BRIDGES: Dict[str, Dict[str, BridgeConfig]] = {
     'rsk_bsc_testnet': {
         'rsk': {
             'bridge_address': '0x2b2bcad081fa773dc655361d1bb30577caa556f8',
-            'federation_address': '0x92f791b72842f479888aefba975eff2ed74700b7',
-            'bridge_start_block': 1884421,
+            #'federation_address': '0x92f791b72842f479888aefba975eff2ed74700b7',
+            'federation_address': '0x07081144a97b58f08AB8bAaf8b05D87f5d31e5dF',
+            'bridge_start_block': 2600000,
             'chain': 'rsk_testnet',
             'max_blocks_from_now': TESTNET_MAX_SECONDS_FROM_NOW // 30,
         },
         'other': {
             'bridge_address': '0x862e8aff917319594cc7faaae5350d21196c086f',
-            'federation_address': '0x2b456e230225c4670fbf10b9da506c019a24cac7',
-            'bridge_start_block': 9290364,
+            #'federation_address': '0x2b456e230225c4670fbf10b9da506c019a24cac7',
+            #'federation_address': '0xb2ff07697cfb56b8cdf17383e98c8583e487a7f3',
+            'federation_address': '0x6E28bB6dbBAc8bBC11F5780E39f9Aca9F9737182',
+            'bridge_start_block': 16900000,
             'chain': 'bsc_testnet',
             'max_blocks_from_now': TESTNET_MAX_SECONDS_FROM_NOW // 5,
         }
