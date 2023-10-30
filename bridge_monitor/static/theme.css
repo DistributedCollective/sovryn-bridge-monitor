@@ -60,3 +60,19 @@ code.vote-command {
   display: block;
   word-break: break-word;
 }
+
+/* PnL */
+.detail-transactions-wrapper {
+  display: none;
+  padding-top: 0;
+}
+.detail-transactions-wrapper table.table {
+  background-color: transparent;
+}
+.detail-transactions-wrapper td,
+.detail-transactions-wrapper th {
+  /* this hits the wrapper td and the td/th inside the table */
+  border-color: #333 !important;
+  color: #999;
+  font-size: small;
+}

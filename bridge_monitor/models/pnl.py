@@ -17,7 +17,7 @@ class ProfitCalculation(Base):
     config_chain = Column(Text, nullable=False)  # denormalized. rsk_mainnet/rsk_testnet but never bitcoin. used for filtering
     timestamp = Column(TZDateTime, nullable=False)  # unique timestamp for a transfer, to be used for filtering
 
-    transactions = relationship('PnLTransaction', back_populates='profit_calculation')
+    transactions = relationship('PnLTransaction', back_populates='profit_calculation', order_by='PnLTransaction.timestamp')
 
     volume_btc = Column(Numeric, nullable=False)  # total amount transferred, including fees
     gross_profit_btc = Column(Numeric, nullable=False)  # fee paid to us (gross profit)

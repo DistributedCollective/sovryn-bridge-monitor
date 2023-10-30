@@ -1,10 +1,11 @@
 from types import SimpleNamespace
 from pyramid.view import view_config
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from datetime import datetime, timezone
 from dateutil.relativedelta import relativedelta
 from urllib.parse import urlencode
+from .utils import get_explorer_tx_url
 
 
 from bridge_monitor.models.pnl import ProfitCalculation, PnLTransaction
@@ -78,19 +79,30 @@ def pnl(request):
         net_profit_btc=sum(c.net_profit_btc for c in calculations_by_service),
     )
 
+    details = dbsession.query(
+        ProfitCalculation,
+    ).filter(
+        ProfitCalculation.config_chain == chain,
+        *time_filter
+    ).options(
+        joinedload(ProfitCalculation.transactions),
+    ).order_by(
+        ProfitCalculation.timestamp,
+    ).all()
+
     return {
         'by_service': calculations_by_service,
         'totals': totals,
+        'details': details,
         'time_filter_options': time_filter_options,
         'start': start,
         'end': end,
         'earliest_timestamps': {
             'fastbtc_in': earliest_fastbtc_in_timestamp,
             'bidi_fastbtc': earliest_bidi_fastbtc_timestamp,
-        }
+        },
+        'get_explorer_tx_url': get_explorer_tx_url,
     }
-
-
 
 def _get_time_filter_options(earliest_timestamp: datetime):
     current_timestamp = datetime.now(timezone.utc)

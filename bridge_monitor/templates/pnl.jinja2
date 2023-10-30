@@ -121,5 +121,143 @@
             {% endfor %}
         </tbody>
     </table>
+
+    {% if details %}
+        <div>
+            <a href="#" style="float:right">top</a>
+            <h3 id="details">Details</h3>
+        </div>
+        <table class="pnl-details table mb-4">
+            <thead>
+                <tr>
+                    <th>time</th>
+                    <th>service</th>
+                    <th>num tx</th>
+                    <th>transfer volume</th>
+                    <th>fees paid by users</th>
+                    <th>transaction costs</th>
+                    <th>profit/loss</th>
+                    <th>actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for detail in details %}
+                    <tr
+                        id="detail-{{ detail.id }}"
+                        data-detail-id="{{ detail.id }}"
+                    >
+                        <td>
+                            {{ detail.timestamp }}
+                        </td>
+                        <td>
+                            {{ detail.service }}
+                        </td>
+                        <td>
+                            {{ detail.transactions|length }}
+                        </td>
+                        <td
+                            title="{{ detail.volume_btc }} BTC"
+                        >
+                            <code>
+                                {{ "%.6f BTC"|format(detail.volume_btc) }}
+                            </code>
+                        </td>
+                        <td
+                            title="{{ detail.gross_profit_btc }} BTC"
+                        >
+                            <code>
+                                {{ "%.6f BTC"|format(detail.gross_profit_btc) }}
+                            </code>
+                        </td>
+                        <td
+                            title="{{ detail.cost_btc }} BTC"
+                        >
+                            <code>
+                                {{ "%.6f BTC"|format(detail.cost_btc) }}
+                            </code>
+                        </td>
+                        <td
+                            title="{{ detail.net_profit_btc }} BTC"
+                        >
+                            <code>
+                                {{ "%.6f BTC"|format(detail.net_profit_btc) }}
+                            </code>
+                        </td>
+                        <td>
+                            <a
+                                href="#"
+                                class="show-detail-transactions"
+                                data-detail-id="{{ detail.id }}"
+                            >
+                                show txs
+                            </a>
+                        </td>
+                    </tr>
+                    <tr
+                        class="detail-transactions-wrapper"
+                        data-detail-id="{{ detail.id }}"
+                    >
+                        <td colspan="8">
+                        <table class="table">
+                            <thead>
+                                <tr
+                                    class="detail-transaction-header"
+                                    data-detail-id="{{ detail.id }}"
+                                >
+                                    <th>
+                                        tx time
+                                    </th>
+                                    <th>
+                                        tx chain
+                                    </th>
+                                    <th colspan="3">
+                                        tx hash
+                                    </th>
+                                    <th>
+                                        tx cost
+                                    </th>
+                                    <th colspan="2">
+                                        comment
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for tx in detail.transactions %}
+                                <tr
+                                    class="detail-transaction"
+                                    data-detail-id="{{ detail.id }}"
+                                >
+                                    <td>
+                                        {{ tx.timestamp }}
+                                    </td>
+                                    <td>
+                                        {{ tx.transaction_chain }}
+                                    </td>
+                                    <td colspan="3">
+                                        <a
+                                            href="{{ get_explorer_tx_url(tx.transaction_chain, tx.transaction_id) }}"
+                                            target="_blank"
+                                        >
+                                            {{ tx.transaction_id }}
+                                        </a>
+                                    </td>
+                                    <td
+                                        title="{{ tx.cost_btc }} BTC"
+                                    >
+                                        <code>{{ "%.6f BTC"|format(tx.cost_btc) }}</code>
+                                    </td>
+                                    <td colspan="2">
+                                        {{ tx.comment }}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
 </div>
 {% endblock content %}
