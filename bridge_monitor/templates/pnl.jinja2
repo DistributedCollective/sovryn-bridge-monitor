@@ -81,9 +81,9 @@
                 {% endif %}
             >
                 <td>
-                    {% if service == "bidi_fastbtc" %}
+                    {% if calculation.service == "bidi_fastbtc" %}
                         Bidirectional FastBTC (RSK&rarr;BTC)
-                    {% elif service == "fastbtc_in" %}
+                    {% elif calculation.service == "fastbtc_in" %}
                         FastBTC-in (BTC&rarr;RSK)
                     {% else  %}
                         {{ calculation.service  }}
