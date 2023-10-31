@@ -5,6 +5,8 @@ from sqlalchemy import Column, Integer, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.hybrid import hybrid_property
 
+from .pnl import HasPnL
+
 SATOSHI_IN_BTC = 100_000_000
 
 
@@ -12,7 +14,7 @@ from .meta import Base
 from .types import TZDateTime, Uint256, now_in_utc
 
 
-class BidirectionalFastBTCReplenisherTransaction(Base):
+class BidirectionalFastBTCReplenisherTransaction(HasPnL, Base):
     __tablename__ = 'bidi_fastbtc_replenisher_transaction'
 
     id = Column(Integer, primary_key=True)

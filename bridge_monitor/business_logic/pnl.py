@@ -17,6 +17,7 @@ from ..models.fastbtc_in import (
     FastBTCInTransfer,
     FastBTCInTransferStatus,
 )
+from ..models.replenisher import BidirectionalFastBTCReplenisherTransaction
 from ..models.pnl import PnLTransaction, ProfitCalculation
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ class PnLService:
     def update_pnl(self):
         self.update_pnl_for_bidi_fastbtc_transfers()
         self.update_pnl_for_fastbtc_in_transfers()
+        self.update_pnl_for_bidi_fastbtc_replenisher_transactions()
 
     def update_pnl_for_bidi_fastbtc_transfers(self):
         logger.info('Retrieving bidi-fastbtc transfer batches with unprocessed PnL calculations')
@@ -240,6 +242,49 @@ class PnLService:
         dbsession.add(profit_calculation)
         transfer.profit_calculation = profit_calculation
         dbsession.flush()
+
+    def update_pnl_for_bidi_fastbtc_replenisher_transactions(self):
+        logger.info("Retrieving bidi-fastbtc replenisher transactions with unprocessed PnL calculations")
+        with self._transaction_manager:
+            dbsession = self._get_dbsession()
+            ids = self._get_unprocessed_object_ids(
+                dbsession,
+                BidirectionalFastBTCReplenisherTransaction,
+            )
+            logger.info(
+                "Got %d bidi-fastbtc replenisher transactions with unprocessed PnL calculations",
+                len(ids)
+            )
+            # just do it in the same tx... it doesn't take much time since we don't require any api calls
+            for i, replenisher_tx_id in enumerate(ids, start=1):
+                logger.info(
+                    "Updating PnL for bidi-fastbtc replenisher transaction %d/%d",
+                    replenisher_tx_id,
+                    len(ids)
+                )
+                replenisher_tx = dbsession.query(BidirectionalFastBTCReplenisherTransaction).get(replenisher_tx_id)
+                profit_calculation = ProfitCalculation(
+                    service="fastbtc_replenisher",
+                    config_chain=replenisher_tx.config_chain,
+                    timestamp=replenisher_tx.confirmed_on,
+                    volume_btc=Decimal('0'),  # replenishment amount doesn't count towards volume
+                    gross_profit_btc=Decimal('0'),  # replenishment fee doesn't count towards profit
+                    cost_btc=replenisher_tx.fee_btc,
+                    transactions=[
+                        PnLTransaction(
+                            transaction_chain=replenisher_tx.transaction_chain,
+                            transaction_id=replenisher_tx.transaction_id,
+                            timestamp=replenisher_tx.confirmed_on,
+                            block_number=replenisher_tx.block_number,
+                            cost_btc=replenisher_tx.fee_btc,
+                            comment="bidi_fastc_replenisher",
+                        )
+                    ]
+                )
+                logger.info("%s", profit_calculation)
+                dbsession.add(profit_calculation)
+                replenisher_tx.profit_calculation = profit_calculation
+                dbsession.flush()
 
     def _get_unprocessed_object_ids(self, dbsession, model, *extra_filter_args):
         objs = dbsession.query(
