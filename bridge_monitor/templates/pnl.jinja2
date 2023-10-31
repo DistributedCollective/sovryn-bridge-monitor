@@ -50,6 +50,14 @@
     <div>
         <a href="#" style="float:right">top</a>
         <h3 id="summary">Summary</h3>
+        <p>
+            <small style="color: #ccc">
+                The summary table shows the transfer volumes, fees paid by users (gross profit), transaction costs,
+                and the calculated profit/loss (gross profit minus transaction costs) for Bidirectional FastBTC, FastBTC-in, and
+                the FastBTC replenisher (the service used to automatically tansfer funds between the FastBTC multisigs,
+                which incurs transaction costs). Transaction costs of manual maintenance transactions are not included.
+            </small>
+        </p>
     </div>
 
     {#  TODO: calculate these and show from the view#}
@@ -85,6 +93,8 @@
                         Bidirectional FastBTC (RSK&rarr;BTC)
                     {% elif calculation.service == "fastbtc_in" %}
                         FastBTC-in (BTC&rarr;RSK)
+                    {% elif calculation.service == "fastbtc_replenisher" %}
+                        FastBTC replenisher
                     {% else  %}
                         {{ calculation.service  }}
                     {% endif %}
