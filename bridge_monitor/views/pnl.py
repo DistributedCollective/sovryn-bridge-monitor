@@ -1,7 +1,12 @@
-from datetime import date, datetime, timezone, timedelta
+import csv
+from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
+from typing import Any, List, NamedTuple, Optional
 
 from dateutil.relativedelta import relativedelta
+from pyramid.httpexceptions import HTTPBadRequest
+from pyramid.request import Request
+from pyramid.response import Response
 from pyramid.view import view_config
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
@@ -9,35 +14,20 @@ from sqlalchemy.orm import Session, joinedload
 from bridge_monitor.models.pnl import ProfitCalculation
 
 
+class ParsedTimeRange(NamedTuple):
+    start: Optional[date]
+    end: Optional[date]
+    errors: List[str]
+    profit_calculation_query_filter: List[Any]
+
+
 @view_config(route_name='pnl', renderer='bridge_monitor:templates/pnl.jinja2')
-def pnl(request):
+def pnl(request: Request):
     dbsession: Session = request.dbsession
     chain_env = request.registry.get('chain_env', 'mainnet')
     chain = f'rsk_{chain_env}'
 
-    errors = []
-    start = None
-    end = None
-    try:
-        if start_str := request.params.get('start'):
-            start = date.fromisoformat(start_str)
-    except TypeError:
-        errors.append('Invalid start date')
-    try:
-        if end_str := request.params.get('end'):
-            end = date.fromisoformat(end_str)
-    except TypeError:
-        errors.append('Invalid end date')
-
-    time_filter = []
-    if start:
-        time_filter.append(
-            ProfitCalculation.timestamp >= datetime(start.year, start.month, start.day, tzinfo=timezone.utc)
-        )
-    if end:
-        time_filter.append(
-            ProfitCalculation.timestamp < datetime(end.year, end.month, end.day, tzinfo=timezone.utc) + timedelta(days=1)
-        )
+    start, end, errors, time_filter = _parse_time_range(request)
 
     calculations_by_service = dbsession.query(
         ProfitCalculation.service,
@@ -111,6 +101,89 @@ def pnl(request):
             'bidi_fastbtc': earliest_bidi_fastbtc_timestamp,
         },
     }
+
+
+@view_config(route_name='pnl_details_csv')
+def pnl_details_csv(request: Request):
+    dbsession: Session = request.dbsession
+    chain_env = request.registry.get('chain_env', 'mainnet')
+    chain = f'rsk_{chain_env}'
+
+    parsed_time_range = _parse_time_range(request)
+    if parsed_time_range.errors:
+        raise HTTPBadRequest(
+            'Error generating CSV: ' + ', '.join(parsed_time_range.errors)
+        )
+
+    response = Response(content_type='text/csv')
+    #response.content_disposition = 'attachment;filename=details.csv'
+
+    query = dbsession.query(
+        ProfitCalculation,
+    ).filter(
+        ProfitCalculation.config_chain == chain,
+        *parsed_time_range.profit_calculation_query_filter
+    ).order_by(
+        ProfitCalculation.timestamp,
+    )
+
+    writer = csv.DictWriter(
+        response.body_file,
+        fieldnames=[
+            'time',
+            'service',
+            'volume_btc',
+            'gross_profit_btc',
+            'tx_cost_btc',
+            'profit_btc',
+        ]
+    )
+    writer.writeheader()
+    for row in query:
+        writer.writerow({
+            'time': row.timestamp.isoformat(),
+            'service': row.service,
+            'volume_btc': row.volume_btc,
+            'gross_profit_btc': row.gross_profit_btc,
+            'tx_cost_btc': row.cost_btc,
+            'profit_btc': row.net_profit_btc,
+        })
+    return response
+
+
+def _parse_time_range(request: Request) -> ParsedTimeRange:
+    errors = []
+    start = None
+    end = None
+    try:
+        if start_str := request.params.get('start'):
+            start = date.fromisoformat(start_str)
+    except TypeError:
+        errors.append('Invalid start date')
+    try:
+        if end_str := request.params.get('end'):
+            end = date.fromisoformat(end_str)
+    except TypeError:
+        errors.append('Invalid end date')
+
+    time_filter = []
+    if start:
+        time_filter.append(
+            ProfitCalculation.timestamp >= datetime(start.year, start.month, start.day, tzinfo=timezone.utc)
+        )
+    if end:
+        time_filter.append(
+            ProfitCalculation.timestamp < datetime(end.year, end.month, end.day, tzinfo=timezone.utc) + timedelta(days=1)
+        )
+
+    return ParsedTimeRange(
+        start=start,
+        end=end,
+        errors=errors,
+        profit_calculation_query_filter=time_filter,
+    )
+
+
 
 def _get_time_filter_options(earliest_timestamp: datetime):
     current_timestamp = datetime.now(timezone.utc)

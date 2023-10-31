@@ -151,6 +151,17 @@
             No details to show.
         </p>
     {% endif  %}
+    {% if details or not show_details %}
+        {# show export link if there are details, or if details are hidden and we don't know if there are details #}
+        <p>
+            <a href="{{ request.route_path('pnl_details_csv', _query={
+                'start': start.isoformat() if start else None,
+                'end': end.isoformat() if end else None,
+            }) }}">
+                Export details as CSV
+            </a>
+        </p>
+    {% endif %}
     {% if details and show_details %}
         <table class="pnl-details table mb-4">
             <thead>
