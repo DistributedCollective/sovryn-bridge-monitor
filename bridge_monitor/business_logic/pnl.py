@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from functools import lru_cache
 
-import requests
 from pyramid.paster import setup_logging
 from sqlalchemy import func
 from sqlalchemy.orm.session import Session
@@ -11,6 +10,7 @@ from transaction import TransactionManager
 from web3 import Web3
 
 from .utils import get_web3
+from . import blockstream
 from ..models import get_tm_session
 from ..models.bidirectional_fastbtc import (BidirectionalFastBTCTransfer, SATOSHI_IN_BTC,
                                             TransferStatus as BidiFastBTCTransferStatus)
@@ -274,7 +274,7 @@ class PnLService:
 
     def _create_bitcoin_pnl_transaction(self, config_chain: str, transaction_id: str, *, comment=""):
         testnet = config_chain.endswith('testnet')  # hehehe, ugly hack
-        bitcoin_tx = self._get_bitcoin_transaction_from_blockstream(tx_id=transaction_id, testnet=testnet)
+        bitcoin_tx = blockstream.get_transaction(transaction_id, testnet=testnet)
         if not bitcoin_tx['status']['confirmed']:
             raise Exception(f"Bitcoin tx {transaction_id} is not confirmed")
         block_number = bitcoin_tx['status']['block_height']
@@ -303,16 +303,6 @@ class PnLService:
     @lru_cache()
     def _get_web3(self, chain_name) -> Web3:
         return get_web3(chain_name)
-
-    def _get_bitcoin_transaction_from_blockstream(self, *, tx_id, testnet):
-        if testnet:
-            api_url = f"https://blockstream.info/testnet/api/tx/{tx_id}"
-        else:
-            api_url = f"https://blockstream.info/api/tx/{tx_id}"
-        logger.debug("Getting bitcoin tx from %s", api_url)
-        response = requests.get(api_url)
-        response.raise_for_status()
-        return response.json()
 
     def _get_dbsession(self) -> Session:
         return get_tm_session(
