@@ -2,7 +2,6 @@
 Service that tract the transaction made by the bidirectional FastBTC replenisher, e.g.
 automatic funds transfers between FastBTC-in and bidirectional FastBTC
 """
-import dataclasses
 import logging
 from typing import Optional
 
@@ -15,16 +14,6 @@ from ..models import get_tm_session
 from ..models.replenisher import BidirectionalFastBTCReplenisherTransaction
 
 logger = logging.getLogger(__name__)
-
-
-@dataclasses.dataclass
-class ReplenisherTransaction:
-    transaction_id: str
-    block_number: int
-    block_timestamp: int
-    fee_satoshi: int
-    amount_satoshi: int
-    raw_data: dict = dataclasses.field(default_factory=dict, repr=False)
 
 
 class ReplenisherTransactionScanner:
@@ -149,6 +138,26 @@ class ReplenisherTransactionScanner:
             self._session_factory,
             self._transaction_manager,
         )
+
+
+def scan_replenisher_transactions(
+    *,
+    chain_env: str,
+    session_factory: Session,
+    transaction_manager: transaction.TransactionManager = transaction.manager,
+):
+    if chain_env not in ('mainnet', 'testnet'):
+        raise ValueError(f"Invalid chain_env {chain_env}, must be mainnet or testnet")
+    from .constants import BIDI_FASTBTC_CONFIGS
+    config_name = f'rsk_{chain_env}'
+    bidi_config = BIDI_FASTBTC_CONFIGS[config_name]
+    scanner = ReplenisherTransactionScanner(
+        config_chain=config_name,
+        bidi_fastbtc_btc_multisig_address=bidi_config.get('btc_multisig_address'),
+        session_factory=session_factory,
+        transaction_manager=transaction_manager,
+    )
+    scanner.scan_replenisher_transactions()
 
 
 def cli_main():

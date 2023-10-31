@@ -10,6 +10,7 @@ from pyramid.request import Request
 
 from bridge_monitor.business_logic.bidirectional_fastbtc_alerts import handle_bidi_fastbtc_alerts
 from bridge_monitor.business_logic.fastbtc_in import update_fastbtc_in_transfers
+from bridge_monitor.business_logic.replenisher import scan_replenisher_transactions
 from ..business_logic.bridge_transfer_updater import update_transfers_from_all_bridges
 from ..business_logic.bridge_alerts import handle_bridge_alerts
 from ..business_logic.bidirectional_fastbtc import update_bidi_fastbtc_transfers
@@ -99,6 +100,12 @@ def parse_args(argv):
         action='store_true',
         default=False,
         help="Only monitor (bidirectional) FastBTC - no token bridge",
+    )
+    parser.add_argument(
+        '--no-replenisher',
+        action='store_true',
+        default=False,
+        help="Don't update fastbtc replenisher transactions",
     )
     parser.add_argument(
         '--no-pnl',
@@ -219,6 +226,19 @@ def main(argv=sys.argv):
                 raise
             except Exception:  # noqa
                 logger.exception("Got exception sending fastbtc-in alerts")
+
+        if not args.no_replenisher:
+            try:
+                scan_replenisher_transactions(
+                    chain_env=chain_env,
+                    session_factory=session_factory,
+                    transaction_manager=request.tm,
+                )
+            except KeyboardInterrupt:
+                logger.info("Quitting!")
+                raise
+            except Exception:  # noqa
+                logger.exception("Got exception scanning replenisher transactions")
 
         if not args.no_pnl:
             try:
