@@ -7,7 +7,6 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from bridge_monitor.models.pnl import ProfitCalculation
-from .utils import get_explorer_tx_url
 
 
 @view_config(route_name='pnl', renderer='bridge_monitor:templates/pnl.jinja2')
@@ -111,7 +110,6 @@ def pnl(request):
             'fastbtc_in': earliest_fastbtc_in_timestamp,
             'bidi_fastbtc': earliest_bidi_fastbtc_timestamp,
         },
-        'get_explorer_tx_url': get_explorer_tx_url,
     }
 
 def _get_time_filter_options(earliest_timestamp: datetime):

@@ -1,0 +1,58 @@
+{% extends "layout.jinja2" %}
+
+{% block content %}
+<div class="content">
+    <h1>FastBTC Replenisher Transactions</h1>
+    <nav>
+        Show
+        {% for value in [10, 50, 1000] %}
+            {% if loop.index0 != 0 %}| {% endif %}<a href="{{ request.current_route_path(_query={
+                'count': value,
+            }) }}">{{ value }}</a>
+        {% endfor %}
+        transfers
+    </nav>
+
+    <div>
+        <a href="#" style="float:right">top</a>
+        <h2 id="{{ bridge_name }}">Last {{ bidi_fastbtc_transactions|length }} {{ filter_name }} replenisher transactions </h2>
+    </div>
+
+    <table class="table mb-4">
+        <thead>
+            <tr>
+                <th>time</th>
+                <th>block number</th>
+                <th>tx id</th>
+                <th>amount</th>
+                <th>fee</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for transaction in bidi_fastbtc_transactions  %}
+                <tr>
+                    <td>
+                        {{ transaction.confirmed_on }}
+                    </td>
+                    <td>
+                        {{ transaction.block_number }}
+                    </td>
+                    <td>
+                        {{ transaction.transaction_id|explorer_tx_link(transaction.transaction_chain) }}
+                    </td>
+                    <td
+                        title="{{ transaction.amount_satoshi }} sat"
+                    >
+                        <code>{{ transaction.amount_btc }}&nbsp;BTC</code><br/>
+                    </td>
+                    <td
+                        title="{{ transaction.fee_satoshi }} sat"
+                    >
+                        <code>{{ transaction.fee_btc }}&nbsp;BTC</code><br/>
+                    </td>
+                </tr>
+            {% endfor  %}
+        </tbody>
+    </table>
+</div>
+{% endblock content %}

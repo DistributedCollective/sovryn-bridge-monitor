@@ -10,10 +10,10 @@ def main(global_config, **settings):
         config.include('.routes')
         config.include('.models')
         config.include('.auth')
+        config.include('.jinja2_filters')
 
         config.registry['chain_env'] = settings.get('monitor.chain_env', 'mainnet')
         logging.info("Chain env: %s", config.registry['chain_env'])
-
 
         config.scan()
 

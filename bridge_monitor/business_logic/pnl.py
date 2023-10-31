@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from functools import lru_cache
 
-from pyramid.paster import setup_logging
 from sqlalchemy import func
 from sqlalchemy.orm.session import Session
 from transaction import TransactionManager
@@ -311,10 +310,10 @@ class PnLService:
         )
 
 
-
 def cli_main():
     import argparse
     from pyramid.paster import bootstrap
+    from pyramid.paster import setup_logging
     from pyramid.request import Request
     parser = argparse.ArgumentParser()
     parser.add_argument('config_uri')

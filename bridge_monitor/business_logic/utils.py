@@ -7,7 +7,7 @@ import os
 import sys
 from datetime import datetime, timezone
 from time import sleep
-from typing import Any, Callable, Dict, Iterable, List, Optional, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, Union
 
 from eth_account.signers.local import LocalAccount
 from eth_typing import AnyAddress
@@ -236,7 +236,11 @@ def exponential_sleep(attempt, max_sleep_time=512.0):
     sleep(sleep_time)
 
 
-def retryable(*, max_attempts: int = 10):
+def retryable(
+    *,
+    max_attempts: int = 10,
+    exceptions: Tuple[Type[Exception]] = (Exception,)
+):
     def decorator(func):
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
@@ -244,7 +248,7 @@ def retryable(*, max_attempts: int = 10):
             while True:
                 try:
                     return func(*args, **kwargs)
-                except Exception as e:
+                except exceptions as e:
                     if attempt >= max_attempts:
                         logger.exception('max attempts (%s) exhausted for error: %s', max_attempts, e)
                         raise

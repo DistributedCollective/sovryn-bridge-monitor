@@ -249,12 +249,7 @@
                                         {{ tx.transaction_chain }}
                                     </td>
                                     <td colspan="3">
-                                        <a
-                                            href="{{ get_explorer_tx_url(tx.transaction_chain, tx.transaction_id) }}"
-                                            target="_blank"
-                                        >
-                                            {{ tx.transaction_id }}
-                                        </a>
+                                        {{ tx.transaction_id|explorer_tx_link(tx.transaction_chain) }}
                                     </td>
                                     <td
                                         title="{{ tx.cost_btc }} BTC"

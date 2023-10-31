@@ -104,6 +104,7 @@ BIDI_FASTBTC_CONFIGS = {
         'contract_address': '0x1A8E78B41bc5Ab9Ebb6996136622B9b41A601b5C',
         'start_block': 4029878,
         'chain': 'rsk_mainnet',
+        'btc_multisig_address': 'bc1qajsvfccw06h758pn3za8wcx7qjztarj53ejjp0rf5a34urmyp74s6psvg8',
     },
     'rsk_testnet': {
         # 'contract_address': '0x10C848e9495a32acA95F6c23C92eCA2b2bE9903A',  # from 2425099 or 2417524
