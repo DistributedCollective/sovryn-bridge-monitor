@@ -5,4 +5,5 @@ def includeme(config):
     config.add_route('fastbtc_in', '/fastbtc-in/')
     config.add_route('replenisher', '/replenisher/')
     config.add_route('pnl', '/pnl/')
+    config.add_route('sanity_check', '/sanity-check/')
     config.add_route('pnl_details_csv', '/pnl/details.csv')
