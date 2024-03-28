@@ -1,9 +1,11 @@
+import json
 from datetime import (
     date,
     datetime,
     timedelta,
     timezone,
 )
+from decimal import Decimal
 from typing import (
     Any,
     Dict,
@@ -19,11 +21,20 @@ from typing import (
 from pyramid.request import Request
 
 
+class JsonEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Decimal):
+            return str(o)
+        if isinstance(o, (datetime, date)):
+            return o.isoformat()
+        return super().default(o)
+
+
+
 class ParsedTimeRange(NamedTuple):
     start: Optional[date]
     end: Optional[date]
     errors: List[str]
-    query_filters_by_model: Dict[Any, List[Any]]
 
 
 def parse_time_range(
@@ -51,22 +62,8 @@ def parse_time_range(
         start = date(now.year, now.month, 1)
         end = date(now.year, now.month + 1, 1) - timedelta(days=1)
 
-    time_filters_by_model = {}
-    for model in models:
-        time_filter = []
-        if start:
-            time_filter.append(
-                model.timestamp >= datetime(start.year, start.month, start.day, tzinfo=timezone.utc)
-            )
-        if end:
-            time_filter.append(
-                model.timestamp < datetime(end.year, end.month, end.day, tzinfo=timezone.utc) + timedelta(days=1)
-            )
-        time_filters_by_model[model] = time_filter
-
     return ParsedTimeRange(
         start=start,
         end=end,
         errors=errors,
-        query_filters_by_model=time_filters_by_model,
     )
