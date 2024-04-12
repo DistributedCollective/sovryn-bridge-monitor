@@ -110,14 +110,31 @@
                     <td class="details">
                         <span>MultisigTxID:</span><code>{{ transfer.multisig_tx_id }}</code><br/>
                         <span>Func:</span><code>{{ transfer.transfer_function }}</code><br/>
-                        <span>RskReceiver:</span><code>{{ transfer.rsk_receiver_address }}</code><br/>
-                        <span>BtcTxHash:</span><code>{{ transfer.bitcoin_tx_hash }}</code><br/>
+                        <span>RskReceiver:</span>
+                        <a href="https://explorer.rootstock.io/address/{{ transfer.rsk_receiver_address }}">
+                            <code>{{ transfer.rsk_receiver_address }}</code>
+                        </a>
+                        <br/>
+                        <span>BtcTxHash:</span>
+                        <a href="https://mempool.space/tx/{{ transfer.bitcoin_tx_hash }}">
+                            <code>{{ transfer.bitcoin_tx_hash }}</code>
+                        </a>
+                        <br/>
+
                         <span>BtcTxVout:</span><code>{{ transfer.bitcoin_tx_vout }}</code><br/>
                         {% if transfer.submission_transaction_hash %}
-                            <span>SubmissionTx:</span><code>{{ transfer.submission_transaction_hash }}</code><br/>
+                            <span>SubmissionTx:</span>
+                            <a href="https://explorer.rootstock.io/tx/{{ transfer.submission_transaction_hash }}">
+                                <code>{{ transfer.submission_transaction_hash }}</code>
+                            </a>
+                            <br/>
                         {% endif %}
                         {% if transfer.executed_transaction_hash %}
-                            <span>ExecutionTx:</span><code>{{ transfer.executed_transaction_hash }}</code><br/>
+                            <span>ExecutionTx:</span>
+                            <a href="https://explorer.rootstock.io/tx/{{ transfer.executed_transaction_hash }}">
+                                <code>{{ transfer.executed_transaction_hash }}</code>
+                            </a>
+                            <br/>
                         {% endif %}
                     </td>
                 </tr>

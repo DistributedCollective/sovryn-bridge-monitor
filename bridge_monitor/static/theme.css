@@ -38,9 +38,10 @@ td.details {
   font-size: smaller;
 }
 td.details span {
+  margin: 1px auto;
   display: inline-block;
   vertical-align: top;
-  min-width: 60px;
+  min-width: 80px;
 }
 td.details code {
   display: inline-block;
@@ -49,7 +50,6 @@ td.details code {
   word-wrap: break-word;
   padding-top: 0;
   padding-bottom: 0;
-  color: white;
   background-color: transparent;
   border-radius: 0;
 }
@@ -75,4 +75,37 @@ code.vote-command {
   border-color: #333 !important;
   color: #999;
   font-size: small;
+}
+
+tbody code {
+  color: white;
+  font-size: 100%;
+  background: none;
+}
+
+tbody code.profit {
+  color: #008126;
+}
+
+tbody code.loss {
+  color: #f00;
+  position: relative;
+  right: 1ch;
+}
+
+nav>form {
+  width: 20%;
+}
+
+nav>form>* {
+  width: 100%;
+  margin: 4px auto;
+}
+
+nav>form>input {
+  display: block;
+}
+a>code {
+  text-decoration: underline;
+  color: #89cde3
 }

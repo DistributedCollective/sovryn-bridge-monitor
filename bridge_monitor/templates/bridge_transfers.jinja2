@@ -122,10 +122,26 @@
                         </td>
                         <td class="details">
                             <span>TxIdU:</span><code>{{ transfer.transaction_id }}</code><br/>
-                            <span>EventTx:</span><code>{{ transfer.event_transaction_hash }}</code><br/>
-                            <span>ExecTx:</span><code>{{ transfer.executed_transaction_hash }}</code><br/>
-                            <span>Depositor:</span><code>{{ transfer.depositor_address }}</code><br/>
-                            <span>Receiver:</span><code>{{ transfer.receiver_address }}</code><br/>
+                            <span>EventTx:</span>
+                            <a href="https://explorer.rootstock.io/tx/{{ transfer.event_transaction_hash }}">
+                                <code>{{ transfer.event_transaction_hash }}</code>
+                            </a>
+                            <br/>
+                            <span>ExecTx:</span>
+                            <a href="https://explorer.rootstock.io/tx/{{ transfer.executed_transaction_hash }}">
+                                <code>{{ transfer.executed_transaction_hash }}</code>
+                            </a>
+                            <br/>
+                            <span>Depositor:</span>
+                            <a href="https://explorer.rootstock.io/address/{{ transfer.depositor_address }}">
+                                <code>{{ transfer.depositor_address }}</code>
+                            </a>
+                            <br/>
+                            <span>Receiver:</span>
+                            <a href="https://explorer.rootstock.io/address/{{ transfer.receiver_address }}">
+                                <code>{{ transfer.receiver_address }}</code>
+                            </a>
+                            <br/>
                             <span>UserData:</span><code>{{ transfer.user_data }}</code><br/>
                             <span>ErrorData:</span><code>{{ transfer.error_data }}</code><br/>
                             {% if not transfer.was_processed  %}

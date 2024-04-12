@@ -6,3 +6,4 @@ def includeme(config):
     config.add_route('replenisher', '/replenisher/')
     config.add_route('pnl', '/pnl/')
     config.add_route('pnl_details_csv', '/pnl/details.csv')
+    config.add_route('pnl_details', '/pnl/details/')
