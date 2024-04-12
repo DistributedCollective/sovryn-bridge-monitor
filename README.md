@@ -4,6 +4,8 @@ bridge_monitor
 Getting Started
 ---------------
 
+!NOTE! This project requires python 3.8
+
 Create a Python virtual environment, if not already created.
 
     python3 -m venv env
