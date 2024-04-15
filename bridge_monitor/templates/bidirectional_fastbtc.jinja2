@@ -77,13 +77,7 @@
                         <code>{{ transfer.formatted_amount }}&nbsp;BTC</code><br/>
                     </td>
                     <td>
-                        {% if transfer.bitcoin_tx_id %}
-                            <a href="{{ btc_explorer_base_url }}/tx/{{ transfer.bitcoin_tx_id }}" target="_blank">
-                                {{ transfer.status.name }}
-                            </a>
-                        {% else %}
-                            {{ transfer.status.name }}
-                        {% endif %}
+                        {{ transfer.status.name }}
                     </td>
                     <td>
                         <small>

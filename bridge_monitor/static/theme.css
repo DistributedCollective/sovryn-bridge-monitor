@@ -38,7 +38,7 @@ td.details {
   font-size: smaller;
 }
 td.details span {
-  margin: 1px auto;
+  margin: 3px auto;
   display: inline-block;
   vertical-align: top;
   min-width: 80px;
@@ -46,7 +46,7 @@ td.details span {
 td.details code {
   display: inline-block;
   vertical-align: top;
-  max-width: 430px;
+  max-width: 400px;
   word-wrap: break-word;
   padding-top: 0;
   padding-bottom: 0;
@@ -83,13 +83,13 @@ tbody code {
   background: none;
 }
 
-tbody code.profit {
+tbody code.profit, i.glyphicon-ok {
   color: #008126;
 }
 
 tbody code.loss {
   color: #f00;
-  position: relative;
+  position: relative;       /*offset the text by the length of the negative sign to align with other text*/
   right: 1ch;
 }
 
@@ -108,4 +108,8 @@ nav>form>input {
 a>code {
   text-decoration: underline;
   color: #89cde3
+}
+
+* {                 /*Globally increase the font size a little (has a greater impact than 1%*/
+  font-size: 101%;
 }

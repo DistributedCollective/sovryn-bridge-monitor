@@ -142,8 +142,12 @@
                                 <code>{{ transfer.receiver_address }}</code>
                             </a>
                             <br/>
-                            <span>UserData:</span><code>{{ transfer.user_data }}</code><br/>
-                            <span>ErrorData:</span><code>{{ transfer.error_data }}</code><br/>
+                            {% if transfer.user_data != "0x" %}
+                                <span>UserData:</span><code>{{ transfer.user_data }}</code><br/>
+                            {% endif %}
+                            {% if transfer.error_data != "0x" %}
+                                <span>ErrorData:</span><code>{{ transfer.error_data }}</code><br/>
+                            {% endif %}
                             {% if not transfer.was_processed  %}
                                 <span>Cmd</span> <a href="#" data-vote-command="{{ transfer.vote_command  }}">show vote command</a>
                             {% endif %}

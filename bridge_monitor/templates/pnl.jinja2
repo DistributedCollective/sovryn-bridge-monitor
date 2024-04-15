@@ -123,7 +123,7 @@
                 <td
                     title="{{ calculation.net_profit_btc }} BTC"
                 >
-                    {% if calculation.net_profit_btc > 0 %}
+                    {% if calculation.net_profit_btc >= 0 %}
                     <code class="profit">
                     {% else %}
                     <code class="loss">

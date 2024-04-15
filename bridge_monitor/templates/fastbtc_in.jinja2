@@ -81,17 +81,9 @@
                     </td>
                     <td>
                         {% set rsktx = transfer.executed_transaction_hash or transfer.submission_transaction_hash %}
-                        {% if rsktx %}
-                            <a href="{{ rsk_explorer_base_url }}/tx/{{ rsktx }}" target="_blank">
-                                {{ transfer.status.name }}
-                            </a>
-                        {% elif transfer.bitcoin_tx_hash %}
-                            <a href="{{ btc_explorer_base_url }}/tx/{{ transfer.bitcoin_tx_hash }}" target="_blank">
-                                {{ transfer.status.name }}
-                            </a>
-                        {% else %}
+                        <div>
                             {{ transfer.status.name }}
-                        {% endif %}
+                        </div>
                         <br/><small><strong>{{ transfer.num_confirmations }}</strong> confirmations</small>
                     </td>
                     <td>
@@ -116,12 +108,11 @@
                         </a>
                         <br/>
                         <span>BtcTxHash:</span>
-                        <a href="https://mempool.space/tx/{{ transfer.bitcoin_tx_hash }}">
+                        <a href="https://mempool.space/tx/{{ transfer.bitcoin_tx_hash }}#vout={{ transfer.bitcoin_tx_vout }}">
                             <code>{{ transfer.bitcoin_tx_hash }}</code>
                         </a>
+                        <small>(VOUT {{ transfer.bitcoin_tx_vout }})</small>
                         <br/>
-
-                        <span>BtcTxVout:</span><code>{{ transfer.bitcoin_tx_vout }}</code><br/>
                         {% if transfer.submission_transaction_hash %}
                             <span>SubmissionTx:</span>
                             <a href="https://explorer.rootstock.io/tx/{{ transfer.submission_transaction_hash }}">
