@@ -33,7 +33,9 @@ button, input, optgroup, select, textarea {
 .font-bold {
   font-weight: 700;
 }
-
+.no-hover {
+  pointer-events: none;
+}
 td.details {
   font-size: smaller;
 }
@@ -112,4 +114,8 @@ a>code {
 
 * {                 /*Globally increase the font size a little (has a greater impact than 1%*/
   font-size: 101%;
+}
+
+i.glyphicon-arrow-right {
+  margin-left: 15px;
 }

@@ -85,6 +85,7 @@
                         </td>
                         <td>
                             {{ transfer.from_chain }}
+                            <i class="glyphicon glyphicon-arrow-right"></i>
                             <small>
                                 <br/>
                                 <span title="deposit on {{ transfer.from_chain }} block: {{ transfer.event_block_number }}">#{{ transfer.event_block_number }}</span>
@@ -101,7 +102,7 @@
                                 </small>
                             {% endif %}
                         </td>
-                        <td
+                        <td class="no-hover"
                             title="{{  transfer.amount_wei }} wei"
                         >
                             <code>~{{ transfer.formatted_amount|round(4) }}&nbsp;{{ transfer.token_symbol }}</code>

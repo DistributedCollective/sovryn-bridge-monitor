@@ -1,8 +1,14 @@
 {% extends "layout.jinja2" %}
 
+<!--
+NOTE TO SELF: VOUT can be gotten by counting the number of events in a batch and ordering them by their event index ( event log index or marked_as_mined_log_index)
+-->
+
+
+
 {% block content %}
 <div class="content">
-    <h1>Bidirectional FastBTC Transfers <small>(RSK&rarr;BTC)</small></h1>
+    <h1>FastBTC-out Transfers <small>(RSK&rarr;BTC)</small></h1>
     <nav>
         Show
         {% for value in [10, 50, 1000] %}
@@ -71,7 +77,7 @@
                             ></i>
                         {% endif %}
                     </td>
-                    <td
+                    <td class="no-hover"
                         title="{{  transfer.total_amount_satoshi }} sat"
                     >
                         <code>{{ transfer.formatted_amount }}&nbsp;BTC</code><br/>
@@ -138,9 +144,10 @@
                         {% endif %}
                         {% if transfer.bitcoin_tx_id %}
                             <span>BitcoinTx:</span>
-                            <a href="https://mempool.space/tx/{{ transfer.bitcoin_tx_id }}">
+                            <a href="https://mempool.space/tx/{{ transfer.bitcoin_tx_id }}#vout={{ vouts[transfer.transfer_id] }}">
                                 <code>{{ transfer.bitcoin_tx_id }}</code>
                             </a>
+                            <small>(VOUT {{ vouts[transfer.transfer_id] }})</small>
                             <br/>
                         {% endif %}
                         {% if transfer.transfer_batch_size %}
