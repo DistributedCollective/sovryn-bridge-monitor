@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
+import time
 from time import sleep
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, Union
 
@@ -17,16 +18,24 @@ from web3.contract import Contract, ContractEvent, ContractFunction
 from web3.middleware import construct_sign_and_send_raw_middleware, geth_poa_middleware
 from web3.exceptions import MismatchedABI
 from web3.types import BlockData
+from pyramid.request import Request
+from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from .retry_middleware import http_retry_request_middleware
+from ..models.chain_info import BlockInfo, BlockChain
 
 THIS_DIR = os.path.dirname(__file__)
 ABI_DIR = os.path.join(THIS_DIR, 'abi')
 logger = logging.getLogger(__name__)
+OLDEST_RSK_BLOCK_NUMBER = 3175735
+RSK_META_FETCHER_SHORT_DELAY = 2 * 60
+RSK_META_FETCHER_LONG_DELAY = 10 * 60
 
 INFURA_API_KEY = os.getenv('INFURA_API_KEY', 'INFURA_API_KEY_NOT_SET')
 RPC_URLS = {
-    'rsk_mainnet': os.getenv('RSK_NODE_URL', 'https://rsk-internal.sovryn.app/rpc'),
+    #'rsk_mainnet': os.getenv('RSK_NODE_URL', 'https://rsk-internal.sovryn.app/rpc'),
+    'rsk_mainnet': os.getenv('RSK_NODE_URL', 'https://mainnet-dev.sovryn.app/rpc/'),
     'rsk_mainnet_iov': 'https://public-node.rsk.co',
     'bsc_mainnet': os.getenv('BSC_NODE_URL', 'https://bsc-dataseed1.binance.org/'),
     'rsk_testnet': 'https://testnet.sovryn.app/rpc',
@@ -300,21 +309,89 @@ def call_concurrently(*funcs: Union[Callable, ContractFunction], retry: bool = F
     return _call()
 
 
+# fetches timestamps of rsk blocks and adds them to db, returns int which indicates length of delay for next update
+def update_chain_info_rsk(dbsession: Session, *, chain_name: str = "rsk_mainnet",
+                          fetch_amount: int = 200, seconds_per_iteration: float = RSK_META_FETCHER_SHORT_DELAY) -> int:
+    start_time = time.time()
+    block_chain_meta = dbsession.query(BlockChain).filter(BlockChain.name == "rsk").scalar()
+    if block_chain_meta is None:
+        raise LookupError("Block chain meta not found (maybe running import_block_meta_rsk will help)")
+
+    rsk_id = block_chain_meta.id
+    safety_limit = block_chain_meta.safe_limit
+
+    if chain_name != "rsk_mainnet":
+        raise NotImplementedError("This function only supports rsk_mainnet")
+    web3 = get_web3(chain_name)
+
+    current_block_number = web3.eth.block_number - safety_limit
+
+    latest_block_number = (dbsession.query(BlockInfo.block_number).filter(BlockInfo.block_chain_id == rsk_id)
+                           .order_by(BlockInfo.block_number.desc()).first()).block_number
+
+    if latest_block_number < current_block_number - fetch_amount:
+        logger.info("Fetching block timestamps from %s to %s",
+                    latest_block_number + 1, latest_block_number + fetch_amount)
+        for block_n in range(latest_block_number + 1, latest_block_number + fetch_amount + 1):
+            if block_n > current_block_number:
+                break
+            block = web3.eth.get_block(block_n)
+            block_info = BlockInfo(
+                block_chain_id=rsk_id,
+                block_number=block_n,
+                timestamp=datetime.fromtimestamp(block['timestamp'], tz=timezone.utc),
+            )
+            dbsession.add(block_info)
+
+        dbsession.commit()
+        time_to_sleep = seconds_per_iteration - (time.time() - start_time)
+        time_to_sleep = max(1, time_to_sleep)
+        sleep(time_to_sleep)
+        return RSK_META_FETCHER_SHORT_DELAY              # return indicates the delay for the next update
+
+    time_to_sleep = seconds_per_iteration - (time.time() - start_time)
+    logger.info("No need to fetch, sleeping for %s seconds", time_to_sleep)
+    time_to_sleep = max(1, time_to_sleep)
+    sleep(time_to_sleep)
+    return RSK_META_FETCHER_LONG_DELAY                  # if there was no need to fetch set a longer delay
+
+
+
+def update_chain_info_btc(request: Request, chain_name: str):
+    raise NotImplementedError
+
+
+
 @functools.lru_cache(maxsize=1024)
 def get_closest_block(
+    dbsession: Session,
     chain_name: str,
     wanted_datetime: datetime,
     *,
-    not_before: bool = False
+    not_after: bool = True,
+    allowed_diff_seconds: int = 10 * 60
 ) -> BlockData:
 
-    web3 = get_web3(chain_name)
     wanted_timestamp = int(wanted_datetime.timestamp())
     logger.debug("Wanted timestamp: %s", wanted_timestamp)
-    start_block_number = 1
+
+    block_chain_meta = dbsession.query(BlockChain).filter(BlockChain.name == "rsk").scalar()
+    rsk_id = block_chain_meta.id
+    if block_chain_meta is None:
+        raise LookupError("Block chain meta not found")
+    closest_block = (dbsession.query(BlockInfo).filter((BlockInfo.block_chain_id == rsk_id) &
+                    (BlockInfo.timestamp <= wanted_datetime))
+                    .order_by(BlockInfo.timestamp.desc()).first())
+
+    if closest_block is not None:
+        if abs(closest_block.timestamp.timestamp() - wanted_timestamp) <= allowed_diff_seconds:
+            return closest_block
+        # else attempt to get better block from by using web3
+    web3 = get_web3(chain_name)
     end_block_number = web3.eth.block_number
+
+    start_block_number = 1
     logger.debug("Bisecting between %s and %s", start_block_number, end_block_number)
-    closest_block = None
     closest_diff = 2**256 - 1
     while start_block_number <= end_block_number:
         target_block_number = (start_block_number + end_block_number) // 2
@@ -354,8 +431,9 @@ def get_closest_block(
         closest_diff,
     )
 
-    if not_before and closest_block["timestamp"] < wanted_timestamp:
-        logger.debug("Block is before wanted timestamp and not_before=True, returning next block")
-        return web3.eth.get_block(closest_block["number"] + 1)
+    if not_after and closest_block["timestamp"] > wanted_timestamp:
+        logger.debug("Block is after wanted timestamp and not_after=True, returning previous block")
+        return web3.eth.get_block(closest_block["number"] - 1)
 
     return closest_block
+

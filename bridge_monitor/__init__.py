@@ -1,5 +1,6 @@
 from pyramid.config import Configurator
 import logging
+from .rsk_block_meta_fetcher import start_rsk_block_meta_fetcher
 
 
 def main(global_config, **settings):
@@ -16,5 +17,5 @@ def main(global_config, **settings):
         logging.info("Chain env: %s", config.registry['chain_env'])
 
         config.scan()
-
+        start_rsk_block_meta_fetcher(settings)
     return config.make_wsgi_app()

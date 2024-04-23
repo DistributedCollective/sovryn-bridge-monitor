@@ -23,3 +23,8 @@ Data*.fs*
 coverage
 test
 *.sqlite
+
+.idea/
+*.parquet
+development_local.ini
+docker-compose.yaml
