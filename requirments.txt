@@ -5,7 +5,7 @@ attrs==21.2.0
 base58==2.1.0
 beautifulsoup4==4.10.0
 bitarray==1.2.2
--e git+ssh://git@github.com/interjektio/sovryn-bridge-monitor-dev.git@7f4d60aee75c8cdd81ec750bb7039eecfefe26d0#egg=bridge_monitor
+-e git+ssh://git@github.com/interjektio/sovryn-bridge-monitor-dev.git@193d57316cd394e229b458e01980036adbf59a22#egg=bridge_monitor
 certifi==2021.5.30
 chardet==4.0.0
 charset-normalizer==2.0.6
@@ -35,8 +35,10 @@ MarkupSafe==2.0.1
 multiaddr==0.0.9
 multidict==5.1.0
 netaddr==0.8.0
+numpy==1.24.4
 openpyxl==3.1.2
 packaging==21.0
+pandas==2.0.3
 parsimonious==0.8.1
 PasteDeploy==2.1.1
 plaster==1.0
@@ -45,6 +47,7 @@ pluggy==1.0.0
 protobuf==3.18.0
 psycopg2==2.9.1
 py==1.10.0
+pyarrow==15.0.2
 pycryptodome==3.10.1
 Pygments==2.10.0
 pyparsing==2.4.7
@@ -60,6 +63,8 @@ pyrsistent==0.18.0
 pytest==6.2.5
 pytest-cov==2.12.1
 python-dateutil==2.8.2
+python-dotenv==1.0.1
+pytz==2024.1
 repoze.lru==0.7
 requests==2.26.0
 rlp==2.0.1
@@ -71,6 +76,7 @@ toolz==0.11.1
 transaction==3.0.1
 translationstring==1.4
 typing-extensions==3.10.0.2
+tzdata==2024.1
 urllib3==1.26.7
 varint==1.0.2
 venusian==3.0.0

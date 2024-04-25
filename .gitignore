@@ -28,3 +28,7 @@ test
 *.parquet
 development_local.ini
 docker-compose.yaml
+.env
+
+rpc/    # ignore for now
+bridge_monitor/models/btc_tx_info.py
