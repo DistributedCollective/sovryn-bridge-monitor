@@ -12,7 +12,6 @@ chardet==4.0.0
 charset-normalizer==2.0.6
 ckzg==1.0.1
 coverage==5.5
-curlify==2.2.1
 cytoolz==0.12.3
 et-xmlfile==1.1.0
 eth-abi==2.1.1
@@ -45,6 +44,10 @@ numpy==1.26.4
 openpyxl==3.1.2
 packaging==21.0
 pandas==2.2.2
+numpy==1.24.4
+openpyxl==3.1.2
+packaging==21.0
+pandas==2.0.3
 parsimonious==0.8.1
 PasteDeploy==2.1.1
 plaster==1.0
@@ -53,6 +56,7 @@ pluggy==1.0.0
 protobuf==3.18.0
 psycopg2==2.9.1
 py==1.10.0
+pyarrow==15.0.2
 pycryptodome==3.10.1
 Pygments==2.10.0
 pyparsing==2.4.7
