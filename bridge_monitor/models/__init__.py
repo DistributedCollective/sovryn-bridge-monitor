@@ -12,7 +12,8 @@ from .bidirectional_fastbtc import BidirectionalFastBTCTransfer, TransferStatus 
 from .fastbtc_in import FastBTCInTransfer, FastBTCInTransferStatus  # flake8: noqa
 from .pnl import ProfitCalculation, PnLTransaction  # flake8: noqa
 from .replenisher import BidirectionalFastBTCReplenisherTransaction  # flake8: noqa
-
+from .chain_info import BlockChain, BlockInfo
+from .bitcoin_tx_info import BtcWallet, BtcWalletTransaction
 # Run ``configure_mappers`` after defining all of the models to ensure
 # all relationships can be setup.
 configure_mappers()

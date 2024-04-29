@@ -356,12 +356,6 @@ def update_chain_info_rsk(dbsession: Session, *, chain_name: str = "rsk_mainnet"
     return RSK_META_FETCHER_LONG_DELAY                  # if there was no need to fetch set a longer delay
 
 
-
-def update_chain_info_btc(request: Request, chain_name: str):
-    raise NotImplementedError
-
-
-
 @functools.lru_cache(maxsize=1024)
 def get_closest_block(
     dbsession: Session,
