@@ -61,6 +61,8 @@ setup(
         ],
         'console_scripts': [
             'monitor_bridge=bridge_monitor.scripts.monitor_bridge:main',
+            'import_block_meta_rsk=bridge_monitor.scripts.import_block_meta_rsk:main',
+            'initialize_btc_wallet_txs=bridge_monitor.scripts.initialize_btc_wallet_txs:main'
         ],
     },
 )

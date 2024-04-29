@@ -1,6 +1,6 @@
 venv/
 secret_env
-
+/.env
 *.egg
 *.egg-info
 *.pyc
@@ -26,5 +26,11 @@ test
 
 .idea/
 *.parquet
-development_local.ini
-docker-compose.yaml
+development-local.ini
+/docker-compose.yaml
+
+/create_btc_wallet_and_descriptor.sh
+/create_replenisher_wallet_and_descriptor.sh
+/create_testnet_wallet.sh
+/script.sh
+/development_local.ini

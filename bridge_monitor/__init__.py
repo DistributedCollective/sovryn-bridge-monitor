@@ -2,7 +2,6 @@ from pyramid.config import Configurator
 import logging
 from .rsk_block_meta_fetcher import start_rsk_block_meta_fetcher
 
-
 def main(global_config, **settings):
     """ This function returns a Pyramid WSGI application.
     """
