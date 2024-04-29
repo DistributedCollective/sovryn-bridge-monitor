@@ -6,14 +6,16 @@ attrs==21.2.0
 base58==2.1.0
 beautifulsoup4==4.10.0
 bitarray==1.2.2
--e git+ssh://git@github.com/interjektio/sovryn-bridge-monitor-dev@e8a4cbc0a7d6b35e676837cb255bc88b325b9977#egg=bridge_monitor
+-e git+ssh://git@github.com/interjektio/sovryn-bridge-monitor-dev@5d7da176cbfd75cb1e68bd5e1eb32a07fe36a0d2#egg=bridge_monitor
 certifi==2021.5.30
+cfgv==3.4.0
 chardet==4.0.0
 charset-normalizer==2.0.6
 ckzg==1.0.1
 coverage==5.5
 curlify==2.2.1
 cytoolz==0.12.3
+distlib==0.3.8
 et-xmlfile==1.1.0
 eth-abi==2.1.1
 eth-account==0.5.6
@@ -24,10 +26,12 @@ eth-rlp==0.2.1
 eth-typing==2.2.2
 eth-utils==1.10.0
 exceptiongroup==1.2.1
+filelock==3.13.4
 frozenlist==1.4.1
 greenlet==1.1.1
 hexbytes==0.2.2
 hupper==1.10.3
+identify==2.5.36
 idna==3.2
 importlib-resources==5.2.2
 iniconfig==1.1.1
@@ -41,6 +45,7 @@ MarkupSafe==2.0.1
 multiaddr==0.0.9
 multidict==5.1.0
 netaddr==0.8.0
+nodeenv==1.8.0
 numpy==1.26.4
 openpyxl==3.1.2
 packaging==21.0
@@ -49,7 +54,9 @@ parsimonious==0.8.1
 PasteDeploy==2.1.1
 plaster==1.0
 plaster-pastedeploy==0.7
+platformdirs==4.2.1
 pluggy==1.0.0
+pre-commit==3.7.0
 protobuf==3.18.0
 psycopg2==2.9.1
 py==1.10.0
@@ -71,6 +78,7 @@ python-dateutil==2.8.2
 python-dotenv==1.0.1
 pytz==2024.1
 pyunormalize==15.1.0
+PyYAML==6.0.1
 referencing==0.34.0
 regex==2024.4.16
 repoze.lru==0.7
@@ -90,6 +98,7 @@ tzdata==2024.1
 urllib3==1.26.7
 varint==1.0.2
 venusian==3.0.0
+virtualenv==20.26.0
 waitress==2.0.0
 web3==5.23.1
 WebOb==1.8.7
