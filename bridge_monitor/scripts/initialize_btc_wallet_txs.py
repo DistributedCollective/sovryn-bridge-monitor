@@ -2,13 +2,12 @@ import logging
 import argparse
 import sys
 import configparser
-import time
 from pyramid.paster import setup_logging
-
+from typing import List
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 
-from ..rpc.rpc import get_wallet_transactions_from_block, get_btc_wallet_balance_at_time
+from ..rpc.rpc import get_wallet_transactions_from_block
 
 
 logger = logging.getLogger(__name__)
@@ -29,7 +28,7 @@ def parse_args(argv):
     return parser.parse_args(argv[1:])
 
 
-def main(argv=None):
+def main(argv: List[str] | None=None):
     if argv is None:
         argv = sys.argv
     args = parse_args(argv)

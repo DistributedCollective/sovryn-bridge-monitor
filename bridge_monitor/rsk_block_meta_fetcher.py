@@ -8,7 +8,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy import engine_from_config
 from sqlalchemy.orm import Session
 
-from .business_logic.utils import update_chain_info_rsk, RSK_META_FETCHER_LONG_DELAY, RSK_META_FETCHER_SHORT_DELAY
+from .business_logic.utils import update_chain_info_rsk, RSK_META_FETCHER_SHORT_DELAY
 
 
 logger = logging.getLogger(__name__)

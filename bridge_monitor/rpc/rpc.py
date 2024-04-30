@@ -2,7 +2,6 @@ import os
 from datetime import datetime, timezone
 from decimal import Decimal, getcontext
 import logging
-import time
 
 from requests import post
 import dotenv
@@ -86,7 +85,7 @@ def get_wallet_transactions_from_block(dbsession: Session, block_n: int, wallet_
     dbsession.flush()
 
 
-def get_new_blocks(dbsession: Session, wallet_name: str):
+def get_new_blocks(dbsession: Session, wallet_name: str) -> None:
     logger.info("Searching for new blocks")
 
     wallet_id = dbsession.query(BtcWallet.id).filter(BtcWallet.name == wallet_name).scalar()
@@ -95,9 +94,9 @@ def get_new_blocks(dbsession: Session, wallet_name: str):
     get_wallet_transactions_from_block(dbsession, newest_block_n, wallet_name)
 
 
-def get_btc_wallet_balance_at_time(dbsession: Session, wallet_name: str, target_timestamp: int | float):
+def get_btc_wallet_balance_at_date(dbsession: Session, wallet_name: str, target_date: datetime | float) -> Decimal:
     wallet_id = dbsession.query(BtcWallet.id).filter(BtcWallet.name == wallet_name).scalar()
     sum_of_transactions = dbsession.query(func.sum(BtcWalletTransaction.net_change))\
-        .filter(BtcWalletTransaction.timestamp < datetime.fromtimestamp(target_timestamp, tz=timezone.utc),
+        .filter(BtcWalletTransaction.timestamp < target_date,
                 BtcWalletTransaction.wallet_id == wallet_id).scalar()
     return sum_of_transactions
