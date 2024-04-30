@@ -31,6 +31,3 @@ def rsk_block_meta_fetcher(engine: Engine, logger):
                 logger.exception("Error in update_chain_info_rsk")
                 break
             sleep(1)
-
-
-

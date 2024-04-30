@@ -28,6 +28,3 @@ def includeme(config: Configurator):
         environment = config.get_jinja2_environment()
         environment.filters['explorer_tx_link'] = explorer_tx_link
     config.action(None, setup_jinja2_environment, order=9999)
-
-
-

@@ -430,4 +430,3 @@ def get_closest_block(
         return web3.eth.get_block(closest_block["number"] - 1)
 
     return closest_block
-

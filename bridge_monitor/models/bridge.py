@@ -117,4 +117,3 @@ class Transfer(Base):
         if chains == {'rsk_testnet', 'bsc_testnet'}:
             return 'rsk_bsc_testnet'
         return 'unknown'
-

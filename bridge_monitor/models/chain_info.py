@@ -23,5 +23,3 @@ class BlockInfo(Base):
     block_chain_id = Column(Integer, ForeignKey('block_chain.id'), nullable=False, primary_key=True)
     block_number = Column(Integer, primary_key=True, nullable=False)
     timestamp = Column(DateTime(timezone=True), nullable=False)
-
-
