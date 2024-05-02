@@ -26,6 +26,7 @@ from bridge_monitor.business_logic.utils import (
 from bridge_monitor.models.pnl import ProfitCalculation
 from .utils import parse_time_range
 from ..business_logic.utils import update_chain_info_rsk
+from ..rpc.rpc import get_btc_wallet_balance_at_date
 logger = logging.getLogger(__name__)
 
 
@@ -121,12 +122,20 @@ def new_sanity_check(request: Request):
             'manual_in': getval('manual_in'),
             # Start/End_balance:= Btc_peg_in+Btc_peg_out+Rsk_peg_in+Rsk_peg_out+Btc_backup_wallet
             'start_balance': sum(
-                rsk_balance_at_time(dbsession, start, bidi_fastbtc_contract_address, chain)['balance_decimal'],
-                rsk_balance_at_time(dbsession, start,fastbtc_in_contract_address, chain)['balance_decimal']
+                (rsk_balance_at_time(dbsession, start, bidi_fastbtc_contract_address, chain)['balance_decimal'],
+                    rsk_balance_at_time(dbsession, start, fastbtc_in_contract_address, chain)['balance_decimal'],
+                    get_btc_wallet_balance_at_date(dbsession, "fastbtc-out", start),
+                    get_btc_wallet_balance_at_date(dbsession, "fastbtc-in", start),
+                    get_btc_wallet_balance_at_date(dbsession, "btc-backup", start))
+
             ),
             'end_balance': sum(
-                rsk_balance_at_time(dbsession, end, bidi_fastbtc_contract_address, chain)['balance_decimal'],
-                rsk_balance_at_time(dbsession, end, fastbtc_in_contract_address, chain)['balance_decimal']
+                (rsk_balance_at_time(dbsession, end, bidi_fastbtc_contract_address, chain)['balance_decimal'],
+                    rsk_balance_at_time(dbsession, end, fastbtc_in_contract_address, chain)['balance_decimal'],
+                    get_btc_wallet_balance_at_date(dbsession, "fastbtc-out", end),
+                    get_btc_wallet_balance_at_date(dbsession, "fastbtc-in", end),
+                    get_btc_wallet_balance_at_date(dbsession, "btc-backup", end))
+
             ),
             # Rsk_tx_cost:=federator_tx_cost peg_in + federator_tx_cost_peg_out
             # ignore for now

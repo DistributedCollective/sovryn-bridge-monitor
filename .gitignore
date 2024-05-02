@@ -34,3 +34,4 @@ development-local.ini
 /create_testnet_wallet.sh
 /script.sh
 /development_local.ini
+/create_btc_backupwallet.sh

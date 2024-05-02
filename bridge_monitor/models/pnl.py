@@ -67,4 +67,3 @@ class HasPnL:
     def profit_calculation(cls):
         backref_name = cls.__tablename__ + 's'
         return relationship(ProfitCalculation, backref=backref(backref_name))
-

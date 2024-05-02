@@ -18,9 +18,7 @@ from web3.contract import Contract, ContractEvent, ContractFunction
 from web3.middleware import construct_sign_and_send_raw_middleware, geth_poa_middleware
 from web3.exceptions import MismatchedABI
 from web3.types import BlockData
-from pyramid.request import Request
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 
 from .retry_middleware import http_retry_request_middleware
 from ..models.chain_info import BlockInfo, BlockChain
@@ -430,4 +428,3 @@ def get_closest_block(
         return web3.eth.get_block(closest_block["number"] - 1)
 
     return closest_block
-

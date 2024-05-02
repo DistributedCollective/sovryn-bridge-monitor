@@ -1,32 +1,26 @@
 import logging
 import argparse
-import os
 import sys
-import time
-from datetime import timedelta, datetime, timezone
+from datetime import datetime, timezone
 from tempfile import TemporaryFile
 import json
-import transaction
 import configparser
 from math import floor
+from typing import List
 
-from pyramid.paster import bootstrap, setup_logging
-from pyramid.request import Request
+from pyramid.paster import setup_logging
 import zstandard as zstd
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 import pandas as pd
 
 
-
-
-from bridge_monitor.models import get_tm_session
 from bridge_monitor.models.chain_info import BlockInfo, BlockChain
 
 logger = logging.getLogger(__name__)
 
 
-def parse_args(argv):
+def parse_args(argv: List[str]):
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'config_uri',

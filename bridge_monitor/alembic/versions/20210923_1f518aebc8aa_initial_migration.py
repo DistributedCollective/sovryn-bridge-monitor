@@ -1,7 +1,7 @@
 """initial_migration
 
 Revision ID: 1f518aebc8aa
-Revises: 
+Revises:
 Create Date: 2021-09-23 13:37:37.099489
 
 """
@@ -79,7 +79,3 @@ class Uint256(types.TypeDecorator):
         if value < 0 or value > self.MAX_UINT256:
             raise f'Value {value} is out of range for UINT256'
         return value
-
-
-
-

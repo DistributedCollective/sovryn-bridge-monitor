@@ -4,6 +4,7 @@ from decimal import Decimal, getcontext
 import logging
 from typing import List, Any
 
+
 import requests
 import dotenv
 from sqlalchemy.orm import Session
@@ -19,10 +20,11 @@ RPC_URL = os.getenv('RPC_URL')
 getcontext().prec = 32
 
 
-def send_rpc_request(method: str, params: List[Any], url: str) -> requests.Response:
+
+def send_rpc_request(method: str, params: List[Any], url: str, id: str="test") -> requests.Response:
     return requests.post(url, json={
         'jsonrpc': '2.0',
-        'id': 'test',
+        'id': id,
         'method': method,
         'params': params
     }, auth=(RPC_USER, RPC_PASSWORD),
@@ -48,14 +50,13 @@ def get_wallet_transactions_from_block(dbsession: Session, block_n: int, wallet_
     if block_n > 0:
         block_response = send_rpc_request("getblockstats", [block_n, ["height", "blockhash"]], wallet_url).json()
         main_request_params.append(block_response["result"]["blockhash"])
-
     response = send_rpc_request('listsinceblock', main_request_params, wallet_url).json()
     results = response["result"]["transactions"]
 
     if not results:
         logger.info("Found no transactions since block %d", block_n)
         return
-
+    logger.info("Results found: %d", len(results))
     prev_tx_hash = ""
     transaction = None
     for entry in results:
@@ -95,9 +96,9 @@ def get_new_blocks(dbsession: Session, wallet_name: str) -> None:
     get_wallet_transactions_from_block(dbsession, newest_block_n, wallet_name)
 
 
-def get_btc_wallet_balance_at_time(dbsession: Session, wallet_name: str, target_timestamp: int | float) -> None:
+def get_btc_wallet_balance_at_date(dbsession: Session, wallet_name: str, target_date: datetime) -> Decimal:
     wallet_id = dbsession.query(BtcWallet.id).filter(BtcWallet.name == wallet_name).scalar()
     sum_of_transactions = dbsession.query(func.sum(BtcWalletTransaction.net_change))\
-        .filter(BtcWalletTransaction.timestamp < datetime.fromtimestamp(target_timestamp, tz=timezone.utc),
+        .filter(BtcWalletTransaction.timestamp < target_date,
                 BtcWalletTransaction.wallet_id == wallet_id).scalar()
     return sum_of_transactions
