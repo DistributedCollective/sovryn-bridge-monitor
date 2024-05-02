@@ -2,9 +2,9 @@ import os
 from datetime import datetime, timezone
 from decimal import Decimal, getcontext
 import logging
-import time
+from typing import List, Any
 
-from requests import post
+import requests
 import dotenv
 from sqlalchemy.orm import Session
 from bridge_monitor.models.bitcoin_tx_info import BtcWallet, BtcWalletTransaction
@@ -19,8 +19,8 @@ RPC_URL = os.getenv('RPC_URL')
 getcontext().prec = 32
 
 
-def send_rpc_request(method, params, url):
-    return post(url, json={
+def send_rpc_request(method: str, params: List[Any], url: str) -> requests.Response:
+    return requests.post(url, json={
         'jsonrpc': '2.0',
         'id': 'test',
         'method': method,
@@ -30,12 +30,12 @@ def send_rpc_request(method, params, url):
                 )
 
 
-def get_block_hash(block_n: int, wallet_url):
+def get_block_hash(block_n: int, wallet_url: str) -> str:
     block_response = send_rpc_request("getblockstats", [block_n, ["height", "blockhash"]], wallet_url).json()
     return block_response["result"]["blockhash"]
 
 
-def get_wallet_transactions_from_block(dbsession: Session, block_n: int, wallet_name: str):
+def get_wallet_transactions_from_block(dbsession: Session, block_n: int, wallet_name: str) -> None:
     logger.info("Searching for transaction from block: %d on wallet: %s", block_n, wallet_name)
     main_request_params = []
 
@@ -52,7 +52,7 @@ def get_wallet_transactions_from_block(dbsession: Session, block_n: int, wallet_
     response = send_rpc_request('listsinceblock', main_request_params, wallet_url).json()
     results = response["result"]["transactions"]
 
-    if results == []:
+    if not results:
         logger.info("Found no transactions since block %d", block_n)
         return
 
@@ -86,7 +86,7 @@ def get_wallet_transactions_from_block(dbsession: Session, block_n: int, wallet_
     dbsession.flush()
 
 
-def get_new_blocks(dbsession: Session, wallet_name: str):
+def get_new_blocks(dbsession: Session, wallet_name: str) -> None:
     logger.info("Searching for new blocks")
 
     wallet_id = dbsession.query(BtcWallet.id).filter(BtcWallet.name == wallet_name).scalar()
@@ -95,7 +95,7 @@ def get_new_blocks(dbsession: Session, wallet_name: str):
     get_wallet_transactions_from_block(dbsession, newest_block_n, wallet_name)
 
 
-def get_btc_wallet_balance_at_time(dbsession: Session, wallet_name: str, target_timestamp: int | float):
+def get_btc_wallet_balance_at_time(dbsession: Session, wallet_name: str, target_timestamp: int | float) -> None:
     wallet_id = dbsession.query(BtcWallet.id).filter(BtcWallet.name == wallet_name).scalar()
     sum_of_transactions = dbsession.query(func.sum(BtcWalletTransaction.net_change))\
         .filter(BtcWalletTransaction.timestamp < datetime.fromtimestamp(target_timestamp, tz=timezone.utc),
