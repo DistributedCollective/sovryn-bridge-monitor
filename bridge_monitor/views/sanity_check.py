@@ -125,14 +125,17 @@ def new_sanity_check(request: Request):
                 (rsk_balance_at_time(dbsession, start, bidi_fastbtc_contract_address, chain)['balance_decimal'],
                     rsk_balance_at_time(dbsession, start, fastbtc_in_contract_address, chain)['balance_decimal'],
                     get_btc_wallet_balance_at_date(dbsession, "fastbtc-out", start),
-                    get_btc_wallet_balance_at_date(dbsession, "fastbtc-in", start))
+                    get_btc_wallet_balance_at_date(dbsession, "fastbtc-in", start),
+                    get_btc_wallet_balance_at_date(dbsession, "btc-backup", start))
 
             ),
             'end_balance': sum(
                 (rsk_balance_at_time(dbsession, end, bidi_fastbtc_contract_address, chain)['balance_decimal'],
                     rsk_balance_at_time(dbsession, end, fastbtc_in_contract_address, chain)['balance_decimal'],
-                    get_btc_wallet_balance_at_date(dbsession, "fastbtc-out", start),
-                    get_btc_wallet_balance_at_date(dbsession, "fastbtc-in", start))
+                    get_btc_wallet_balance_at_date(dbsession, "fastbtc-out", end),
+                    get_btc_wallet_balance_at_date(dbsession, "fastbtc-in", end),
+                    get_btc_wallet_balance_at_date(dbsession, "btc-backup", end))
+
             ),
             # Rsk_tx_cost:=federator_tx_cost peg_in + federator_tx_cost_peg_out
             # ignore for now

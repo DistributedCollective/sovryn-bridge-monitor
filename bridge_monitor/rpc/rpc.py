@@ -18,10 +18,10 @@ RPC_URL = os.getenv('RPC_URL')
 getcontext().prec = 32
 
 
-def send_rpc_request(method, params, url):
+def send_rpc_request(method, params, url, id="test"):
     return post(url, json={
         'jsonrpc': '2.0',
-        'id': 'test',
+        'id': id,
         'method': method,
         'params': params
     }, auth=(RPC_USER, RPC_PASSWORD),
@@ -47,14 +47,13 @@ def get_wallet_transactions_from_block(dbsession: Session, block_n: int, wallet_
     if block_n > 0:
         block_response = send_rpc_request("getblockstats", [block_n, ["height", "blockhash"]], wallet_url).json()
         main_request_params.append(block_response["result"]["blockhash"])
-
     response = send_rpc_request('listsinceblock', main_request_params, wallet_url).json()
     results = response["result"]["transactions"]
 
-    if results == []:
+    if not results:
         logger.info("Found no transactions since block %d", block_n)
         return
-
+    logger.info("Results found: %d", len(results))
     prev_tx_hash = ""
     transaction = None
     for entry in results:
