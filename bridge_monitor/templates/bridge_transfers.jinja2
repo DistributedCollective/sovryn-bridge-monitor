@@ -54,6 +54,7 @@
                 <tr>
                     <th></th>
                     <th>from</th>
+                    <th></th>
                     <th>to</th>
                     <th>amount</th>
                     <th>votes</th>
@@ -85,12 +86,14 @@
                         </td>
                         <td>
                             {{ transfer.from_chain }}
-                            <i class="glyphicon glyphicon-arrow-right"></i>
                             <small>
                                 <br/>
                                 <span title="deposit on {{ transfer.from_chain }} block: {{ transfer.event_block_number }}">#{{ transfer.event_block_number }}</span>
                             </small>
                         </td>
+                    <td>
+                        <i class="glyphicon glyphicon-arrow-right"></i>
+                    </td>
                         <td>
                             {{ transfer.to_chain }}
                             {% if transfer.executed_block_number %}
@@ -123,26 +126,34 @@
                         </td>
                         <td class="details">
                             <span>TxIdU:</span><code>{{ transfer.transaction_id }}</code><br/>
-                            <span>EventTx:</span>
-                            <a href="https://explorer.rootstock.io/tx/{{ transfer.event_transaction_hash }}">
-                                <code>{{ transfer.event_transaction_hash }}</code>
-                            </a>
-                            <br/>
-                            <span>ExecTx:</span>
-                            <a href="https://explorer.rootstock.io/tx/{{ transfer.executed_transaction_hash }}">
-                                <code>{{ transfer.executed_transaction_hash }}</code>
-                            </a>
-                            <br/>
-                            <span>Depositor:</span>
-                            <a href="https://explorer.rootstock.io/address/{{ transfer.depositor_address }}">
-                                <code>{{ transfer.depositor_address }}</code>
-                            </a>
-                            <br/>
-                            <span>Receiver:</span>
-                            <a href="https://explorer.rootstock.io/address/{{ transfer.receiver_address }}">
-                                <code>{{ transfer.receiver_address }}</code>
-                            </a>
-                            <br/>
+                            <div style="display: flex">
+                                <span>EventTx:</span>
+                                <a href="https://explorer.rootstock.io/tx/{{ transfer.event_transaction_hash }}">
+                                    <code>{{ transfer.event_transaction_hash }}</code>
+                                </a>
+                                <br/>
+                            </div>
+                            <div style="display: flex">
+                                <span>ExecTx:</span>
+                                <a href="https://explorer.rootstock.io/tx/{{ transfer.executed_transaction_hash }}">
+                                    <code>{{ transfer.executed_transaction_hash }}</code>
+                                </a>
+                                <br/>
+                            </div>
+                            <div style="display: flex">
+                                <span>Depositor:</span>
+                                <a href="https://explorer.rootstock.io/address/{{ transfer.depositor_address }}">
+                                    <code>{{ transfer.depositor_address }}</code>
+                                </a>
+                                <br/>
+                            </div>
+                            <div style="display: flex">
+                                <span>Receiver:</span>
+                                <a href="https://explorer.rootstock.io/address/{{ transfer.receiver_address }}">
+                                    <code>{{ transfer.receiver_address }}</code>
+                                </a>
+                                <br/>
+                            </div>
                             {% if transfer.user_data != "0x" %}
                                 <span>UserData:</span><code>{{ transfer.user_data }}</code><br/>
                             {% endif %}

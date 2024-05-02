@@ -40,7 +40,7 @@ td.details {
   font-size: smaller;
 }
 td.details span {
-  margin: 3px auto;
+  margin: 3px 0;
   display: inline-block;
   vertical-align: top;
   min-width: 80px;
@@ -109,13 +109,9 @@ nav>form>input {
 }
 a>code {
   text-decoration: underline;
-  color: #89cde3
+  color: #89cde3;
 }
 
 * {                 /*Globally increase the font size a little (has a greater impact than 1%*/
   font-size: 101%;
-}
-
-i.glyphicon-arrow-right {
-  margin-left: 15px;
 }
