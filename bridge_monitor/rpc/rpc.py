@@ -2,8 +2,10 @@ import os
 from datetime import datetime, timezone
 from decimal import Decimal, getcontext
 import logging
+from typing import List, Any
 
-from requests import post
+
+import requests
 import dotenv
 from sqlalchemy.orm import Session
 from bridge_monitor.models.bitcoin_tx_info import BtcWallet, BtcWalletTransaction
@@ -18,8 +20,9 @@ RPC_URL = os.getenv('RPC_URL')
 getcontext().prec = 32
 
 
-def send_rpc_request(method, params, url, id="test"):
-    return post(url, json={
+
+def send_rpc_request(method: str, params: List[Any], url: str, id: str="test") -> requests.Response:
+    return requests.post(url, json={
         'jsonrpc': '2.0',
         'id': id,
         'method': method,
@@ -29,12 +32,12 @@ def send_rpc_request(method, params, url, id="test"):
                 )
 
 
-def get_block_hash(block_n: int, wallet_url):
+def get_block_hash(block_n: int, wallet_url: str) -> str:
     block_response = send_rpc_request("getblockstats", [block_n, ["height", "blockhash"]], wallet_url).json()
     return block_response["result"]["blockhash"]
 
 
-def get_wallet_transactions_from_block(dbsession: Session, block_n: int, wallet_name: str):
+def get_wallet_transactions_from_block(dbsession: Session, block_n: int, wallet_name: str) -> None:
     logger.info("Searching for transaction from block: %d on wallet: %s", block_n, wallet_name)
     main_request_params = []
 
@@ -93,7 +96,7 @@ def get_new_blocks(dbsession: Session, wallet_name: str) -> None:
     get_wallet_transactions_from_block(dbsession, newest_block_n, wallet_name)
 
 
-def get_btc_wallet_balance_at_date(dbsession: Session, wallet_name: str, target_date: datetime | float) -> Decimal:
+def get_btc_wallet_balance_at_date(dbsession: Session, wallet_name: str, target_date: datetime) -> Decimal:
     wallet_id = dbsession.query(BtcWallet.id).filter(BtcWallet.name == wallet_name).scalar()
     sum_of_transactions = dbsession.query(func.sum(BtcWalletTransaction.net_change))\
         .filter(BtcWalletTransaction.timestamp < target_date,
