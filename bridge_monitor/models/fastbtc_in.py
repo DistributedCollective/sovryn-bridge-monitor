@@ -164,6 +164,10 @@ class FastBTCInTransfer(HasPnL, Base):
     def revocations(self):
         return self.extra_data.get('revocations', [])
 
+    @property
+    def execution_failures(self):
+        return self.extra_data.get('execution_failures', [])
+
     def update_status(self, new_status: FastBTCInTransferStatus):
         # Only update upwards, except for INVALID
         if (
@@ -253,13 +257,13 @@ class FastBTCInTransfer(HasPnL, Base):
         self.executed_block_hash = to_hex_if_bytes(block_hash)
         self.executed_log_index = log_index
 
-    def mark_execution_failure(
+    def mark_execution_failed(
         self,
         *,
         tx_hash: Union[str, bytes]
     ):
         self.has_execution_failure = True
-        if not 'execution_failures' in self.extra_data:
+        if 'execution_failures' not in self.extra_data:
             self.extra_data['execution_failures'] = []
 
         flag_modified(self, 'extra_data')  # have to flag it as modified for sqlalchemy to save

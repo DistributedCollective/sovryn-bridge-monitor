@@ -116,6 +116,9 @@
                         {% if transfer.submission_transaction_hash %}
                             <span>SubmissionTx:</span><code>{{ transfer.submission_transaction_hash }}</code><br/>
                         {% endif %}
+                        {% if transfer.has_execution_failure %}
+                            <span>ExecutionFailures:</span><code>{{ transfer.execution_failures }}</code><br/>
+                        {% endif %}
                         {% if transfer.executed_transaction_hash %}
                             <span>ExecutionTx:</span><code>{{ transfer.executed_transaction_hash }}</code><br/>
                         {% endif %}
