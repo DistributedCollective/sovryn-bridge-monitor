@@ -5,6 +5,7 @@ import logging
 
 from requests import post
 import dotenv
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 from bridge_monitor.models.bitcoin_tx_info import BtcWallet, BtcWalletTransaction
 from sqlalchemy.sql import func
@@ -84,7 +85,7 @@ def get_wallet_transactions_from_block(dbsession: Session, block_n: int, wallet_
     dbsession.flush()
 
 
-def get_new_blocks(dbsession: Session, wallet_name: str) -> None:
+def get_new_btc_transactions(dbsession: Session, wallet_name: str) -> None:
     logger.info("Searching for new blocks")
 
     wallet_id = dbsession.query(BtcWallet.id).filter(BtcWallet.name == wallet_name).scalar()
@@ -94,7 +95,13 @@ def get_new_blocks(dbsession: Session, wallet_name: str) -> None:
 
 
 def get_btc_wallet_balance_at_date(dbsession: Session, wallet_name: str, target_date: datetime | float) -> Decimal:
+    logger.info("Getting %s balance at %s", wallet_name, target_date.isoformat())
     wallet_id = dbsession.query(BtcWallet.id).filter(BtcWallet.name == wallet_name).scalar()
+    newest_tx = (dbsession.query(BtcWalletTransaction).filter(BtcWalletTransaction.wallet_id == wallet_id)
+                   .order_by(BtcWalletTransaction.timestamp.desc()).first())
+    if target_date > newest_tx.timestamp:
+        logger.info("Newest transaction timestamp older than requested, fetching new transactions")
+        get_new_btc_transactions(dbsession, wallet_name)
     sum_of_transactions = dbsession.query(func.sum(BtcWalletTransaction.net_change))\
         .filter(BtcWalletTransaction.timestamp < target_date,
                 BtcWalletTransaction.wallet_id == wallet_id).scalar()
