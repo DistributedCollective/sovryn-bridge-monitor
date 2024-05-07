@@ -40,12 +40,12 @@
                     <td>
                         {{ transaction.transaction_id|explorer_tx_link(transaction.transaction_chain) }}
                     </td>
-                    <td
+                    <td class="no-hover"
                         title="{{ transaction.amount_satoshi }} sat"
                     >
                         <code>{{ transaction.amount_btc }}&nbsp;BTC</code><br/>
                     </td>
-                    <td
+                    <td class="no-hover"
                         title="{{ transaction.fee_satoshi }} sat"
                     >
                         <code>{{ transaction.fee_btc }}&nbsp;BTC</code><br/>
