@@ -23,3 +23,5 @@ Data*.fs*
 coverage
 test
 *.sqlite
+.idea/
+development_local.ini

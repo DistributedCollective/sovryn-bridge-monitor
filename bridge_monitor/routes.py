@@ -9,3 +9,4 @@ def includeme(config):
     config.add_route('pnl', '/pnl/')
     config.include(sanity_check)
     config.add_route('pnl_details_csv', '/pnl/details.csv')
+    config.add_route('pnl_details', '/pnl/details/')

@@ -44,6 +44,7 @@ def bidirectional_fastbtc(request):
         'max_transfers': max_transfers,
         'num_transfers': len(transfers),
         'filter_name': transfer_filter_name,
+        'vouts': getTransferVouts(transfers),
         'btc_explorer_base_url': (
             'https://www.blockchain.com/btc-testnet' if chain_name.endswith('_testnet')
             else 'https://www.blockchain.com/btc'
@@ -53,3 +54,15 @@ def bidirectional_fastbtc(request):
             None
         ),
     }
+
+
+def getTransferVouts(transfers):
+    vouts = dict()
+    for transfer in transfers:
+        if transfer.transfer_batch_size == 1:
+            vouts[transfer.transfer_id] = 1
+            continue
+        vouts[transfer.transfer_id] = transfer.transfer_batch_size - len(list(t for t in transfers
+                                    if t.bitcoin_tx_id == transfer.bitcoin_tx_id and
+                                    t.marked_as_mined_log_index > transfer.marked_as_mined_log_index))
+    return vouts

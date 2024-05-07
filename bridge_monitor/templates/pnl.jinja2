@@ -17,7 +17,7 @@
         </div>
 
         <form
-            style="margin-bottom: .5em;"
+            style="margin-bottom: .5em; width: 20%;"
             method="GET"
             action="{{ request.current_route_path() }}"
         >
@@ -109,21 +109,25 @@
                 <td
                     title="{{ calculation.gross_profit_btc }} BTC"
                 >
-                    <code>
+                    <code class="profit">
                         {{ "%.6f BTC"|format(calculation.gross_profit_btc) }}
                     </code>
                 </td>
                 <td
                     title="{{ calculation.cost_btc }} BTC"
                 >
-                    <code>
-                        {{ "%.6f BTC"|format(calculation.cost_btc) }}
+                    <code class="loss">
+                        {{ "%.6f BTC"|format(calculation.cost_btc * -1) }}
                     </code>
                 </td>
                 <td
                     title="{{ calculation.net_profit_btc }} BTC"
                 >
-                    <code>
+                    {% if calculation.net_profit_btc >= 0 %}
+                    <code class="profit">
+                    {% else %}
+                    <code class="loss">
+                    {% endif %}
                         {{ "%.6f BTC"|format(calculation.net_profit_btc) }}
                     </code>
                 </td>
@@ -154,11 +158,20 @@
     {% if details or not show_details %}
         {# show export link if there are details, or if details are hidden and we don't know if there are details #}
         <p>
+            <a href="{{ request.route_path('pnl_details', _query={
+                'start': start.isoformat() if start else None,
+                'end': end.isoformat() if end else None,
+            }) }}">
+                Export details as .xlsx
+            </a>
+        </p>
+
+        <p>
             <a href="{{ request.route_path('pnl_details_csv', _query={
                 'start': start.isoformat() if start else None,
                 'end': end.isoformat() if end else None,
             }) }}">
-                Export details as CSV
+                Export details as .csv
             </a>
         </p>
     {% endif %}
@@ -201,21 +214,25 @@
                         <td
                             title="{{ detail.gross_profit_btc }} BTC"
                         >
-                            <code>
+                            <code class="profit">
                                 {{ "%.6f BTC"|format(detail.gross_profit_btc) }}
                             </code>
                         </td>
                         <td
                             title="{{ detail.cost_btc }} BTC"
                         >
-                            <code>
-                                {{ "%.6f BTC"|format(detail.cost_btc) }}
+                            <code class="loss">
+                                {{ "%.6f BTC"|format(detail.cost_btc * -1) }}
                             </code>
                         </td>
                         <td
                             title="{{ detail.net_profit_btc }} BTC"
                         >
-                            <code>
+                            {% if detail.net_profit_btc >= 0 %}
+                            <code class="profit">
+                            {% else %}
+                            <code class="loss">
+                            {% endif %}
                                 {{ "%.6f BTC"|format(detail.net_profit_btc) }}
                             </code>
                         </td>

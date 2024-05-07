@@ -71,7 +71,7 @@
                             ></i>
                         {% endif %}
                     </td>
-                    <td
+                    <td class="no-hover"
                         title="{{  transfer.net_amount_wei }} wei"
                     >
                         <code>{{ transfer.formatted_net_amount }}&nbsp;rBTC</code><br/>
@@ -81,17 +81,9 @@
                     </td>
                     <td>
                         {% set rsktx = transfer.executed_transaction_hash or transfer.submission_transaction_hash %}
-                        {% if rsktx %}
-                            <a href="{{ rsk_explorer_base_url }}/tx/{{ rsktx }}" target="_blank">
-                                {{ transfer.status.name }}
-                            </a>
-                        {% elif transfer.bitcoin_tx_hash %}
-                            <a href="{{ btc_explorer_base_url }}/tx/{{ transfer.bitcoin_tx_hash }}" target="_blank">
-                                {{ transfer.status.name }}
-                            </a>
-                        {% else %}
+                        <div>
                             {{ transfer.status.name }}
-                        {% endif %}
+                        </div>
                         <br/><small><strong>{{ transfer.num_confirmations }}</strong> confirmations</small>
                     </td>
                     <td>
@@ -110,17 +102,33 @@
                     <td class="details">
                         <span>MultisigTxID:</span><code>{{ transfer.multisig_tx_id }}</code><br/>
                         <span>Func:</span><code>{{ transfer.transfer_function }}</code><br/>
-                        <span>RskReceiver:</span><code>{{ transfer.rsk_receiver_address }}</code><br/>
-                        <span>BtcTxHash:</span><code>{{ transfer.bitcoin_tx_hash }}</code><br/>
-                        <span>BtcTxVout:</span><code>{{ transfer.bitcoin_tx_vout }}</code><br/>
+                        <span>RskReceiver:</span>
+                        <a href="https://explorer.rootstock.io/address/{{ transfer.rsk_receiver_address }}">
+                            <code>{{ transfer.rsk_receiver_address }}</code>
+                        </a>
+                        <br/>
+                        <span>BtcTxHash:</span>
+                        <a href="https://mempool.space/tx/{{ transfer.bitcoin_tx_hash }}#vout={{ transfer.bitcoin_tx_vout }}">
+                            <code>{{ transfer.bitcoin_tx_hash }}</code>
+                        </a>
+                        <small>(VOUT {{ transfer.bitcoin_tx_vout }})</small>
+                        <br/>
                         {% if transfer.submission_transaction_hash %}
-                            <span>SubmissionTx:</span><code>{{ transfer.submission_transaction_hash }}</code><br/>
+                            <span>SubmissionTx:</span>
+                            <a href="https://explorer.rootstock.io/tx/{{ transfer.submission_transaction_hash }}">
+                                <code>{{ transfer.submission_transaction_hash }}</code>
+                            </a>
+                            <br/>
                         {% endif %}
                         {% if transfer.has_execution_failure %}
                             <span>ExecutionFailures:</span><code>{{ transfer.execution_failures }}</code><br/>
                         {% endif %}
                         {% if transfer.executed_transaction_hash %}
-                            <span>ExecutionTx:</span><code>{{ transfer.executed_transaction_hash }}</code><br/>
+                            <span>ExecutionTx:</span>
+                            <a href="https://explorer.rootstock.io/tx/{{ transfer.executed_transaction_hash }}">
+                                <code>{{ transfer.executed_transaction_hash }}</code>
+                            </a>
+                            <br/>
                         {% endif %}
                     </td>
                 </tr>
