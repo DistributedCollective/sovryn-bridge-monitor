@@ -59,9 +59,14 @@ def bidirectional_fastbtc(request):
 def getTransferVouts(transfers):
     vouts = dict()
     for transfer in transfers:
+        if transfer.marked_as_mined_log_index is None:
+            vouts[transfer.transfer_id] = -1
+            continue
+
         if transfer.transfer_batch_size == 1:
             vouts[transfer.transfer_id] = 1
             continue
+
         vouts[transfer.transfer_id] = transfer.transfer_batch_size - len(list(t for t in transfers
                                     if t.bitcoin_tx_id == transfer.bitcoin_tx_id and
                                     t.marked_as_mined_log_index > transfer.marked_as_mined_log_index))
