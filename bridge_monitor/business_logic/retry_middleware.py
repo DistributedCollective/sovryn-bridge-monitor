@@ -22,7 +22,7 @@ from web3.types import (
 if TYPE_CHECKING:
     from web3 import Web3  # noqa: F401
 
-from web3.middleware.exception_retry_request import whitelist, check_if_retry_on_failure
+from web3.middleware.exception_retry_request import check_if_retry_on_failure
 
 
 # Forked, add sleep

@@ -14,7 +14,7 @@ from eth_account.signers.local import LocalAccount
 from eth_typing import AnyAddress
 from eth_utils import to_checksum_address
 from web3 import Web3
-from web3.contract import Contract, ContractEvent, ContractFunction
+from web3.contract import Contract
 from web3.middleware import construct_sign_and_send_raw_middleware, geth_poa_middleware
 from web3.exceptions import MismatchedABI
 from web3.types import BlockData
@@ -124,7 +124,7 @@ def get_erc20_contract(*, token_address: Union[str, AnyAddress], web3: Web3) -> 
 
 def get_events(
     *,
-    event: ContractEvent,
+    event,
     from_block: int,
     to_block: int,
     batch_size: int = None
@@ -279,7 +279,7 @@ def is_contract(*, web3: Web3, address: str) -> bool:
     return code != b'\x00' and code != b''
 
 
-def call_sequentially(*funcs: Union[Callable, ContractFunction], retry: bool = False) -> List[Any]:
+def call_sequentially(*funcs: Callable, retry: bool = False) -> List[Any]:
     res = []
     for func in funcs:
         if hasattr(func, 'call'):
@@ -289,13 +289,12 @@ def call_sequentially(*funcs: Union[Callable, ContractFunction], retry: bool = F
     return res
 
 
-def call_concurrently(*funcs: Union[Callable, ContractFunction], retry: bool = False) -> List[Any]:
+def call_concurrently(*funcs: Callable, retry: bool = False) -> List[Any]:
     def _call():
         futures = []
         with ThreadPoolExecutor() as executor:
             for func in funcs:
                 if hasattr(func, 'call'):
-                    # ContractFunction
                     futures.append(executor.submit(func.call))
                 else:
                     futures.append(executor.submit(func))
