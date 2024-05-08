@@ -340,8 +340,11 @@ def update_chain_info_rsk(dbsession: Session, *, chain_name: str = "rsk_mainnet"
                 timestamp=datetime.fromtimestamp(block['timestamp'], tz=timezone.utc),
             )
             dbsession.add(block_info)
+            if block_n % 20 == 0:
+                dbsession.flush()
 
         dbsession.commit()
+        logger.info("Committed blocks to db")
         time_to_sleep = seconds_per_iteration - (time.time() - start_time)
         time_to_sleep = max(1, time_to_sleep)
         sleep(time_to_sleep)
