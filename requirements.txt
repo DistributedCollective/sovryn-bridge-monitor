@@ -16,15 +16,16 @@ coverage==5.5
 curlify==2.2.1
 cytoolz==0.12.3
 distlib==0.3.8
+ens==0.6.1
 et-xmlfile==1.1.0
 eth-account==0.11.2
 eth-hash==0.7.0
 eth-keyfile==0.8.1
 eth-keys==0.5.1
 eth-rlp==1.0.1
-eth-tester>=0.1.0b11
+eth-tester==0.11.0b2
 eth-typing==4.2.2
-eth-utils>=4.1.0
+eth-utils==4.1.0
 eth_abi==5.1.0
 exceptiongroup==1.2.1
 filelock==3.13.4
@@ -92,7 +93,7 @@ rpds-py==0.18.0
 semantic-version==2.10.0
 six==1.16.0
 soupsieve==2.2.1
-SQLAlchemy==1.4.25
+SQLAlchemy==2.0.30
 toml==0.10.2
 tomli==2.0.1
 toolz==0.11.1

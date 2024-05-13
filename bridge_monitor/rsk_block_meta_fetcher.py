@@ -1,4 +1,3 @@
-from configparser import ConfigParser
 import logging
 import multiprocessing
 from time import sleep
@@ -13,8 +12,9 @@ from .business_logic.utils import update_chain_info_rsk, RSK_META_FETCHER_SHORT_
 
 logger = logging.getLogger(__name__)
 
+
 def start_rsk_block_meta_fetcher(settings: dict) -> None:
-    engine = engine_from_config(settings, prefix='sqlalchemy.')
+    engine = engine_from_config(settings, prefix="sqlalchemy.")
     p = multiprocessing.Process(target=partial(rsk_block_meta_fetcher, engine, logger))
     p.start()
     logger.info("rsk_block_meta_fetcher started")
@@ -25,8 +25,12 @@ def rsk_block_meta_fetcher(engine: Engine, logger):
     with Session(engine) as session:
         while 1:
             try:
-                prev_delay = update_chain_info_rsk(session,
-                                                   seconds_per_iteration=prev_delay if prev_delay > 0 else RSK_META_FETCHER_SHORT_DELAY)
+                prev_delay = update_chain_info_rsk(
+                    session,
+                    seconds_per_iteration=prev_delay
+                    if prev_delay > 0
+                    else RSK_META_FETCHER_SHORT_DELAY,
+                )
             except Exception:
                 logger.exception("Error in update_chain_info_rsk")
                 break

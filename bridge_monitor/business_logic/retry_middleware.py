@@ -27,6 +27,7 @@ from web3.middleware.exception_retry_request import check_if_retry_on_failure
 
 # Forked, add sleep
 
+
 def exception_retry_middleware(
     make_request: Callable[[RPCEndpoint, Any], RPCResponse],
     web3: "Web3",
@@ -37,6 +38,7 @@ def exception_retry_middleware(
     Creates middleware that retries failed HTTP requests. Is a default
     middleware for HTTPProvider.
     """
+
     def middleware(method: RPCEndpoint, params: Any) -> RPCResponse:
         if check_if_retry_on_failure(method):
             for i in range(retries):
@@ -45,7 +47,7 @@ def exception_retry_middleware(
                 # https://github.com/python/mypy/issues/5349
                 except errors as e:  # type: ignore
                     if i < retries - 1:
-                        sleep_time = i ** 2
+                        sleep_time = i**2
                         print("Got exception", e, f", retrying in {sleep_time}s...")
                         sleep(sleep_time)
                         continue
@@ -54,6 +56,7 @@ def exception_retry_middleware(
             return None
         else:
             return make_request(method, params)
+
     return middleware
 
 
@@ -61,7 +64,5 @@ def http_retry_request_middleware(
     make_request: Callable[[RPCEndpoint, Any], Any], web3: "Web3"
 ) -> Callable[[RPCEndpoint, Any], Any]:
     return exception_retry_middleware(
-        make_request,
-        web3,
-        (ConnectionError, HTTPError, Timeout, TooManyRedirects)
+        make_request, web3, (ConnectionError, HTTPError, Timeout, TooManyRedirects)
     )

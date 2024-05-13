@@ -1,151 +1,329 @@
+import argparse
 import configparser
+import sys
 from collections import defaultdict
-from typing import Sequence, List
-from pprint import pprint
+from itertools import cycle
+from json import dumps
+from typing import Sequence, List, Any
 import time
 import logging
 
 import web3
+from eth_utils import is_checksum_address
 from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine, Row
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.expression import select, or_, and_
 from pyramid.paster import setup_logging
-from ..models.rsk_transaction_info import RskAddressBookkeeper, RskAddress, RskTransactionInfo
+from ..models.rsk_transaction_info import (
+    RskAddressBookkeeper,
+    RskAddress,
+    RskTransactionInfo,
+)
 
 
 logger = logging.getLogger(__name__)
 
-TIME_PER_ITERATION_SEC: int | float = 0.5
 
 class Bookkeeper:
     def __init__(self, passed_web3: web3.Web3, engine: Engine):
         self.web3 = passed_web3
         self.db_engine = engine
 
-    def add_address(self, address: str, name: str, initial_block: int, start: int = 1, end: int | None = None):
+    def add_address(
+        self,
+        address: str,
+        name: str,
+        initial_block: int,
+        start: int = 1,
+        end: int | None = None,
+    ):
         dbsession = Session(self.db_engine)
         with dbsession.begin():
-            address_db_entry = dbsession.query(RskAddress).filter(RskAddress.address == address).first()
+            address_db_entry = (
+                dbsession.query(RskAddress)
+                .filter(RskAddress.address == address)
+                .first()
+            )
             if address_db_entry is None:
                 logger.info("Address %s not found in db, creating entry", address)
                 address_db_entry = RskAddress(address=address, name=name)
             else:
-                logger.info("Address %s alread exists in db with name %s", address, address_db_entry.name)
+                logger.info(
+                    "Address %s alread exists in db with name %s",
+                    address,
+                    address_db_entry.name,
+                )
             dbsession.add(address_db_entry)
-            bookkeeper_db_entry = dbsession.query(RskAddressBookkeeper)\
-                .filter(RskAddressBookkeeper.address == address_db_entry).first()
+            bookkeeper_db_entry = (
+                dbsession.query(RskAddressBookkeeper)
+                .filter(RskAddressBookkeeper.address == address_db_entry)
+                .first()
+            )
             if bookkeeper_db_entry is not None:
                 logger.info("Address %s bookkeeper already exists", address)
                 return
-            dbsession.add(RskAddressBookkeeper(address=address_db_entry, start=start, end=end,
-                                               lowest_scanned=initial_block, next_to_scan_high=initial_block))
+            dbsession.add(
+                RskAddressBookkeeper(
+                    address=address_db_entry,
+                    start=start,
+                    end=end,
+                    lowest_scanned=initial_block,
+                    next_to_scan_high=initial_block,
+                )
+            )
 
     def remove_address_bookkeeper(self, address: str, cascade: bool = False):
         logger.info("Removing address %s bookkeeper", address)
         dbsession = Session(self.db_engine)
         with dbsession.begin():
-            address = dbsession.query(RskAddress).filter(RskAddress.address == address).first()
+            address = (
+                dbsession.query(RskAddress)
+                .filter(RskAddress.address == address)
+                .first()
+            )
             if address is None:
                 logger.info("Address %s not found in db, nothing to remove")
                 return
-            bookkeeper_db_entry = dbsession.query(RskAddressBookkeeper)\
-                .filter(RskAddressBookkeeper.address == address).first()
+            bookkeeper_db_entry = (
+                dbsession.query(RskAddressBookkeeper)
+                .filter(RskAddressBookkeeper.address == address)
+                .first()
+            )
             if bookkeeper_db_entry is None:
-                logger.info("Address %s bookkeeper not found in db, nothing to remove", address.address)
+                logger.info(
+                    "Address %s bookkeeper not found in db, nothing to remove",
+                    address.address,
+                )
                 return
             dbsession.delete(bookkeeper_db_entry)
             if cascade:
-                logger.info("Cascade delete enabled, removing address %s from rsk_address", address)
+                logger.info(
+                    "Cascade delete enabled, removing address %s from rsk_address",
+                    address,
+                )
                 dbsession.delete(address)
-    def scan_block(self, dbsession: Session, block_n: int, included_rows: Sequence[Row]):
-        logger.info("Scanning block %d", block_n)
 
-        addr_set = set(bk[0].address.address for bk in included_rows)
-        if len(addr_set) < 4:
-            logger.info("Scanning for addresses %r", addr_set)
-        else:
-            logger.info("Scanning for %d addresses", len(addr_set))
-
-        result = address_transactions_in_block(self.web3, addr_set, block_n)
-        if not result:
-            logger.info("No matching transactions found in block %d", block_n)
-        else:
-            logger.info("Found %d matching transactions", sum(len(v) for v in result.values()))
-
-        for addr, set_of_transactions in result.items():
-            address_db_entry = dbsession.query(RskAddress).filter(RskAddress.address == addr).one()
-            for tx_hash in set_of_transactions:
-                dbsession.add(RskTransactionInfo(
-                    address=address_db_entry,
-                    tx_hash=tx_hash,
-                    block_n=block_n
-                ))
-
-        for row in included_rows:
-            row = row[0]
-            if row.next_to_scan_high == block_n:
+    def add_result_to_db(
+        self,
+        *,
+        dbsession: Session,
+        block_n: int,
+        included_rows: Sequence[RskAddressBookkeeper],
+        result: dict,
+        scanning_up: bool = True,
+    ) -> None:
+        if result:
+            logger.info(
+                "Found %d matching transactions in block %d", len(result), block_n
+            )
+        for addr_and_tx_hash, traces in result.items():
+            addr = addr_and_tx_hash[0]
+            tx_hash = addr_and_tx_hash[1]
+            address_db_entry = (
+                dbsession.query(RskAddress).filter(RskAddress.address == addr).one()
+            )
+            try:
+                dumps(traces)
+            except TypeError:
+                logger.warning(
+                    "Traces cannot be serialized for addr %s, tx_hash %s, skipping",
+                    addr,
+                    tx_hash,
+                )
+                continue
+            skip_entry = False
+            for row in included_rows:
+                if row.address == address_db_entry and not (
+                    row.start <= block_n and (row.end is None or block_n < row.end)
+                ):
+                    skip_entry = True
+            if skip_entry:
+                continue
+            tx = RskTransactionInfo(
+                address=address_db_entry,
+                tx_hash=tx_hash,
+                trace_json=traces,
+                block_n=block_n,
+            )
+            dbsession.add(tx)
+        if scanning_up:
+            for row in included_rows:
                 row.next_to_scan_high = block_n + 1
-            elif row.lowest_scanned == block_n + 1:
+        else:
+            for row in included_rows:
                 row.lowest_scanned = block_n
 
-    def scan(self):
-        dbsession = Session(self.db_engine)
+    def scan_up(self, dbsession: Session, safety_limit: int = 12) -> bool:
         current_block = self.web3.eth.block_number
-        with dbsession.begin():
-            low_scan_rows = dbsession.execute(select(RskAddressBookkeeper)\
-            .where(RskAddressBookkeeper.start < RskAddressBookkeeper.lowest_scanned)\
-            .order_by(RskAddressBookkeeper.lowest_scanned.desc()).fetch(1, with_ties=True)).all()
 
-            high_scan_rows = dbsession.execute(select(RskAddressBookkeeper)\
-            .where(and_(RskAddressBookkeeper.next_to_scan_high <= current_block,
-            or_(RskAddressBookkeeper.end == None, RskAddressBookkeeper.end > RskAddressBookkeeper.next_to_scan_high)))\
-            .order_by(RskAddressBookkeeper.next_to_scan_high.asc()).fetch(1, with_ties=True)).all()
+        high_scan_rows = (
+            dbsession.execute(
+                select(RskAddressBookkeeper)
+                .where(
+                    and_(
+                        RskAddressBookkeeper.next_to_scan_high <= current_block,
+                        or_(
+                            RskAddressBookkeeper.end.is_(None),
+                            RskAddressBookkeeper.end
+                            > RskAddressBookkeeper.next_to_scan_high + safety_limit,
+                        ),
+                    )
+                )
+                .order_by(RskAddressBookkeeper.next_to_scan_high.asc())
+                .fetch(1, with_ties=True)
+            )
+            .scalars()
+            .all()
+        )
 
-            if not low_scan_rows and not high_scan_rows:
-                logger.info("Nothing to scan")
-                return
-            if low_scan_rows:
-                try:
-                    self.scan_block(dbsession, low_scan_rows[0][0].lowest_scanned - 1, low_scan_rows)
-                except:
-                    logger.exception("Error scanning low rows")
-            if high_scan_rows:
-                try:
-                    self.scan_block(dbsession, high_scan_rows[0][0].next_to_scan_high, high_scan_rows)
-                except:
-                    logger.exception("Error scanning high rows")
+        if not high_scan_rows:
+            return False
+        try:
+            result = self.address_transactions_in_block(
+                high_scan_rows[0].next_to_scan_high, high_scan_rows
+            )
+            self.add_result_to_db(
+                dbsession=dbsession,
+                block_n=high_scan_rows[0].next_to_scan_high,
+                included_rows=high_scan_rows,
+                result=result,
+                scanning_up=True,
+            )
+        except Exception:
+            logger.exception("Error in scan_up")
+            dbsession.rollback()
+        dbsession.flush()
+        return True
 
-def address_transactions_in_block(w3: web3.Web3, addr_set: set[str], block_n: int) -> defaultdict[str, set[str]]:
+    def scan_down(self, dbsession: Session) -> bool:
+        low_scan_rows = (
+            dbsession.execute(
+                select(RskAddressBookkeeper)
+                .where(RskAddressBookkeeper.start < RskAddressBookkeeper.lowest_scanned)
+                .order_by(RskAddressBookkeeper.lowest_scanned.desc())
+                .fetch(1, with_ties=True)
+            )
+            .scalars()
+            .all()
+        )
 
-    result = w3.tracing.trace_block(block_n)
-    transaction_dict = defaultdict(set)
+        if not low_scan_rows:
+            return False
+        try:
+            result = self.address_transactions_in_block(
+                low_scan_rows[0].lowest_scanned - 1, low_scan_rows
+            )
+            self.add_result_to_db(
+                dbsession=dbsession,
+                block_n=low_scan_rows[0].lowest_scanned - 1,
+                included_rows=low_scan_rows,
+                result=result,
+                scanning_up=False,
+            )
+        except Exception:
+            logger.exception("Error in scan_down")
+            dbsession.rollback()
+        dbsession.flush()
+        return True
+
+    def address_transactions_in_block(
+        self, block_n: int, included_rows: Sequence[RskAddressBookkeeper]
+    ) -> dict[tuple[str, str], list[dict]]:
+        if not included_rows:
+            return dict()
+        if block_n < 1:
+            return dict()
+        if block_n % 1000 == 0:
+            logger.info("Scanning block %d", block_n)
+
+        addr_set = set(bk.address.address for bk in included_rows)
+        result = self.web3.tracing.trace_block(block_n)
+        result = convert_result_to_json_serializable(result)
+        address_traces = defaultdict(list)
+
+        for trace in result:
+            trace_transaction_hash = trace["transactionHash"]
+            if (from_addr := trace["action"].get("from")) and from_addr in addr_set:
+                address_traces[from_addr, trace_transaction_hash].append(trace)
+            elif (to_addr := trace["action"].get("to")) and to_addr in addr_set:
+                address_traces[to_addr, trace_transaction_hash].append(trace)
+
+        return dict(address_traces)
+
+
+def convert_to_json_serializable(obj: Any) -> Any:
+    if isinstance(obj, bytes):
+        return obj.hex()
+    if isinstance(obj, dict) or isinstance(obj, web3.datastructures.AttributeDict):
+        return {k: convert_to_json_serializable(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [convert_to_json_serializable(v) for v in obj]
+    if isinstance(obj, str) and is_checksum_address(obj):
+        return obj.lower()
+    return obj
+
+
+def convert_result_to_json_serializable(result: List[dict]) -> list[dict]:
+    ret_val = []
     for trace in result:
-        if (from_addr := trace.action.get("from")) and from_addr.lower() in addr_set:
-            transaction_dict[from_addr.lower()].add(trace.transactionHash.hex())
-        elif (to_addr := trace.action.get("to")) and to_addr.lower() in addr_set:
-            transaction_dict[to_addr.lower()].add(trace.transactionHash.hex())
-    return transaction_dict
+        ret_val.append(convert_to_json_serializable(trace))
+    return ret_val
 
-def main():
-    setup_logging("development_local.ini")
+
+def parse_args(argv: List[str] | None = None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("config_uri", help="Path to the config file")
+    parser.add_argument(
+        "--amount_of_threads",
+        help="Amount of threads to use",
+        type=int,
+        default=4,
+    )
+    return parser.parse_args()
+
+
+def main(argv: List[str]):
+    if argv is None:
+        argv = sys.argv
+    args = parse_args(argv)
+    setup_logging(args.config_uri)
     logger.info("Starting block tracing")
     config = configparser.ConfigParser()
-    config.read("development_local.ini")
-    db_url = config['app:main']['sqlalchemy.url']
+    config.read(args.config_uri)
+    db_url = config["app:main"]["sqlalchemy.url"]
     engine = create_engine(db_url)
     w3 = web3.Web3(web3.HTTPProvider("http://localhost:4444"))
     bookkeeper = Bookkeeper(w3, engine)
-    bookkeeper.add_address("0x1a8e78b41bc5ab9ebb6996136622b9b41a601b5c", "bidi-fastbtc", w3.eth.block_number)
-    bookkeeper.add_address("0xe43cafbdd6674df708ce9dff8762af356c2b454d", "fastbtc-in", w3.eth.block_number)
-    while True:
-        start_time = time.time()
-        bookkeeper.scan()
-        time_to_sleep = TIME_PER_ITERATION_SEC - (time.time() - start_time)
-        if time_to_sleep > 0:
-            time.sleep(time_to_sleep)
-        else:
-            logger.warning("Iteration took longer than %f seconds", TIME_PER_ITERATION_SEC)
+    bookkeeper.add_address(
+        "0x1a8e78b41bc5ab9ebb6996136622b9b41a601b5c",
+        "fastbtc-out",
+        w3.eth.block_number - 100,
+        550000,
+    )
+    bookkeeper.add_address(
+        "0xe43cafbdd6674df708ce9dff8762af356c2b454d",
+        "fastbtc-in",
+        w3.eth.block_number - 100,
+        5074757,
+    )
+
+    dbsession = Session(engine)
+    for i in cycle(range(1000)):
+        try:
+            scanned_down = bookkeeper.scan_down(dbsession)
+            if not scanned_down:
+                scanned_up = bookkeeper.scan_up(dbsession)
+                if not scanned_up:
+                    dbsession.commit()
+                    time.sleep(10)
+            if i % 100 == 99:
+                bookkeeper.scan_up(dbsession)
+                dbsession.commit()
+        except Exception:
+            logger.exception("Error scanning")
+            time.sleep(10)
+
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv)

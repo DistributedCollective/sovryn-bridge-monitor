@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 def parse_args(argv: List[str]):
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        'config_uri',
-        help='Configuration file, e.g., development.ini',
+        "config_uri",
+        help="Configuration file, e.g., development.ini",
     )
     parser.add_argument(
         "file",
@@ -35,21 +35,31 @@ def parse_args(argv: List[str]):
 
 
 def get_blockchain_meta(dbsession: Session, name, expected_safe_limit=12):
-    block_chain_meta = dbsession.query(BlockChain).filter(BlockChain.name == name).scalar()
+    block_chain_meta = (
+        dbsession.query(BlockChain).filter(BlockChain.name == name).scalar()
+    )
     if block_chain_meta is None:
         dbsession.add(BlockChain(id=0, name=name, safe_limit=expected_safe_limit))
-        block_chain_meta = dbsession.query(BlockChain).filter(BlockChain.name == name).one()
+        block_chain_meta = (
+            dbsession.query(BlockChain).filter(BlockChain.name == name).one()
+        )
     return block_chain_meta
 
 
-def write_from_file_to_db(dbsession: Session, file):  # file must be formatted as: [123123, 545343]\n[123124, 545344]\n...
+def write_from_file_to_db(
+    dbsession: Session, file
+):  # file must be formatted as: [123123, 545343]\n[123124, 545344]\n...
     block_chain_meta = get_blockchain_meta(dbsession, "rsk")
-    dbsession.query(BlockInfo).filter(BlockInfo.block_chain_id == block_chain_meta.id).delete()
+    dbsession.query(BlockInfo).filter(
+        BlockInfo.block_chain_id == block_chain_meta.id
+    ).delete()
 
     for count, line in enumerate(file):
         try:
             block_n, ts = json.loads(line.decode("utf-8"))
-        except ValueError:                              # in a properly formatted an empty last line would trigger this
+        except (
+            ValueError
+        ):  # in a properly formatted an empty last line would trigger this
             break
         dbsession.add(
             BlockInfo(
@@ -64,10 +74,12 @@ def write_from_file_to_db(dbsession: Session, file):  # file must be formatted a
 
 def write_from_parquet_to_db(dbsession: Session, path: str):
     block_chain_meta = get_blockchain_meta(dbsession, "rsk")
-    dbsession.query(BlockInfo).filter(BlockInfo.block_chain_id == block_chain_meta.id).delete()
+    dbsession.query(BlockInfo).filter(
+        BlockInfo.block_chain_id == block_chain_meta.id
+    ).delete()
 
     df = pd.read_parquet(path)
-    df.drop_duplicates(subset=['block_number'], inplace=True)
+    df.drop_duplicates(subset=["block_number"], inplace=True)
     chunk_count = 20
     chunk_length = floor(len(df) / chunk_count)
     logger.info("Parquet length: %d, chunk count: %d, blocks", len(df), chunk_count)
@@ -79,12 +91,12 @@ def write_from_parquet_to_db(dbsession: Session, path: str):
             dbsession.add(
                 BlockInfo(
                     block_chain_id=block_chain_meta.id,
-                    block_number=int(row['block_number']),
-                    timestamp=datetime.fromtimestamp(row['timestamp']),
+                    block_number=int(row["block_number"]),
+                    timestamp=datetime.fromtimestamp(row["timestamp"]),
                 )
             )
         dbsession.flush()
-    del df              # df will likely be large, so del it just to be sure it's gone
+    del df  # df will likely be large, so del it just to be sure it's gone
 
 
 def main(argv=None):
@@ -95,22 +107,22 @@ def main(argv=None):
 
     config = configparser.ConfigParser()
     config.read(args.config_uri)
-    db_url = config['app:main']['sqlalchemy.url']
+    db_url = config["app:main"]["sqlalchemy.url"]
     engine = create_engine(db_url)
     dbsession = Session(engine)
 
-    chain_env = "rsk_mainnet"       # hardcoded for now
+    chain_env = "rsk_mainnet"  # hardcoded for now
 
     logger.info("chain_env: %s", chain_env)
 
-    if args.file.endswith('.parquet'):
+    if args.file.endswith(".parquet"):
         logger.info("Writing from parquet file %s to db", args.file)
         with dbsession.begin():
             write_from_parquet_to_db(dbsession, args.file)
         logger.info("Done writing from parquet file %s to db", args.file)
         return
-    with open(args.file, 'rb') as source_file:
-        if args.file.endswith('.zst'):
+    with open(args.file, "rb") as source_file:
+        if args.file.endswith(".zst"):
             logger.info("Decompressing zstd compressed file")
             with TemporaryFile() as temp_file:
                 decomp = zstd.ZstdDecompressor()
@@ -124,5 +136,5 @@ def main(argv=None):
     logger.info("Done writing from file %s to db", args.file)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -8,7 +8,6 @@ from datetime import (
 from decimal import Decimal
 from typing import (
     Any,
-    Dict,
     Iterable,
     List,
     Literal,
@@ -30,7 +29,6 @@ class JsonEncoder(json.JSONEncoder):
         return super().default(o)
 
 
-
 class ParsedTimeRange(NamedTuple):
     start: Optional[date]
     end: Optional[date]
@@ -41,23 +39,23 @@ def parse_time_range(
     *,
     request: Request,
     models: Iterable[Any] = tuple(),  # List of Models
-    default: Union[Tuple[datetime, datetime], Literal['this_month'], None] =None
+    default: Union[Tuple[datetime, datetime], Literal["this_month"], None] = None,
 ) -> ParsedTimeRange:
     errors = []
     start = None
     end = None
     try:
-        if start_str := request.params.get('start'):
+        if start_str := request.params.get("start"):
             start = date.fromisoformat(start_str)
     except TypeError:
-        errors.append('Invalid start date')
+        errors.append("Invalid start date")
     try:
-        if end_str := request.params.get('end'):
+        if end_str := request.params.get("end"):
             end = date.fromisoformat(end_str)
     except TypeError:
-        errors.append('Invalid end date')
+        errors.append("Invalid end date")
 
-    if default == 'this_month' and (not start and not end):
+    if default == "this_month" and (not start and not end):
         now = datetime.now(tz=timezone.utc)
         start = date(now.year, now.month, 1)
         end = date(now.year, now.month + 1, 1) - timedelta(days=1)
