@@ -27,9 +27,11 @@ def parse_args(argv: List[str]):
         help="Configuration file, e.g., development.ini",
     )
     parser.add_argument(
-        "file",
+        "-file",
         help="file to import, can be zstd compressed",
+        required=False,
     )
+    parser.add_argument("--empty", action="store_true", help="Initialize empty")
 
     return parser.parse_args(argv[1:])
 
@@ -39,7 +41,8 @@ def get_blockchain_meta(dbsession: Session, name, expected_safe_limit=12):
         dbsession.query(BlockChain).filter(BlockChain.name == name).scalar()
     )
     if block_chain_meta is None:
-        dbsession.add(BlockChain(id=0, name=name, safe_limit=expected_safe_limit))
+        logger.info("Creating new blockchain meta for %s", name)
+        dbsession.add(BlockChain(name=name, safe_limit=expected_safe_limit))
         block_chain_meta = (
             dbsession.query(BlockChain).filter(BlockChain.name == name).one()
         )
@@ -103,6 +106,9 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv
     args = parse_args(argv)
+    if not args.empty and not args.file:
+        logger.error("Either --empty or a file must be provided")
+        return
     setup_logging(args.config_uri)
 
     config = configparser.ConfigParser()
@@ -115,6 +121,10 @@ def main(argv=None):
 
     logger.info("chain_env: %s", chain_env)
 
+    if args.empty:
+        with dbsession.begin():
+            get_blockchain_meta(dbsession, "rsk")
+        return
     if args.file.endswith(".parquet"):
         logger.info("Writing from parquet file %s to db", args.file)
         with dbsession.begin():

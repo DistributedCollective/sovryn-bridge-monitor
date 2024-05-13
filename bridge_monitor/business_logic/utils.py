@@ -358,13 +358,15 @@ def update_chain_info_rsk(
     web3 = get_web3(chain_name)
 
     current_block_number = web3.eth.block_number - safety_limit
-
-    latest_block_number = (
-        dbsession.query(BlockInfo.block_number)
-        .filter(BlockInfo.block_chain_id == rsk_id)
-        .order_by(BlockInfo.block_number.desc())
-        .first()
-    ).block_number
+    try:
+        latest_block_number = (
+            dbsession.query(BlockInfo.block_number)
+            .filter(BlockInfo.block_chain_id == rsk_id)
+            .order_by(BlockInfo.block_number.desc())
+            .first()
+        ).block_number
+    except AttributeError:
+        latest_block_number = 0
 
     if latest_block_number < current_block_number - fetch_amount:
         logger.info(
