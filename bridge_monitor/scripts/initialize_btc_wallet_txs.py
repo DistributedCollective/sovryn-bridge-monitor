@@ -45,14 +45,15 @@ def main(argv: List[str] | None = None):
             wallet_id = (
                 dbsession.query(BtcWallet.id).filter(BtcWallet.name == wallet).scalar()
             )
-            logger.info(
-                "Deleting past entries for wallet %s, with wallet id %d",
-                wallet,
-                wallet_id,
-            )
-            dbsession.query(BtcWalletTransaction).filter(
-                BtcWalletTransaction.wallet_id == wallet_id
-            ).delete()
+            if wallet_id is not None:
+                logger.info(
+                    "Deleting past entries for wallet %s, with wallet id %d",
+                    wallet,
+                    wallet_id,
+                )
+                dbsession.query(BtcWalletTransaction).filter(
+                    BtcWalletTransaction.wallet_id == wallet_id
+                ).delete()
             get_wallet_transactions_from_block(dbsession, 0, wallet)
             tx_count = (
                 dbsession.query(func.count(BtcWalletTransaction.tx_hash))

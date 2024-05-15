@@ -85,7 +85,7 @@ def write_from_parquet_to_db(dbsession: Session, path: str):
     df.drop_duplicates(subset=["block_number"], inplace=True)
     chunk_count = 20
     chunk_length = floor(len(df) / chunk_count)
-    logger.info("Parquet length: %d, chunk count: %d, blocks", len(df), chunk_count)
+    logger.info("Parquet length: %d, chunk count: %d", len(df), chunk_count)
     for i in range(chunk_count):
         start = i * chunk_length
         end = (i + 1) * chunk_length if i + 1 != chunk_count else len(df) + 1

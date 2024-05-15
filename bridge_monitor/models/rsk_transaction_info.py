@@ -5,10 +5,14 @@ from sqlalchemy import (
     ForeignKey,
     UniqueConstraint,
     CheckConstraint,
+    DateTime,
+    ForeignKeyConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from .meta import Base
 from sqlalchemy.orm import relationship
+
+from .chain_info import BlockInfo
+from .meta import Base
 
 
 class RskAddress(Base):
@@ -48,10 +52,25 @@ class RskAddressBookkeeper(Base):
 
 class RskTransactionInfo(Base):
     __tablename__ = "rsk_tx_info"
-    __table_args__ = (UniqueConstraint("address_id", "tx_hash", name="unique_tx"),)
+    __table_args__ = (
+        UniqueConstraint("address_id", "tx_hash", name="unique_tx"),
+        ForeignKeyConstraint(
+            ["block_n", "chain_id"],
+            ["block_info.block_number", "block_info.block_chain_id"],
+            name="fk_block_info",
+        ),
+    )
+
     id = Column(Integer, primary_key=True)
     address_id = Column(Integer, ForeignKey("rsk_address.id"), nullable=False)
-    address = relationship(RskAddress, back_populates="transactions")
     tx_hash = Column(Text, nullable=False)
-    block_n = Column(Integer, nullable=False)
+    block_n = Column(Integer, nullable=True)
+    chain_id = Column(Integer, nullable=True)
+    blocktime = Column(DateTime(timezone=True), nullable=True)
     trace_json = Column(JSONB, nullable=False)
+    address = relationship(RskAddress, back_populates="transactions")
+    block_info = relationship(
+        BlockInfo,
+        primaryjoin="and_(RskTransactionInfo.block_n == BlockInfo.block_number,"
+        "RskTransactionInfo.chain_id == BlockInfo.block_chain_id)",
+    )

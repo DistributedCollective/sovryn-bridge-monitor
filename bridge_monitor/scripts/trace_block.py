@@ -7,20 +7,22 @@ from json import dumps
 from typing import Sequence, List, Any
 import time
 import logging
-
+from datetime import datetime, timezone
 import web3
 from eth_utils import is_checksum_address
+
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.expression import select, or_, and_
+import sqlalchemy
 from pyramid.paster import setup_logging
 from ..models.rsk_transaction_info import (
     RskAddressBookkeeper,
     RskAddress,
     RskTransactionInfo,
 )
-
+from ..models.chain_info import BlockInfo, BlockChain
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +34,14 @@ class Bookkeeper:
 
     def add_address(
         self,
+        *,
         address: str,
         name: str,
         initial_block: int,
         start: int = 1,
         end: int | None = None,
     ):
+        initial_block = max(initial_block, start)
         dbsession = Session(self.db_engine)
         with dbsession.begin():
             address_db_entry = (
@@ -111,6 +115,7 @@ class Bookkeeper:
         block_n: int,
         included_rows: Sequence[RskAddressBookkeeper],
         result: dict,
+        block_info: BlockInfo,
         scanning_up: bool = True,
     ) -> None:
         if result:
@@ -145,6 +150,7 @@ class Bookkeeper:
                 tx_hash=tx_hash,
                 trace_json=traces,
                 block_n=block_n,
+                blocktime=block_info.timestamp,
             )
             dbsession.add(tx)
         if scanning_up:
@@ -154,7 +160,9 @@ class Bookkeeper:
             for row in included_rows:
                 row.lowest_scanned = block_n
 
-    def scan_up(self, dbsession: Session, safety_limit: int = 12) -> bool:
+    def scan_up(
+        self, dbsession: Session, chain_id: int, safety_limit: int = 12
+    ) -> bool:
         current_block = self.web3.eth.block_number
 
         high_scan_rows = (
@@ -179,16 +187,39 @@ class Bookkeeper:
 
         if not high_scan_rows:
             return False
+
+        next_to_scan_high = high_scan_rows[0].next_to_scan_high
+
+        block_info = (
+            dbsession.query(BlockInfo)
+            .filter(
+                and_(
+                    BlockInfo.block_chain_id == chain_id,
+                    BlockInfo.block_number == next_to_scan_high,
+                )
+            )
+            .first()
+        )
+        if block_info is None:
+            block = self.web3.eth.get_block(next_to_scan_high)
+            block_info = BlockInfo(
+                block_chain_id=chain_id,
+                block_number=next_to_scan_high,
+                timestamp=datetime.fromtimestamp(block["timestamp"], tz=timezone.utc),
+            )
+            dbsession.add(block_info)
+
         try:
             result = self.address_transactions_in_block(
-                high_scan_rows[0].next_to_scan_high, high_scan_rows
+                next_to_scan_high, high_scan_rows
             )
             self.add_result_to_db(
                 dbsession=dbsession,
-                block_n=high_scan_rows[0].next_to_scan_high,
+                block_n=next_to_scan_high,
                 included_rows=high_scan_rows,
                 result=result,
                 scanning_up=True,
+                block_info=block_info,
             )
         except Exception:
             logger.exception("Error in scan_up")
@@ -196,7 +227,15 @@ class Bookkeeper:
         dbsession.flush()
         return True
 
-    def scan_down(self, dbsession: Session) -> bool:
+    def scan_down(self, dbsession: Session, chain_id: int) -> bool:
+        block_info = (
+            dbsession.query(BlockInfo)
+            .filter(BlockInfo.block_chain_id == chain_id)
+            .order_by(BlockInfo.block_number.desc())
+            .first()
+        )
+        if block_info is None:
+            raise LookupError("No block info found when scanning down")
         low_scan_rows = (
             dbsession.execute(
                 select(RskAddressBookkeeper)
@@ -220,6 +259,7 @@ class Bookkeeper:
                 included_rows=low_scan_rows,
                 result=result,
                 scanning_up=False,
+                block_info=block_info,
             )
         except Exception:
             logger.exception("Error in scan_down")
@@ -246,7 +286,7 @@ class Bookkeeper:
             trace_transaction_hash = trace["transactionHash"]
             if (from_addr := trace["action"].get("from")) and from_addr in addr_set:
                 address_traces[from_addr, trace_transaction_hash].append(trace)
-            elif (to_addr := trace["action"].get("to")) and to_addr in addr_set:
+            if (to_addr := trace["action"].get("to")) and to_addr in addr_set:
                 address_traces[to_addr, trace_transaction_hash].append(trace)
 
         return dict(address_traces)
@@ -274,12 +314,6 @@ def convert_result_to_json_serializable(result: List[dict]) -> list[dict]:
 def parse_args(argv: List[str] | None = None):
     parser = argparse.ArgumentParser()
     parser.add_argument("config_uri", help="Path to the config file")
-    parser.add_argument(
-        "--amount_of_threads",
-        help="Amount of threads to use",
-        type=int,
-        default=4,
-    )
     return parser.parse_args()
 
 
@@ -295,30 +329,53 @@ def main(argv: List[str]):
     engine = create_engine(db_url)
     w3 = web3.Web3(web3.HTTPProvider("http://localhost:4444"))
     bookkeeper = Bookkeeper(w3, engine)
+    dbsession = Session(engine)
+    block_chain_meta = (
+        dbsession.query(BlockChain).filter(BlockChain.name == "rsk").scalar()
+    )
+    if block_chain_meta is None:
+        raise LookupError(
+            "Block chain meta not found (maybe running import_block_meta_rsk will help)"
+        )
+    rsk_id = block_chain_meta.id
+    try:
+        latest_info_block_n = (
+            dbsession.query(BlockInfo.block_number)
+            .filter(BlockInfo.block_chain_id == rsk_id)
+            .order_by(BlockInfo.block_number.desc())
+            .limit(1)
+            .one()
+        ).block_number
+    except sqlalchemy.exc.NoResultFound:
+        latest_info_block_n = 1
+
     bookkeeper.add_address(
-        "0x1a8e78b41bc5ab9ebb6996136622b9b41a601b5c",
-        "fastbtc-out",
-        w3.eth.block_number - 100,
-        550000,
+        address="0x1a8e78b41bc5ab9ebb6996136622b9b41a601b5c",
+        name="fastbtc-out",
+        initial_block=latest_info_block_n + 1,  # if less than start, will set to start
+        start=5500000,
     )
     bookkeeper.add_address(
-        "0xe43cafbdd6674df708ce9dff8762af356c2b454d",
-        "fastbtc-in",
-        w3.eth.block_number - 100,
-        5074757,
+        address="0xe43cafbdd6674df708ce9dff8762af356c2b454d",
+        name="fastbtc-in",
+        initial_block=latest_info_block_n + 1,
+        start=5074757,
     )
 
-    dbsession = Session(engine)
     for i in cycle(range(1000)):
         try:
-            scanned_down = bookkeeper.scan_down(dbsession)
+            scanned_down = bookkeeper.scan_down(dbsession, chain_id=rsk_id)
             if not scanned_down:
-                scanned_up = bookkeeper.scan_up(dbsession)
+                scanned_up = bookkeeper.scan_up(
+                    dbsession, chain_id=rsk_id, safety_limit=block_chain_meta.safe_limit
+                )
                 if not scanned_up:
                     dbsession.commit()
                     time.sleep(10)
-            if i % 100 == 99:
-                bookkeeper.scan_up(dbsession)
+            elif i % 100 == 99:
+                bookkeeper.scan_up(
+                    dbsession, chain_id=rsk_id, safety_limit=block_chain_meta.safe_limit
+                )
                 dbsession.commit()
         except Exception:
             logger.exception("Error scanning")
@@ -327,3 +384,6 @@ def main(argv: List[str]):
 
 if __name__ == "__main__":
     main(sys.argv)
+
+# SELECT COUNT(*) FROM rsk_tx_info WHERE address_id=26 AND JSONB_PATH_EXISTS(trace_json, '$[*].action ? (@.from == "0x1a8e78b41bc5ab9ebb6996136622b9b41a601b5c" && @.value > 0 )');
+# SELECT * FROM rsk_tx_info WHERE address_id=29 AND JSONB_PATH_EXISTS(trace_json, '$[*].action ? (@.to == "0xe43cafbdd6674df708ce9dff8762af356c2b454d" &&  !(@.input starts with "0xe01ed1a2" ) )');

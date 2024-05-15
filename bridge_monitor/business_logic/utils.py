@@ -7,7 +7,6 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
-import time
 from time import sleep
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
@@ -331,75 +330,6 @@ def call_concurrently(*funcs: Callable, retry: bool = False) -> List[Any]:
         _call = retryable()(_call)
 
     return _call()
-
-
-# fetches timestamps of rsk blocks and adds them to db, returns int which indicates length of delay for next update
-def update_chain_info_rsk(
-    dbsession: Session,
-    *,
-    chain_name: str = "rsk_mainnet",
-    fetch_amount: int = 200,
-    seconds_per_iteration: float = RSK_META_FETCHER_SHORT_DELAY,
-) -> int:
-    start_time = time.time()
-    block_chain_meta = (
-        dbsession.query(BlockChain).filter(BlockChain.name == "rsk").scalar()
-    )
-    if block_chain_meta is None:
-        raise LookupError(
-            "Block chain meta not found (maybe running import_block_meta_rsk will help)"
-        )
-
-    rsk_id = block_chain_meta.id
-    safety_limit = block_chain_meta.safe_limit
-
-    if chain_name != "rsk_mainnet":
-        raise NotImplementedError("This function only supports rsk_mainnet")
-    web3 = get_web3(chain_name)
-
-    current_block_number = web3.eth.block_number - safety_limit
-    try:
-        latest_block_number = (
-            dbsession.query(BlockInfo.block_number)
-            .filter(BlockInfo.block_chain_id == rsk_id)
-            .order_by(BlockInfo.block_number.desc())
-            .first()
-        ).block_number
-    except AttributeError:
-        latest_block_number = 0
-
-    if latest_block_number < current_block_number - fetch_amount:
-        logger.info(
-            "Fetching block timestamps from %s to %s",
-            latest_block_number + 1,
-            latest_block_number + fetch_amount,
-        )
-        for block_n in range(
-            latest_block_number + 1, latest_block_number + fetch_amount + 1
-        ):
-            if block_n > current_block_number:
-                break
-            block = web3.eth.get_block(block_n)
-            block_info = BlockInfo(
-                block_chain_id=rsk_id,
-                block_number=block_n,
-                timestamp=datetime.fromtimestamp(block["timestamp"], tz=timezone.utc),
-            )
-            dbsession.add(block_info)
-
-        dbsession.commit()
-        time_to_sleep = seconds_per_iteration - (time.time() - start_time)
-        time_to_sleep = max(1, time_to_sleep)
-        sleep(time_to_sleep)
-        return RSK_META_FETCHER_SHORT_DELAY  # return indicates the delay for the next update
-
-    time_to_sleep = seconds_per_iteration - (time.time() - start_time)
-    logger.info("No need to fetch, sleeping for %s seconds", time_to_sleep)
-    time_to_sleep = max(1, time_to_sleep)
-    sleep(time_to_sleep)
-    return (
-        RSK_META_FETCHER_LONG_DELAY  # if there was no need to fetch set a longer delay
-    )
 
 
 @functools.lru_cache(maxsize=1024)
