@@ -2,8 +2,10 @@ import os
 from datetime import datetime, timezone
 from decimal import Decimal, getcontext
 import logging
+from typing import List, Any
 
-from requests import post
+
+import requests
 import dotenv
 from sqlalchemy.orm import Session
 from bridge_monitor.models.bitcoin_tx_info import BtcWallet, BtcWalletTransaction
@@ -19,8 +21,10 @@ RPC_URL = os.getenv("RPC_URL")
 getcontext().prec = 32
 
 
-def send_rpc_request(method, params, url, id="test"):
-    return post(
+def send_rpc_request(
+    method: str, params: List[Any], url: str, id: str = "test"
+) -> requests.Response:
+    return requests.post(
         url,
         json={"jsonrpc": "2.0", "id": id, "method": method, "params": params},
         auth=(RPC_USER, RPC_PASSWORD),
@@ -112,7 +116,7 @@ def get_new_btc_transactions(dbsession: Session, wallet_name: str) -> None:
 
 
 def get_btc_wallet_balance_at_date(
-    dbsession: Session, wallet_name: str, target_date: datetime | float
+    dbsession: Session, wallet_name: str, target_date: datetime
 ) -> Decimal:
     logger.info("Getting %s balance at %s", wallet_name, target_date.isoformat())
     wallet_id = (
