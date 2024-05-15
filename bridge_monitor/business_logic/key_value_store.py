@@ -17,7 +17,7 @@ class KeyValueStore:
         if not pair:
             if default_value is not _unset:
                 return default_value
-            raise LookupError(f'value for key {key!r} not found')
+            raise LookupError(f"value for key {key!r} not found")
         return pair.value
 
     def set_value(self, key: str, value: Any):

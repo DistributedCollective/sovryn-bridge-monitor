@@ -7,14 +7,14 @@ from .types import TZDateTime, now_in_utc
 
 
 class AlertType(enum.Enum):
-    late_transfers = 'late_transfers'
-    bidi_fastbtc_late_transfers = 'bidi_fastbtc_late_transfers'
-    fastbtc_in_late_transfers = 'fastbtc_in_late_transfers'
-    other = 'other'
+    late_transfers = "late_transfers"
+    bidi_fastbtc_late_transfers = "bidi_fastbtc_late_transfers"
+    fastbtc_in_late_transfers = "fastbtc_in_late_transfers"
+    other = "other"
 
 
 class Alert(Base):
-    __tablename__ = 'alert'
+    __tablename__ = "alert"
 
     id = Column(Integer, primary_key=True)
 

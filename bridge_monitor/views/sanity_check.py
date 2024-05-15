@@ -9,9 +9,7 @@ from decimal import Decimal
 from typing import (
     Optional,
 )
-from functools import lru_cache
 
-import requests
 from eth_utils import to_checksum_address
 from pyramid.httpexceptions import HTTPBadRequest
 from pyramid.request import Request
@@ -25,8 +23,8 @@ from bridge_monitor.business_logic.utils import (
 )
 from bridge_monitor.models.pnl import ProfitCalculation
 from .utils import parse_time_range
-from ..business_logic.utils import update_chain_info_rsk
 from ..rpc.rpc import get_btc_wallet_balance_at_date
+
 logger = logging.getLogger(__name__)
 
 
@@ -63,7 +61,7 @@ class FormVariable:
         if not title:
             title = name
         value = params.get(name, default)
-        if value is None or value == '':
+        if value is None or value == "":
             value = None
         else:
             value = Decimal(value)
@@ -76,19 +74,24 @@ class FormVariable:
         )
 
 
-
-@view_config(route_name='sanity_check', renderer='bridge_monitor:templates/sanity_check.jinja2')
+@view_config(
+    route_name="sanity_check", renderer="bridge_monitor:templates/sanity_check.jinja2"
+)
 def sanity_check(request: Request):
     dbsession: Session = request.dbsession
     chain = get_chain(request)
 
-    bidi_fastbtc_contract_address = to_checksum_address('0x1a8e78b41bc5ab9ebb6996136622b9b41a601b5c')
-    fastbtc_in_contract_address = to_checksum_address('0xe43cafbdd6674df708ce9dff8762af356c2b454d')  # managedwallet
+    bidi_fastbtc_contract_address = to_checksum_address(
+        "0x1a8e78b41bc5ab9ebb6996136622b9b41a601b5c"
+    )
+    fastbtc_in_contract_address = to_checksum_address(
+        "0xe43cafbdd6674df708ce9dff8762af356c2b454d"
+    )  # managedwallet
 
     start, end, errors = parse_time_range(
         request=request,
         models=[ProfitCalculation],
-        default='this_month',
+        default="this_month",
     )
 
     # PnL:= user-fees - tx_cost - failing_tx_cost
@@ -103,54 +106,80 @@ def sanity_check(request: Request):
         start=Decimal(0),
     )
     ret = {
-        'start': start,
-        'end': end,
-        'pnl_rows': pnl_rows,
+        "start": start,
+        "end": end,
+        "pnl_rows": pnl_rows,
     }
 
-    if request.method == 'POST':
+    if request.method == "POST":
+
+        def getval(name):
+            raise NotImplementedError
+
         totals = {
             # PnL := user - fees - tx_cost - failing_tx_cost  (failing tx cost ignored)
-            'pnl': pnl_total,
+            "pnl": pnl_total,
             # manual_out:= withdrawals for operation cost or payrolls
-            'manual_out': Decimal("0"),
+            "manual_out": Decimal("0"),
             # manual_in:=deposits from xchequer or other system components (eg watcher)
-            'manual_in': Decimal("0"),
+            "manual_in": Decimal("0"),
             # Start/End_balance:= Btc_peg_in+Btc_peg_out+Rsk_peg_in+Rsk_peg_out+Btc_backup_wallet
-            'start_balance': sum(
-                (rsk_balance_at_time(dbsession, start, bidi_fastbtc_contract_address, chain)['balance_decimal'],
-                    rsk_balance_at_time(dbsession, start, fastbtc_in_contract_address, chain)['balance_decimal'],
+            "start_balance": sum(
+                (
+                    rsk_balance_at_time(
+                        dbsession, start, bidi_fastbtc_contract_address, chain
+                    )["balance_decimal"],
+                    rsk_balance_at_time(
+                        dbsession, start, fastbtc_in_contract_address, chain
+                    )["balance_decimal"],
                     get_btc_wallet_balance_at_date(dbsession, "fastbtc-out", start),
                     get_btc_wallet_balance_at_date(dbsession, "fastbtc-in", start),
-                    get_btc_wallet_balance_at_date(dbsession, "btc-backup", start))
+                    get_btc_wallet_balance_at_date(dbsession, "btc-backup", start),
+                )
             ),
-            'end_balance': sum(
-                (rsk_balance_at_time(dbsession, end, bidi_fastbtc_contract_address, chain)['balance_decimal'],
-                    rsk_balance_at_time(dbsession, end, fastbtc_in_contract_address, chain)['balance_decimal'],
+            "end_balance": sum(
+                (
+                    rsk_balance_at_time(
+                        dbsession, end, bidi_fastbtc_contract_address, chain
+                    )["balance_decimal"],
+                    rsk_balance_at_time(
+                        dbsession, end, fastbtc_in_contract_address, chain
+                    )["balance_decimal"],
                     get_btc_wallet_balance_at_date(dbsession, "fastbtc-out", end),
                     get_btc_wallet_balance_at_date(dbsession, "fastbtc-in", end),
-                    get_btc_wallet_balance_at_date(dbsession, "btc-backup", end))
-
+                    get_btc_wallet_balance_at_date(dbsession, "btc-backup", end),
+                )
             ),
             # Rsk_tx_cost:=federator_tx_cost peg_in + federator_tx_cost_peg_out
             # ignore for now
-            'rsk_tx_cost': Decimal(0),
+            "rsk_tx_cost": Decimal(0),
             # failing_tx_cost:=approx 10$ per day (paid by federator wallets, ignore for the moment)
         }
-        sanity_check_formula = '{end_balance} - {start_balance} + {pnl} + {manual_in} - {manual_out} - {rsk_tx_cost}'
+        sanity_check_formula = "{end_balance} - {start_balance} + {pnl} + {manual_in} - {manual_out} - {rsk_tx_cost}"
 
-        sanity_check_value = (totals["end_balance"] - totals["start_balance"] + totals["pnl"] + totals["manual_in"]
-                              - totals["manual_out"] - totals["rsk_tx_cost"])
-        ret.update({
-            'totals': totals,
-            'sanity_check': {
-                'formula': sanity_check_formula,
-                'value': sanity_check_value,
+        sanity_check_value = (
+            totals["end_balance"]
+            - totals["start_balance"]
+            + totals["pnl"]
+            + totals["manual_in"]
+            - totals["manual_out"]
+            - totals["rsk_tx_cost"]
+        )
+        ret.update(
+            {
+                "totals": totals,
+                "sanity_check": {
+                    "formula": sanity_check_formula,
+                    "value": sanity_check_value,
+                },
             }
-        })
+        )
     return ret
 
-def rsk_balance_at_time(dbsession: Session, time: datetime, address: str, chain_name: str = "rsk_mainnet"):
+
+def rsk_balance_at_time(
+    dbsession: Session, time: datetime, address: str, chain_name: str = "rsk_mainnet"
+):
     block = get_closest_block(
         chain_name=chain_name,
         wanted_datetime=datetime(time.year, time.month, time.day),
@@ -159,15 +188,17 @@ def rsk_balance_at_time(dbsession: Session, time: datetime, address: str, chain_
     balance_wei = get_rsk_balance_at_block(
         web3=get_web3(chain_name),
         address=address,
-        block_number=block['number'],
+        block_number=block["number"],
     )
 
     return {
-        'block_number': block['number'],
-        'block_time': datetime.fromtimestamp(block['timestamp'], timezone.utc).isoformat(),
-        'address': address,
-        'balance_wei': balance_wei,
-        'balance_decimal': format(balance_wei / Decimal(10) ** 18, '.6f'),
+        "block_number": block["number"],
+        "block_time": datetime.fromtimestamp(
+            block["timestamp"], timezone.utc
+        ).isoformat(),
+        "address": address,
+        "balance_wei": balance_wei,
+        "balance_decimal": format(balance_wei / Decimal(10) ** 18, ".6f"),
     }
 
 
@@ -181,27 +212,36 @@ def get_pnl_rows(
     time_filter = []
     if start:
         time_filter.append(
-            ProfitCalculation.timestamp >= datetime(start.year, start.month, start.day, tzinfo=timezone.utc)
+            ProfitCalculation.timestamp
+            >= datetime(start.year, start.month, start.day, tzinfo=timezone.utc)
         )
     if end:
         time_filter.append(
-            ProfitCalculation.timestamp < datetime(end.year, end.month, end.day, tzinfo=timezone.utc) + timedelta(days=1)
+            ProfitCalculation.timestamp
+            < datetime(end.year, end.month, end.day, tzinfo=timezone.utc)
+            + timedelta(days=1)
         )
 
-    calculations_by_service = dbsession.query(
-        ProfitCalculation.service,
-        func.sum(ProfitCalculation.volume_btc).label('volume_btc'),
-        func.sum(ProfitCalculation.gross_profit_btc).label('gross_profit_btc'),
-        func.sum(ProfitCalculation.cost_btc).label('cost_btc'),
-        func.sum(ProfitCalculation.net_profit_btc).label('net_profit_btc'),
-    ).filter(
-        ProfitCalculation.config_chain == chain,
-        *time_filter,
-    ).group_by(
-        ProfitCalculation.service,
-    ).order_by(
-        ProfitCalculation.service,
-    ).all()
+    calculations_by_service = (
+        dbsession.query(
+            ProfitCalculation.service,
+            func.sum(ProfitCalculation.volume_btc).label("volume_btc"),
+            func.sum(ProfitCalculation.gross_profit_btc).label("gross_profit_btc"),
+            func.sum(ProfitCalculation.cost_btc).label("cost_btc"),
+            func.sum(ProfitCalculation.net_profit_btc).label("net_profit_btc"),
+        )
+        .filter(
+            ProfitCalculation.config_chain == chain,
+            *time_filter,
+        )
+        .group_by(
+            ProfitCalculation.service,
+        )
+        .order_by(
+            ProfitCalculation.service,
+        )
+        .all()
+    )
 
     return [
         PnlRow(
@@ -217,19 +257,20 @@ def get_pnl_rows(
 
 def get_rsk_balance_at_block(web3, address, block_number) -> int:
     balance = web3.eth.get_balance(address, block_number)
-    logger.info("rsk balance for %s at block %s: %s wei", address, block_number, balance)
+    logger.info(
+        "rsk balance for %s at block %s: %s wei", address, block_number, balance
+    )
     return balance
 
 
-
 def get_chain(request: Request) -> str:
-    chain_env = request.registry.get('chain_env', 'mainnet')
-    chain = f'rsk_{chain_env}'
-    if chain != 'rsk_mainnet':
+    chain_env = request.registry.get("chain_env", "mainnet")
+    chain = f"rsk_{chain_env}"
+    if chain != "rsk_mainnet":
         raise HTTPBadRequest("sanity check is only available for rsk_mainnet")
     return chain
 
 
 def includeme(config):
-    config.add_route('sanity_check', '/sanity-check/')
-    config.add_route('rsk_balance_at_time', '/rsk-balance-at-time/')
+    config.add_route("sanity_check", "/sanity-check/")
+    config.add_route("rsk_balance_at_time", "/rsk-balance-at-time/")

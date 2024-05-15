@@ -1,4 +1,5 @@
 """Various web3"""
+
 from concurrent.futures import ThreadPoolExecutor
 import functools
 import json
@@ -6,15 +7,14 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
-import time
 from time import sleep
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 from eth_account.signers.local import LocalAccount
 from eth_typing import AnyAddress
 from eth_utils import to_checksum_address
 from web3 import Web3
-from web3.contract import Contract, ContractEvent, ContractFunction
+from web3.contract import Contract
 from web3.middleware import construct_sign_and_send_raw_middleware, geth_poa_middleware
 from web3.exceptions import MismatchedABI
 from web3.types import BlockData
@@ -24,24 +24,26 @@ from .retry_middleware import http_retry_request_middleware
 from ..models.chain_info import BlockInfo, BlockChain
 
 THIS_DIR = os.path.dirname(__file__)
-ABI_DIR = os.path.join(THIS_DIR, 'abi')
+ABI_DIR = os.path.join(THIS_DIR, "abi")
 logger = logging.getLogger(__name__)
 OLDEST_RSK_BLOCK_NUMBER = 3175735
 RSK_META_FETCHER_SHORT_DELAY = 2 * 60
 RSK_META_FETCHER_LONG_DELAY = 10 * 60
 
-INFURA_API_KEY = os.getenv('INFURA_API_KEY', 'INFURA_API_KEY_NOT_SET')
+INFURA_API_KEY = os.getenv("INFURA_API_KEY", "INFURA_API_KEY_NOT_SET")
 RPC_URLS = {
     #'rsk_mainnet': os.getenv('RSK_NODE_URL', 'https://rsk-internal.sovryn.app/rpc'),
-    'rsk_mainnet': os.getenv('RSK_NODE_URL', 'https://mainnet-dev.sovryn.app/rpc/'),
-    'rsk_mainnet_iov': 'https://public-node.rsk.co',
-    'bsc_mainnet': os.getenv('BSC_NODE_URL', 'https://bsc-dataseed1.binance.org/'),
-    'rsk_testnet': 'https://testnet.sovryn.app/rpc',
+    "rsk_mainnet": os.getenv("RSK_NODE_URL", "https://mainnet-dev.sovryn.app/rpc/"),
+    "rsk_mainnet_iov": "https://public-node.rsk.co",
+    "bsc_mainnet": os.getenv("BSC_NODE_URL", "https://bsc-dataseed1.binance.org/"),
+    "rsk_testnet": "https://testnet.sovryn.app/rpc",
     #'bsc_testnet': 'https://bsc.sovryn.app/testnet',
-    'bsc_testnet': 'https://data-seed-prebsc-1-s1.binance.org:8545/',
-    'eth_mainnet': os.getenv('ETH_NODE_URL', f'https://mainnet.infura.io/v3/{INFURA_API_KEY}'),
-    'eth_testnet_ropsten': f'https://ropsten.infura.io/v3/{INFURA_API_KEY}',
-    'eth_testnet': f'https://sepolia.infura.io/v3/{INFURA_API_KEY}',
+    "bsc_testnet": "https://data-seed-prebsc-1-s1.binance.org:8545/",
+    "eth_mainnet": os.getenv(
+        "ETH_NODE_URL", f"https://mainnet.infura.io/v3/{INFURA_API_KEY}"
+    ),
+    "eth_testnet_ropsten": f"https://ropsten.infura.io/v3/{INFURA_API_KEY}",
+    "eth_testnet": f"https://sepolia.infura.io/v3/{INFURA_API_KEY}",
 }
 
 
@@ -49,10 +51,12 @@ def get_web3(chain_name: str, *, account: Optional[LocalAccount] = None) -> Web3
     try:
         rpc_url = RPC_URLS[chain_name]
     except KeyError:
-        valid_chains = ', '.join(repr(k) for k in RPC_URLS.keys())
-        raise LookupError(f'Invalid chain name: {chain_name!r}. Valid options: {valid_chains}')
-    if 'INFURA_API_KEY_NOT_SET' in rpc_url:
-        raise RuntimeError('please provide the enviroment var INFURA_API_KEY')
+        valid_chains = ", ".join(repr(k) for k in RPC_URLS.keys())
+        raise LookupError(
+            f"Invalid chain name: {chain_name!r}. Valid options: {valid_chains}"
+        )
+    if "INFURA_API_KEY_NOT_SET" in rpc_url:
+        raise RuntimeError("please provide the enviroment var INFURA_API_KEY")
     web3 = Web3(Web3.HTTPProvider(rpc_url))
     if account:
         set_web3_account(
@@ -80,7 +84,7 @@ def set_web3_account(*, web3: Web3, account: LocalAccount) -> Web3:
 def enable_logging():
     root = logging.getLogger()
     root.setLevel(logging.NOTSET)
-    formatter = logging.Formatter('%(asctime)s - %(name)s [%(levelname)s] %(message)s')
+    formatter = logging.Formatter("%(asctime)s - %(name)s [%(levelname)s] %(message)s")
 
     error_handler = logging.StreamHandler(sys.stderr)
     error_handler.setLevel(logging.WARNING)
@@ -98,7 +102,7 @@ def utcnow() -> datetime:
 
 
 def load_abi(name: str) -> List[Dict[str, Any]]:
-    abi_path = os.path.join(ABI_DIR, f'{name}.json')
+    abi_path = os.path.join(ABI_DIR, f"{name}.json")
     assert os.path.abspath(abi_path).startswith(os.path.abspath(ABI_DIR))
     with open(abi_path) as f:
         return json.load(f)
@@ -111,37 +115,43 @@ def to_address(a: Union[bytes, str]) -> AnyAddress:
     return to_checksum_address(a)
 
 
-ERC20_ABI = load_abi('IERC20')
+ERC20_ABI = load_abi("IERC20")
 
 
 @functools.lru_cache()
-def get_erc20_contract(*, token_address: Union[str, AnyAddress], web3: Web3) -> Contract:
+def get_erc20_contract(
+    *, token_address: Union[str, AnyAddress], web3: Web3
+) -> Contract:
     return web3.eth.contract(
         address=to_address(token_address),
         abi=ERC20_ABI,
     )
 
 
-def get_events(
-    *,
-    event: ContractEvent,
-    from_block: int,
-    to_block: int,
-    batch_size: int = None
-):
+def get_events(*, event, from_block: int, to_block: int, batch_size: int = None):
     """Load events in batches"""
     if to_block < from_block:
-        raise ValueError(f'to_block {to_block} is smaller than from_block {from_block}')
+        raise ValueError(f"to_block {to_block} is smaller than from_block {from_block}")
 
     if batch_size is None:
         batch_size = 100
 
-    logger.info('fetching events from %s to %s with batch size %s', from_block, to_block, batch_size)
+    logger.info(
+        "fetching events from %s to %s with batch size %s",
+        from_block,
+        to_block,
+        batch_size,
+    )
     ret = []
     batch_from_block = from_block
     while batch_from_block <= to_block:
         batch_to_block = min(batch_from_block + batch_size, to_block)
-        logger.info('fetching batch from %s to %s (up to %s)', batch_from_block, batch_to_block, to_block)
+        logger.info(
+            "fetching batch from %s to %s (up to %s)",
+            batch_from_block,
+            batch_to_block,
+            to_block,
+        )
 
         events = get_event_batch_with_retries(
             event=event,
@@ -149,34 +159,42 @@ def get_events(
             to_block=batch_to_block,
         )
         if len(events) > 0:
-            logger.info(f'found %s events in batch', len(events))
+            logger.info("found %s events in batch", len(events))
         ret.extend(events)
         batch_from_block = batch_to_block + 1
-    logger.info(f'found %s events in total', len(ret))
+    logger.info("found %s events in total", len(ret))
     return ret
 
 
 def get_all_contract_events(
-    *,
-    contract: Contract,
-    from_block: int,
-    to_block: int,
-    batch_size: int = None
+    *, contract: Contract, from_block: int, to_block: int, batch_size: int = None
 ):
     """Get all events of a single contract"""
     if to_block < from_block:
-        raise ValueError(f'to_block {to_block} is smaller than from_block {from_block}')
+        raise ValueError(f"to_block {to_block} is smaller than from_block {from_block}")
 
     if batch_size is None:
         batch_size = 100
 
-    logger.info('fetching events for %s from %s to %s with batch size %s', contract.address, from_block, to_block, batch_size)
+    logger.info(
+        "fetching events for %s from %s to %s with batch size %s",
+        contract.address,
+        from_block,
+        to_block,
+        batch_size,
+    )
 
     ret = []
     batch_from_block = from_block
     while batch_from_block <= to_block:
         batch_to_block = min(batch_from_block + batch_size, to_block)
-        logger.info('fetching batch for %s from %s to %s (up to %s)', contract.address, batch_from_block, batch_to_block, to_block)
+        logger.info(
+            "fetching batch for %s from %s to %s (up to %s)",
+            contract.address,
+            batch_from_block,
+            batch_to_block,
+            to_block,
+        )
 
         logs = get_log_batch_with_retries(
             contract_address=contract.address,
@@ -185,7 +203,7 @@ def get_all_contract_events(
             to_block=batch_to_block,
         )
         if len(logs) > 0:
-            logger.info(f'found %s events in batch', len(logs))
+            logger.info("found %s events in batch", len(logs))
             parsed_events = []
             for log in logs:
                 parsed = None
@@ -197,11 +215,13 @@ def get_all_contract_events(
                     except MismatchedABI:
                         pass
                 if not parsed:
-                    raise ValueError(f'could not parse event {log} for contract {contract.address}')
+                    raise ValueError(
+                        f"could not parse event {log} for contract {contract.address}"
+                    )
                 parsed_events.append(parsed)
             ret.extend(parsed_events)
         batch_from_block = batch_to_block + 1
-    logger.info(f'found %s events in total', len(ret))
+    logger.info("found %s events in total", len(ret))
     return ret
 
 
@@ -216,25 +236,29 @@ def get_event_batch_with_retries(event, from_block, to_block, *, retries=6):
         except ValueError as e:
             if retries <= 0:
                 raise e
-            logger.warning('error in get_all_entries: %s, retrying (%s)', e, retries)
+            logger.warning("error in get_all_entries: %s, retrying (%s)", e, retries)
             retries -= 1
             attempt = original_retries - retries
             exponential_sleep(attempt)
 
 
-def get_log_batch_with_retries(web3: Web3, contract_address: str, from_block, to_block, *, retries=6):
+def get_log_batch_with_retries(
+    web3: Web3, contract_address: str, from_block, to_block, *, retries=6
+):
     original_retries = retries
     while True:
         try:
-            return web3.eth.getLogs(dict(
-                address=contract_address,
-                fromBlock=from_block,
-                toBlock=to_block,
-            ))
+            return web3.eth.getLogs(
+                dict(
+                    address=contract_address,
+                    fromBlock=from_block,
+                    toBlock=to_block,
+                )
+            )
         except ValueError as e:
             if retries <= 0:
                 raise e
-            logger.warning('error in web3.eth.getLogs: %s, retrying (%s)', e, retries)
+            logger.warning("error in web3.eth.getLogs: %s, retrying (%s)", e, retries)
             retries -= 1
             attempt = original_retries - retries
             exponential_sleep(attempt)
@@ -246,9 +270,7 @@ def exponential_sleep(attempt, max_sleep_time=512.0):
 
 
 def retryable(
-    *,
-    max_attempts: int = 10,
-    exceptions: Tuple[Type[Exception]] = (Exception,)
+    *, max_attempts: int = 10, exceptions: Tuple[Type[Exception]] = (Exception,)
 ):
     def decorator(func):
         @functools.wraps(func)
@@ -259,43 +281,46 @@ def retryable(
                     return func(*args, **kwargs)
                 except exceptions as e:
                     if attempt >= max_attempts:
-                        logger.exception('max attempts (%s) exhausted for error: %s', max_attempts, e)
+                        logger.exception(
+                            "max attempts (%s) exhausted for error: %s", max_attempts, e
+                        )
                         raise
                     logger.warning(
-                        'Retryable error (attempt: %s/%s): %s',
+                        "Retryable error (attempt: %s/%s): %s",
                         attempt + 1,
                         max_attempts,
                         e,
                     )
                     exponential_sleep(attempt)
                     attempt += 1
+
         return wrapped
+
     return decorator
 
 
 @functools.lru_cache()
 def is_contract(*, web3: Web3, address: str) -> bool:
     code = web3.eth.get_code(to_address(address))
-    return code != b'\x00' and code != b''
+    return code != b"\x00" and code != b""
 
 
-def call_sequentially(*funcs: Union[Callable, ContractFunction], retry: bool = False) -> List[Any]:
+def call_sequentially(*funcs: Callable, retry: bool = False) -> List[Any]:
     res = []
     for func in funcs:
-        if hasattr(func, 'call'):
+        if hasattr(func, "call"):
             res.append(func.call())
         else:
             res.append(func())
     return res
 
 
-def call_concurrently(*funcs: Union[Callable, ContractFunction], retry: bool = False) -> List[Any]:
+def call_concurrently(*funcs: Callable, retry: bool = False) -> List[Any]:
     def _call():
         futures = []
         with ThreadPoolExecutor() as executor:
             for func in funcs:
-                if hasattr(func, 'call'):
-                    # ContractFunction
+                if hasattr(func, "call"):
                     futures.append(executor.submit(func.call))
                 else:
                     futures.append(executor.submit(func))
@@ -307,56 +332,6 @@ def call_concurrently(*funcs: Union[Callable, ContractFunction], retry: bool = F
     return _call()
 
 
-# fetches timestamps of rsk blocks and adds them to db, returns int which indicates length of delay for next update
-def update_chain_info_rsk(dbsession: Session, *, chain_name: str = "rsk_mainnet",
-                          fetch_amount: int = 200, seconds_per_iteration: float = RSK_META_FETCHER_SHORT_DELAY) -> int:
-    start_time = time.time()
-    block_chain_meta = dbsession.query(BlockChain).filter(BlockChain.name == "rsk").scalar()
-    if block_chain_meta is None:
-        raise LookupError("Block chain meta not found (maybe running import_block_meta_rsk will help)")
-
-    rsk_id = block_chain_meta.id
-    safety_limit = block_chain_meta.safe_limit
-
-    if chain_name != "rsk_mainnet":
-        raise NotImplementedError("This function only supports rsk_mainnet")
-    web3 = get_web3(chain_name)
-
-    current_block_number = web3.eth.block_number - safety_limit
-
-    latest_block_number = (dbsession.query(BlockInfo.block_number).filter(BlockInfo.block_chain_id == rsk_id)
-                           .order_by(BlockInfo.block_number.desc()).first()).block_number
-
-    if latest_block_number < current_block_number - fetch_amount:
-        logger.info("Fetching block timestamps from %s to %s",
-                    latest_block_number + 1, latest_block_number + fetch_amount)
-        for block_n in range(latest_block_number + 1, latest_block_number + fetch_amount + 1):
-            if block_n > current_block_number:
-                break
-            block = web3.eth.get_block(block_n)
-            block_info = BlockInfo(
-                block_chain_id=rsk_id,
-                block_number=block_n,
-                timestamp=datetime.fromtimestamp(block['timestamp'], tz=timezone.utc),
-            )
-            dbsession.add(block_info)
-            if block_n % 20 == 0:
-                dbsession.flush()
-
-        dbsession.commit()
-        logger.info("Committed blocks to db")
-        time_to_sleep = seconds_per_iteration - (time.time() - start_time)
-        time_to_sleep = max(1, time_to_sleep)
-        sleep(time_to_sleep)
-        return RSK_META_FETCHER_SHORT_DELAY              # return indicates the delay for the next update
-
-    time_to_sleep = seconds_per_iteration - (time.time() - start_time)
-    logger.info("No need to fetch, sleeping for %s seconds", time_to_sleep)
-    time_to_sleep = max(1, time_to_sleep)
-    sleep(time_to_sleep)
-    return RSK_META_FETCHER_LONG_DELAY                  # if there was no need to fetch set a longer delay
-
-
 @functools.lru_cache(maxsize=1024)
 def get_closest_block(
     dbsession: Session,
@@ -364,22 +339,32 @@ def get_closest_block(
     wanted_datetime: datetime,
     *,
     not_after: bool = True,
-    allowed_diff_seconds: int = 10 * 60
+    allowed_diff_seconds: int = 10 * 60,
 ) -> BlockData:
-
     wanted_timestamp = int(wanted_datetime.timestamp())
     logger.debug("Wanted timestamp: %s", wanted_timestamp)
 
-    block_chain_meta = dbsession.query(BlockChain).filter(BlockChain.name == "rsk").scalar()
+    block_chain_meta = (
+        dbsession.query(BlockChain).filter(BlockChain.name == "rsk").scalar()
+    )
     rsk_id = block_chain_meta.id
     if block_chain_meta is None:
         raise LookupError("Block chain meta not found")
-    closest_block = (dbsession.query(BlockInfo).filter((BlockInfo.block_chain_id == rsk_id) &
-                    (BlockInfo.timestamp <= wanted_datetime))
-                    .order_by(BlockInfo.timestamp.desc()).first())
+    closest_block = (
+        dbsession.query(BlockInfo)
+        .filter(
+            (BlockInfo.block_chain_id == rsk_id)
+            & (BlockInfo.timestamp <= wanted_datetime)
+        )
+        .order_by(BlockInfo.timestamp.desc())
+        .first()
+    )
 
     if closest_block is not None:
-        if abs(closest_block.timestamp.timestamp() - wanted_timestamp) <= allowed_diff_seconds:
+        if (
+            abs(closest_block.timestamp.timestamp() - wanted_timestamp)
+            <= allowed_diff_seconds
+        ):
             return closest_block
         # else attempt to get better block from by using web3
     web3 = get_web3(chain_name)
@@ -391,14 +376,14 @@ def get_closest_block(
     while start_block_number <= end_block_number:
         target_block_number = (start_block_number + end_block_number) // 2
         block: BlockData = web3.eth.get_block(target_block_number)
-        block_timestamp = block['timestamp']
+        block_timestamp = block["timestamp"]
 
         diff = block_timestamp - wanted_timestamp
         logger.debug(
             "target: %s, timestamp: %s, diff %s",
             target_block_number,
             block_timestamp,
-            diff
+            diff,
         )
 
         # Only update block when diff actually gets lower
@@ -409,25 +394,29 @@ def get_closest_block(
 
         if block_timestamp > wanted_timestamp:
             # block is after wanted, move end
-            end_block_number = block['number'] - 1
+            end_block_number = block["number"] - 1
         elif block_timestamp < wanted_timestamp:
             # block is before wanted, move start
-            start_block_number = block['number'] + 1
+            start_block_number = block["number"] + 1
         else:
             # timestamps are exactly the same, just return block
             return block
 
     if closest_block is None:
-        raise LookupError('Unable to determine block closest to ' + wanted_datetime.isoformat())
+        raise LookupError(
+            "Unable to determine block closest to " + wanted_datetime.isoformat()
+        )
 
     logger.debug(
-        'closest timestamp: %s, diff: %s',
-        closest_block['timestamp'],
+        "closest timestamp: %s, diff: %s",
+        closest_block["timestamp"],
         closest_diff,
     )
 
     if not_after and closest_block["timestamp"] > wanted_timestamp:
-        logger.debug("Block is after wanted timestamp and not_after=True, returning previous block")
+        logger.debug(
+            "Block is after wanted timestamp and not_after=True, returning previous block"
+        )
         return web3.eth.get_block(closest_block["number"] - 1)
 
     return closest_block
