@@ -112,10 +112,6 @@ def sanity_check(request: Request):
     }
 
     if request.method == "POST":
-
-        def getval(name):
-            raise NotImplementedError
-
         totals = {
             # PnL := user - fees - tx_cost - failing_tx_cost  (failing tx cost ignored)
             "pnl": pnl_total,

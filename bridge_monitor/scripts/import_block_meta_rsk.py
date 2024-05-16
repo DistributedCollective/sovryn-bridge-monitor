@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 from tempfile import TemporaryFile
 import json
 import configparser
-from math import floor
 from typing import List
 
 from pyramid.paster import setup_logging
@@ -62,7 +61,7 @@ def write_from_file_to_db(
             block_n, ts = json.loads(line.decode("utf-8"))
         except (
             ValueError
-        ):  # in a properly formatted an empty last line would trigger this
+        ):  # in a properly formatted file an empty last line would trigger this
             break
         dbsession.add(
             BlockInfo(
@@ -83,22 +82,9 @@ def write_from_parquet_to_db(dbsession: Session, path: str):
 
     df = pd.read_parquet(path)
     df.drop_duplicates(subset=["block_number"], inplace=True)
-    chunk_count = 20
-    chunk_length = floor(len(df) / chunk_count)
-    logger.info("Parquet length: %d, chunk count: %d", len(df), chunk_count)
-    for i in range(chunk_count):
-        start = i * chunk_length
-        end = (i + 1) * chunk_length if i + 1 != chunk_count else len(df) + 1
-        logger.info("Processing chunk %d blocks %d-%d", i, start, end)
-        for _, row in df[start:end].iterrows():
-            dbsession.add(
-                BlockInfo(
-                    block_chain_id=block_chain_meta.id,
-                    block_number=int(row["block_number"]),
-                    timestamp=datetime.fromtimestamp(row["timestamp"]),
-                )
-            )
-        dbsession.flush()
+    df.insert(0, "block_chain_id", block_chain_meta.id, allow_duplicates=True)
+    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, unit="s")
+    df.to_sql("block_info", dbsession.bind, if_exists="append", index=False)
     del df  # df will likely be large, so del it just to be sure it's gone
 
 

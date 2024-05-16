@@ -167,7 +167,12 @@ def get_events(*, event, from_block: int, to_block: int, batch_size: int = None)
 
 
 def get_all_contract_events(
-    *, contract: Contract, from_block: int, to_block: int, batch_size: int = None
+    *,
+    contract: Contract,
+    from_block: int,
+    to_block: int,
+    batch_size: int = None,
+    web3=None,
 ):
     """Get all events of a single contract"""
     if to_block < from_block:
@@ -198,7 +203,7 @@ def get_all_contract_events(
 
         logs = get_log_batch_with_retries(
             contract_address=contract.address,
-            web3=contract.web3,
+            web3=web3 or contract.web3,
             from_block=batch_from_block,
             to_block=batch_to_block,
         )
@@ -209,7 +214,7 @@ def get_all_contract_events(
                 parsed = None
                 for event in contract.events:
                     try:
-                        parsed = event().processLog(log)
+                        parsed = event().process_log(log)
                         if parsed is not None:
                             break
                     except MismatchedABI:
@@ -229,7 +234,7 @@ def get_event_batch_with_retries(event, from_block, to_block, *, retries=6):
     original_retries = retries
     while True:
         try:
-            return event.getLogs(
+            return event.get_logs(
                 fromBlock=from_block,
                 toBlock=to_block,
             )
@@ -248,7 +253,7 @@ def get_log_batch_with_retries(
     original_retries = retries
     while True:
         try:
-            return web3.eth.getLogs(
+            return web3.eth.get_logs(
                 dict(
                     address=contract_address,
                     fromBlock=from_block,
@@ -258,7 +263,7 @@ def get_log_batch_with_retries(
         except ValueError as e:
             if retries <= 0:
                 raise e
-            logger.warning("error in web3.eth.getLogs: %s, retrying (%s)", e, retries)
+            logger.warning("error in web3.eth.get_logs: %s, retrying (%s)", e, retries)
             retries -= 1
             attempt = original_retries - retries
             exponential_sleep(attempt)

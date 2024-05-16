@@ -76,6 +76,7 @@ def update_fastbtc_in_transfers(
         return
 
     multisig_events = get_all_contract_events(
+        web3=web3,
         contract=multisig,
         from_block=from_block,
         to_block=to_block,
@@ -87,6 +88,7 @@ def update_fastbtc_in_transfers(
     logger.info("Retrieving all related blocks and multisig transactions")
     blocks_by_block_hash = dict()
     multisig_transactions_by_tx_id = dict()
+
     for i, event in enumerate(multisig_events, start=1):
         if i % 10 == 0 or i == len(multisig_events):
             logger.info("%s/%s", i, len(multisig_events))
@@ -201,7 +203,7 @@ def update_fastbtc_in_transfers(
                 logger.info(
                     "ExecutionFailure(%s) at block %s", event.args, block["number"]
                 )
-                transfer.mark_execution_failed(
+                transfer.mark_execution_failure(
                     tx_hash=event.transactionHash,
                 )
             else:
