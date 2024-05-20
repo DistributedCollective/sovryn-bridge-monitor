@@ -14,7 +14,12 @@ from .pnl import ProfitCalculation, PnLTransaction  # flake8: noqa
 from .replenisher import BidirectionalFastBTCReplenisherTransaction  # flake8: noqa
 from .chain_info import BlockChain, BlockInfo
 from .bitcoin_tx_info import BtcWallet, BtcWalletTransaction
-from .rsk_transaction_info import RskAddressBookkeeper, RskAddress, RskTransactionInfo
+from .rsk_transaction_info import (
+    RskAddressBookkeeper,
+    RskAddress,
+    RskTransactionInfoOld,
+    RskTxTrace,
+)
 
 # Run ``configure_mappers`` after defining all of the models to ensure
 # all relationships can be setup.

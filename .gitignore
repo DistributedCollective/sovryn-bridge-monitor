@@ -23,7 +23,8 @@ Data*.fs*
 coverage
 test
 *.sqlite
-
+*dump.sql
+*.log
 .idea/
 *.parquet
 development-local.ini

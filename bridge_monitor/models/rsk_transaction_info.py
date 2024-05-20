@@ -7,6 +7,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKeyConstraint,
+    Numeric,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
@@ -18,7 +19,7 @@ from .meta import Base
 class RskAddress(Base):
     __tablename__ = "rsk_address"
     __table_args__ = (
-        CheckConstraint("LOWER(address) = address", name="lowercase_address"),
+        CheckConstraint("LOWER(address) = address", name="address_lowercase"),
     )
     id = Column(Integer, primary_key=True)
     address = Column(Text, nullable=False, unique=True)
@@ -31,7 +32,7 @@ class RskAddress(Base):
         uselist=False,
     )
     transactions = relationship(
-        "RskTransactionInfo",
+        "RskTransactionInfoOld",
         cascade="all, delete-orphan",
         back_populates="address",
         lazy="dynamic",
@@ -50,14 +51,13 @@ class RskAddressBookkeeper(Base):
     next_to_scan_high = Column(Integer, nullable=False)
 
 
-class RskTransactionInfo(Base):
-    __tablename__ = "rsk_tx_info"
+class RskTransactionInfoOld(Base):
+    __tablename__ = "rsk_tx_info_old"
     __table_args__ = (
-        UniqueConstraint("address_id", "tx_hash", name="unique_tx"),
+        UniqueConstraint("address_id", "tx_hash"),
         ForeignKeyConstraint(
             ["block_n", "chain_id"],
             ["block_info.block_number", "block_info.block_chain_id"],
-            name="fk_block_info",
         ),
     )
 
@@ -71,6 +71,38 @@ class RskTransactionInfo(Base):
     address = relationship(RskAddress, back_populates="transactions")
     block_info = relationship(
         BlockInfo,
-        primaryjoin="and_(RskTransactionInfo.block_n == BlockInfo.block_number,"
-        "RskTransactionInfo.chain_id == BlockInfo.block_chain_id)",
+        primaryjoin="and_(RskTransactionInfoOld.block_n == BlockInfo.block_number,"
+        "RskTransactionInfoOld.chain_id == BlockInfo.block_chain_id)",
+    )
+
+
+class RskTxTrace(Base):
+    __tablename__ = "rsk_tx_trace"
+    __table_args__ = (
+        UniqueConstraint("tx_hash", "trace_index"),
+        ForeignKeyConstraint(
+            ["block_n", "chain_id"],
+            ["block_info.block_number", "block_info.block_chain_id"],
+        ),
+        CheckConstraint("LOWER(to_address) = to_address", name="to_address_lowercase"),
+        CheckConstraint(
+            "LOWER(from_address) = from_address", name="from_address_lowercase"
+        ),
+    )
+
+    id = Column(Integer, primary_key=True)
+    tx_hash = Column(Text, nullable=False)
+    block_n = Column(Integer, nullable=True)
+    chain_id = Column(Integer, nullable=True)
+    block_time = Column(DateTime(timezone=True), nullable=True)
+    to_address = Column(Text, nullable=False)
+    from_address = Column(Text, nullable=False)
+    trace_index = Column(Integer, nullable=False)
+    value = Column(Numeric(32, 0), nullable=False)
+    unmapped = Column(JSONB, nullable=False)
+    error = Column(Text)
+    block_info = relationship(
+        BlockInfo,
+        primaryjoin="and_(RskTxTrace.block_n == BlockInfo.block_number,"
+        "RskTxTrace.chain_id == BlockInfo.block_chain_id)",
     )

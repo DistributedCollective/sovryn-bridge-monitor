@@ -31,6 +31,9 @@ def parse_args(argv: List[str]):
         required=False,
     )
     parser.add_argument("--empty", action="store_true", help="Initialize empty")
+    parser.add_argument(
+        "--truncate", action="store_true", help="Truncate existing table"
+    )
 
     return parser.parse_args(argv[1:])
 
@@ -49,12 +52,13 @@ def get_blockchain_meta(dbsession: Session, name, expected_safe_limit=12):
 
 
 def write_from_file_to_db(
-    dbsession: Session, file
+    dbsession: Session, file, args
 ):  # file must be formatted as: [123123, 545343]\n[123124, 545344]\n...
     block_chain_meta = get_blockchain_meta(dbsession, "rsk")
-    dbsession.query(BlockInfo).filter(
-        BlockInfo.block_chain_id == block_chain_meta.id
-    ).delete()
+    if args.truncate:
+        dbsession.query(BlockInfo).filter(
+            BlockInfo.block_chain_id == block_chain_meta.id
+        ).delete()
 
     for count, line in enumerate(file):
         try:
@@ -74,17 +78,19 @@ def write_from_file_to_db(
             dbsession.flush()
 
 
-def write_from_parquet_to_db(dbsession: Session, path: str):
+def write_from_parquet_to_db(dbsession: Session, path: str, args):
     block_chain_meta = get_blockchain_meta(dbsession, "rsk")
-    dbsession.query(BlockInfo).filter(
-        BlockInfo.block_chain_id == block_chain_meta.id
-    ).delete()
+    if args.truncate:
+        dbsession.query(BlockInfo).filter(
+            BlockInfo.block_chain_id == block_chain_meta.id
+        ).delete()
 
     df = pd.read_parquet(path)
     df.drop_duplicates(subset=["block_number"], inplace=True)
     df.insert(0, "block_chain_id", block_chain_meta.id, allow_duplicates=True)
-    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, unit="s")
-    df.to_sql("block_info", dbsession.bind, if_exists="append", index=False)
+    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=False, unit="s")
+    df["timestamp"] = df["timestamp"].dt.tz_localize("UTC")
+    df.to_sql(BlockInfo.__tablename__, dbsession.bind, if_exists="append", index=False)
     del df  # df will likely be large, so del it just to be sure it's gone
 
 
