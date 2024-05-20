@@ -44,6 +44,7 @@ RPC_URLS = {
     ),
     "eth_testnet_ropsten": f"https://ropsten.infura.io/v3/{INFURA_API_KEY}",
     "eth_testnet": f"https://sepolia.infura.io/v3/{INFURA_API_KEY}",
+    "local_node": "http://localhost:4444",
 }
 
 
