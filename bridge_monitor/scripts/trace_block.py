@@ -8,6 +8,8 @@ from typing import Sequence, List, Any
 import time
 import logging
 from datetime import datetime, timezone
+
+import requests
 import web3
 from eth_utils import is_checksum_address, to_checksum_address
 
@@ -299,16 +301,46 @@ class Bookkeeper:
         return block_info
 
     def sanity_check_on_address(
-        self, dbsession: Session, bk: RskAddressBookkeeper, sensitivity: int = 100
+        self,
+        dbsession: Session,
+        bk: RskAddressBookkeeper,
+        config: configparser.ConfigParser,
+        sensitivity: int = 100,
     ):
         def on_fail(st):
-            logger.warning("sanity check failed for %s: %s", bk.address.address, st)
+            logger.warning(
+                "sanity check failed for: %s, with message: %s", bk.address.address, st
+            )
+            post_url = config["slack"].get("sanity_check_hook", "")
+            if not post_url:
+                return
+            payload = {
+                "username": "Trace table sanity check -bot",
+                "icon_emoji": ":skull:",
+                "blocks": [
+                    {
+                        "type": "header",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "RSK trace table sanity check failed",
+                        },
+                    },
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f"Address: {bk.address.address}\nMessage: {st}",
+                        },
+                    },
+                ],
+            }
+            requests.post(post_url, json=payload)
 
         current_block = self.web3.eth.block_number
 
         if bk.start >= bk.lowest_scanned:
             if bk.next_to_scan_high < current_block - sensitivity:
-                on_fail("fell behind")
+                on_fail(f"fell behind by {current_block - bk.next_to_scan_high} blocks")
         bk_checksum_addr = to_checksum_address(bk.address.address)
         expected_value_delta = self.web3.eth.get_balance(
             bk_checksum_addr, bk.next_to_scan_high
@@ -325,7 +357,6 @@ class Bookkeeper:
                 )
             )
         ).scalar()
-
         from_values = dbsession.execute(
             select(sql_func.sum(RskTxTrace.value)).where(
                 and_(
@@ -344,11 +375,11 @@ class Bookkeeper:
 
         value_delta = to_values - from_values
         if expected_value_delta != value_delta:
-            on_fail("")
+            on_fail("value delta mismatch")
         logger.info(
-            "sanity check complete for address %s, with deviation %d",
+            "sanity check complete for address %s, with deviation "
+            + str(value_delta - expected_value_delta),
             bk.address.address,
-            value_delta - expected_value_delta,
         )
 
     def address_traces_in_block(
@@ -453,7 +484,7 @@ def main(argv: List[str]):
                 dbsession, chain_id=rsk_id, safety_limit=block_chain_meta.safe_limit
             )
 
-            logger.info("Committing")
+            # logger.info("Committing")
             dbsession.commit()
 
             if not (scanned_down or scanned_up):
@@ -471,7 +502,7 @@ def main(argv: List[str]):
                     dbsession.execute(select(RskAddressBookkeeper)).scalars().all()
                 )
                 for bk in all_bookkeepers:
-                    bookkeeper.sanity_check_on_address(dbsession, bk)
+                    bookkeeper.sanity_check_on_address(dbsession, bk, config=config)
 
         except Exception:
             logger.exception("Error in sanity check")

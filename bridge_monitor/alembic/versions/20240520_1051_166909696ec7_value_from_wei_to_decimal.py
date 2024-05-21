@@ -64,7 +64,7 @@ def upgrade():
         "rsk_tx_trace",
         "value",
         type_=sa.NUMERIC(precision=42, scale=18),
-        postgresql_using="value::numeric/1e18",
+        postgresql_using="value::numeric(42, 18)/1e18",
     )
 
 
