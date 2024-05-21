@@ -27,12 +27,9 @@ test
 *.log
 .idea/
 *.parquet
-development-local.ini
 /docker-compose.yaml
 
-/create_btc_wallet_and_descriptor.sh
-/create_replenisher_wallet_and_descriptor.sh
-/create_testnet_wallet.sh
+/create_*.sh
+
 /script.sh
 /development_local.ini
-/create_btc_backupwallet.sh

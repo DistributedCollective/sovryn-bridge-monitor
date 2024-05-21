@@ -7,7 +7,7 @@ from json import dumps
 from typing import Sequence, List, Any
 import time
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import requests
 import web3
@@ -41,6 +41,7 @@ class Bookkeeper:
         self.should_sanity_check = False
         self.traces_scanned_down = 0
         self.last_sanity_check = 0
+        self.last_failed_sanity_check_time = datetime.fromtimestamp(0)
 
     @property
     def sanity_check_now(self):
@@ -311,7 +312,12 @@ class Bookkeeper:
             logger.warning(
                 "sanity check failed for: %s, with message: %s", bk.address.address, st
             )
-            post_url = config["slack"].get("sanity_check_hook", "")
+            if (
+                self.last_failed_sanity_check_time + timedelta(minutes=1)
+                < datetime.now()
+            ):
+                return
+            post_url = config.get("slack", {}).get("sanity_check_hook", "")
             if not post_url:
                 return
             payload = {
@@ -335,17 +341,22 @@ class Bookkeeper:
                 ],
             }
             requests.post(post_url, json=payload)
+            self.last_failed_sanity_check_time = datetime.now()
 
         current_block = self.web3.eth.block_number
 
         if bk.start >= bk.lowest_scanned:
             if bk.next_to_scan_high < current_block - sensitivity:
                 on_fail(f"fell behind by {current_block - bk.next_to_scan_high} blocks")
+
         bk_checksum_addr = to_checksum_address(bk.address.address)
+
         expected_value_delta = self.web3.eth.get_balance(
-            bk_checksum_addr, bk.next_to_scan_high
+            bk_checksum_addr, bk.next_to_scan_high - 1
         ) - self.web3.eth.get_balance(bk_checksum_addr, bk.lowest_scanned - 1)
+
         expected_value_delta = Decimal(expected_value_delta) / Decimal("1e18")
+
         to_values = dbsession.execute(
             select(sql_func.sum(RskTxTrace.value)).where(
                 and_(
@@ -357,6 +368,7 @@ class Bookkeeper:
                 )
             )
         ).scalar()
+
         from_values = dbsession.execute(
             select(sql_func.sum(RskTxTrace.value)).where(
                 and_(
@@ -497,7 +509,6 @@ def main(argv: List[str]):
 
         try:
             if bookkeeper.sanity_check_now:
-                logger.info("Doing sanity check")
                 all_bookkeepers = (
                     dbsession.execute(select(RskAddressBookkeeper)).scalars().all()
                 )
