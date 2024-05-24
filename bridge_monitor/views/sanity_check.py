@@ -6,9 +6,6 @@ from datetime import (
     timezone,
 )
 from decimal import Decimal
-from typing import (
-    Optional,
-)
 
 from eth_utils import to_checksum_address
 from pyramid.httpexceptions import HTTPBadRequest
@@ -24,6 +21,7 @@ from bridge_monitor.business_logic.utils import (
 from bridge_monitor.models.pnl import ProfitCalculation
 from .utils import parse_time_range
 from ..rpc.rpc import get_btc_wallet_balance_at_date
+from ..business_logic.utils import get_rsk_manual_transfers, get_btc_manual_transfers
 
 logger = logging.getLogger(__name__)
 
@@ -35,43 +33,6 @@ class PnlRow:
     gross_profit_btc: Decimal
     cost_btc: Decimal
     net_profit_btc: Decimal
-
-
-@dataclasses.dataclass
-class FormVariable:
-    name: str
-    title: str
-    value: Optional[Decimal]
-    value_getter_url: Optional[str] = None
-    help_text: Optional[str] = None
-
-    @classmethod
-    def from_params(
-        cls,
-        *,
-        params: dict,
-        name: str,
-        title: Optional[str] = None,
-        help_text: Optional[str] = None,
-        value_getter_url: Optional[str] = None,
-        default=None,
-    ):
-        if default is not None:
-            default = Decimal(default)
-        if not title:
-            title = name
-        value = params.get(name, default)
-        if value is None or value == "":
-            value = None
-        else:
-            value = Decimal(value)
-        return cls(
-            name=name,
-            title=title,
-            value=value,
-            value_getter_url=value_getter_url,
-            help_text=help_text,
-        )
 
 
 @view_config(
@@ -115,19 +76,15 @@ def sanity_check(request: Request):
         totals = {
             # PnL := user - fees - tx_cost - failing_tx_cost  (failing tx cost ignored)
             "pnl": pnl_total,
-            # manual_out:= withdrawals for operation cost or payrolls
-            "manual_out": Decimal("0"),
-            # manual_in:=deposits from xchequer or other system components (eg watcher)
-            "manual_in": Decimal("0"),
             # Start/End_balance:= Btc_peg_in+Btc_peg_out+Rsk_peg_in+Rsk_peg_out+Btc_backup_wallet
             "start_balance": sum(
                 (
                     rsk_balance_at_time(
                         dbsession, start, bidi_fastbtc_contract_address, chain
-                    )["balance_decimal"],
+                    )["balance"],
                     rsk_balance_at_time(
                         dbsession, start, fastbtc_in_contract_address, chain
-                    )["balance_decimal"],
+                    )["balance"],
                     get_btc_wallet_balance_at_date(dbsession, "fastbtc-out", start),
                     get_btc_wallet_balance_at_date(dbsession, "fastbtc-in", start),
                     get_btc_wallet_balance_at_date(dbsession, "btc-backup", start),
@@ -137,20 +94,39 @@ def sanity_check(request: Request):
                 (
                     rsk_balance_at_time(
                         dbsession, end, bidi_fastbtc_contract_address, chain
-                    )["balance_decimal"],
+                    )["balance"],
                     rsk_balance_at_time(
                         dbsession, end, fastbtc_in_contract_address, chain
-                    )["balance_decimal"],
+                    )["balance"],
                     get_btc_wallet_balance_at_date(dbsession, "fastbtc-out", end),
                     get_btc_wallet_balance_at_date(dbsession, "fastbtc-in", end),
                     get_btc_wallet_balance_at_date(dbsession, "btc-backup", end),
                 )
             ),
+            # manual_out:= withdrawals for operation cost or payrolls
+            "manual_out": Decimal("0"),
+            # manual_in:=deposits from xchequer or other system components (eg watcher)
+            "manual_in": Decimal("0"),
             # Rsk_tx_cost:=federator_tx_cost peg_in + federator_tx_cost_peg_out
             # ignore for now
             "rsk_tx_cost": Decimal(0),
             # failing_tx_cost:=approx 10$ per day (paid by federator wallets, ignore for the moment)
         }
+        # calculating manual transfers after above to make sure btc wallet tx table is up to date
+        manual_rsk_result = get_rsk_manual_transfers(
+            dbsession, start_time=start, target_time=end
+        )
+        manual_btc_result = get_btc_manual_transfers(
+            dbsession, start_time=start, target_time=end
+        )
+        totals["manual_out"] = (
+            manual_btc_result["manual_out"] + manual_rsk_result["manual_out"]
+        )
+
+        totals["manual_in"] = (
+            manual_btc_result["manual_in"] + manual_rsk_result["manual_in"]
+        )
+
         sanity_check_formula = "{end_balance} - {start_balance} + {pnl} + {manual_in} - {manual_out} - {rsk_tx_cost}"
 
         sanity_check_value = (
@@ -166,6 +142,7 @@ def sanity_check(request: Request):
                 "totals": totals,
                 "sanity_check": {
                     "formula": sanity_check_formula,
+                    "expanded_formula": sanity_check_formula.format(**totals),
                     "value": sanity_check_value,
                 },
             }
@@ -178,23 +155,22 @@ def rsk_balance_at_time(
 ):
     block = get_closest_block(
         chain_name=chain_name,
-        wanted_datetime=datetime(time.year, time.month, time.day),
+        wanted_datetime=time,
         dbsession=dbsession,
     )
     balance_wei = get_rsk_balance_at_block(
         web3=get_web3(chain_name),
         address=address,
-        block_number=block["number"],
+        block_number=block["block_number"],
     )
 
     return {
-        "block_number": block["number"],
-        "block_time": datetime.fromtimestamp(
-            block["timestamp"], timezone.utc
-        ).isoformat(),
+        "block_number": block["block_number"],
+        "block_time": block["timestamp"].isoformat(),
         "address": address,
         "balance_wei": balance_wei,
         "balance_decimal": format(balance_wei / Decimal(10) ** 18, ".6f"),
+        "balance": balance_wei / Decimal(10) ** 18,
     }
 
 

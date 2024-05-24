@@ -47,11 +47,13 @@ def parse_time_range(
     try:
         if start_str := request.params.get("start"):
             start = date.fromisoformat(start_str)
+            start = datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc)
     except TypeError:
         errors.append("Invalid start date")
     try:
         if end_str := request.params.get("end"):
             end = date.fromisoformat(end_str)
+            end = datetime.combine(end, datetime.min.time(), tzinfo=timezone.utc)
     except TypeError:
         errors.append("Invalid end date")
 
@@ -59,6 +61,8 @@ def parse_time_range(
         now = datetime.now(tz=timezone.utc)
         start = date(now.year, now.month, 1)
         end = date(now.year, now.month + 1, 1) - timedelta(days=1)
+        start = datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc)
+        end = datetime.combine(end, datetime.min.time(), tzinfo=timezone.utc)
 
     return ParsedTimeRange(
         start=start,

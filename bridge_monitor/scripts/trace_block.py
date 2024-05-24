@@ -4,7 +4,7 @@ import sys
 from decimal import Decimal
 from itertools import groupby
 from json import dumps
-from typing import Sequence, List, Any
+from typing import Sequence, List, Any, Optional
 import time
 import logging
 from datetime import datetime, timezone, timedelta
@@ -63,7 +63,7 @@ class Bookkeeper:
         name: str,
         initial_block: int,
         start: int = 1,
-        end: int | None = None,
+        end: Optional[int] = None,
     ):
         initial_block = max(initial_block, start)
         dbsession = Session(self.db_engine)
@@ -340,7 +340,12 @@ class Bookkeeper:
                     },
                 ],
             }
-            requests.post(post_url, json=payload)
+            response = requests.post(post_url, json=payload)
+            if response.status_code != 200:
+                logger.warning(
+                    "Failed to send slack message, status code: %d",
+                    response.status_code,
+                )
             self.last_failed_sanity_check_time = datetime.now()
 
         current_block = self.web3.eth.block_number
@@ -431,7 +436,7 @@ def convert_to_json_serializable(obj: Any) -> Any:
     return obj
 
 
-def parse_args(argv: List[str] | None = None):
+def parse_args(argv: Optional[List[str]] = None):
     parser = argparse.ArgumentParser()
     parser.add_argument("config_uri", help="Path to the config file")
     parser.add_argument(

@@ -9,19 +9,28 @@ import sys
 from datetime import datetime, timezone
 from time import sleep
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from decimal import Decimal
 
 from eth_account.signers.local import LocalAccount
 from eth_typing import AnyAddress
-from eth_utils import to_checksum_address
+from eth_utils import to_checksum_address, is_checksum_address
 from web3 import Web3
 from web3.contract import Contract
 from web3.middleware import construct_sign_and_send_raw_middleware, geth_poa_middleware
 from web3.exceptions import MismatchedABI
 from web3.types import BlockData
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import func as sql_func
+from sqlalchemy.sql.operators import and_
+from sqlalchemy.sql.expression import select
+from sqlalchemy import outerjoin
 
 from .retry_middleware import http_retry_request_middleware
 from ..models.chain_info import BlockInfo, BlockChain
+from ..models.rsk_transaction_info import RskTxTrace, RskAddressBookkeeper, RskAddress
+from ..models.fastbtc_in import FastBTCInTransfer
+from ..models.bitcoin_tx_info import BtcWalletTransaction, BtcWallet
+from ..models.bidirectional_fastbtc import BidirectionalFastBTCTransfer
 
 THIS_DIR = os.path.dirname(__file__)
 ABI_DIR = os.path.join(THIS_DIR, "abi")
@@ -338,7 +347,277 @@ def call_concurrently(*funcs: Callable, retry: bool = False) -> List[Any]:
     return _call()
 
 
-@functools.lru_cache(maxsize=1024)
+def get_rsk_balance_from_db(
+    dbsession: Session, *, address: str, target_time: datetime
+) -> Decimal:
+    target_block = get_closest_block(dbsession, "rsk", target_time)
+
+    if is_checksum_address(address):
+        address = address.lower()
+
+    address_bookkeeper = (
+        dbsession.query(RskAddressBookkeeper)
+        .filter(
+            RskAddressBookkeeper.address == address,
+        )
+        .one()
+    )
+
+    if (
+        address_bookkeeper.start < address_bookkeeper.lowest_scanned
+        or address_bookkeeper.next_to_scan_high <= target_block.number
+    ):
+        logger.warning(
+            "Address %s not fully scanned when querying balance at %s",
+            address,
+            target_time,
+        )
+
+    to_values = dbsession.execute(
+        select(sql_func.sum(RskTxTrace.value)).where(
+            and_(
+                RskTxTrace.to_address == address,
+                RskTxTrace.error.is_(None),
+                RskTxTrace.block_number <= target_block,
+            )
+        )
+    ).scalar()
+
+    from_values = dbsession.execute(
+        select(sql_func.sum(RskTxTrace.value)).where(
+            and_(
+                RskTxTrace.from_address == address,
+                RskTxTrace.error.is_(None),
+                RskTxTrace.block_number <= target_block,
+            )
+        )
+    ).scalar()
+
+    return to_values - from_values
+
+
+def get_rsk_manual_transfers(
+    dbsession: Session,
+    *,
+    target_time: datetime,
+    start_time: datetime = datetime.fromtimestamp(0),
+) -> dict[str, Decimal]:
+    logger.info("getting rsk manual transfers")
+    fastbtc_in_addr_id = (
+        dbsession.query(RskAddress.address_id)
+        .filter(RskAddress.name == "fastbtc-in")
+        .scalar()
+    )
+    fastbtc_in_entry = (
+        dbsession.query(RskAddressBookkeeper)
+        .filter(
+            RskAddressBookkeeper.address_id == fastbtc_in_addr_id,
+        )
+        .one()
+    )
+    fastbtc_out_addr_id = (
+        dbsession.query(RskAddress.address_id)
+        .filter(RskAddress.name == "fastbtc-out")
+        .scalar()
+    )
+    fastbtc_out_entry = (
+        dbsession.query(RskAddressBookkeeper)
+        .filter(
+            RskAddressBookkeeper.address_id == fastbtc_out_addr_id,
+        )
+        .one()
+    )
+    ret_val = {
+        "manual_out": Decimal(0),
+        "manual_in": Decimal(0),
+    }
+    # fastbtc-out manual out
+    manual_out_amount = dbsession.execute(
+        select(sql_func.sum(RskTxTrace.value)).where(
+            RskTxTrace.from_address == fastbtc_out_entry.address.address,
+            RskTxTrace.to_address != fastbtc_in_entry.address.address,
+            RskTxTrace.error.is_(None),
+            RskTxTrace.block_time >= start_time,
+            RskTxTrace.block_time <= target_time,
+        )
+    ).scalar()
+
+    if manual_out_amount is not None:
+        ret_val["manual_out"] += manual_out_amount
+
+    # fastbtc-in manual in
+    manual_in_amount = dbsession.execute(
+        select(sql_func.sum(RskTxTrace.value)).where(
+            RskTxTrace.to_address == fastbtc_in_entry.address.address,
+            RskTxTrace.from_address != fastbtc_out_entry.address.address,
+            RskTxTrace.error.is_(None),
+            RskTxTrace.block_time >= start_time,
+            RskTxTrace.block_time <= target_time,
+        )
+    ).scalar()
+
+    if manual_in_amount is not None:
+        ret_val["manual_in"] += manual_in_amount
+
+    # fastbtc-in manual out
+    manual_out_amount = dbsession.execute(
+        select(sql_func.sum(RskTxTrace.value)).where(
+            RskTxTrace.from_address == fastbtc_in_entry.address.address,
+            ~dbsession.query(FastBTCInTransfer)
+            .filter(FastBTCInTransfer.executed_transaction_hash == RskTxTrace.tx_hash)
+            .exists(),
+            RskTxTrace.block_time >= start_time,
+            RskTxTrace.block_time <= target_time,
+        )
+    ).scalar()
+
+    if manual_out_amount is not None:
+        ret_val["manual_out"] += manual_out_amount
+
+    return ret_val
+
+
+def get_btc_manual_transfers(
+    dbsession: Session,
+    target_time: datetime,
+    start_time: datetime = datetime.fromtimestamp(0),
+) -> dict[str, Decimal]:
+    logger.info("getting btc manual transfers")
+    fastbtc_in_entry = (
+        dbsession.query(BtcWallet).filter(BtcWallet.name == "fastbtc-in").one()
+    )
+    fastbtc_out_entry = (
+        dbsession.query(BtcWallet).filter(BtcWallet.name == "fastbtc-out").one()
+    )
+    backup_wallet_entry = (
+        dbsession.query(BtcWallet).filter(BtcWallet.name == "btc-backup").one()
+    )
+
+    in_subquery = select(BtcWalletTransaction).where(
+        BtcWalletTransaction.wallet == fastbtc_in_entry
+    )
+    out_subquery = select(BtcWalletTransaction).where(
+        BtcWalletTransaction.wallet == fastbtc_out_entry
+    )
+    backup_subquery = select(BtcWalletTransaction).where(
+        BtcWalletTransaction.wallet == backup_wallet_entry
+    )
+    not_backup_wallet_subquery = select(BtcWalletTransaction).where(
+        BtcWalletTransaction.wallet != backup_wallet_entry
+    )
+
+    ret_val = {
+        "manual_out": Decimal(0),
+        "manual_in": Decimal(0),
+    }
+
+    manual_out_amount = dbsession.execute(
+        select(sql_func.sum(sql_func.abs(in_subquery.c.net_change)))
+        .select_from(
+            outerjoin(
+                in_subquery,
+                out_subquery,
+                in_subquery.c.tx_hash == out_subquery.c.tx_hash,
+                full=False,
+            )
+        )
+        .where(
+            out_subquery.c.tx_hash.is_(None),
+            in_subquery.c.amount_sent > 0,
+            in_subquery.c.timestamp <= target_time,
+            in_subquery.c.timestamp >= start_time,
+        )
+    ).scalar()
+
+    if manual_out_amount is not None:
+        ret_val["manual_out"] += manual_out_amount
+
+    manual_in_amount = dbsession.execute(
+        select(sql_func.sum(sql_func.abs(out_subquery.c.net_change)))
+        .select_from(
+            outerjoin(
+                out_subquery,
+                in_subquery,
+                out_subquery.c.tx_hash == in_subquery.c.tx_hash,
+                full=False,
+            )
+        )
+        .where(
+            in_subquery.c.tx_hash.is_(None),
+            out_subquery.c.amount_received > 0,
+            out_subquery.c.amount_sent == 0,
+            out_subquery.c.timestamp <= target_time,
+            out_subquery.c.timestamp >= start_time,
+        )
+    ).scalar()
+
+    if manual_in_amount is not None:
+        ret_val["manual_in"] += manual_in_amount
+
+    manual_out_amount = dbsession.execute(
+        select(sql_func.sum(sql_func.abs(BtcWalletTransaction.net_change))).where(
+            BtcWalletTransaction.wallet == fastbtc_out_entry,
+            ~dbsession.query(BidirectionalFastBTCTransfer)
+            .filter(
+                BidirectionalFastBTCTransfer.bitcoin_tx_id
+                == BtcWalletTransaction.tx_hash
+            )
+            .exists(),
+            BtcWalletTransaction.amount_sent > 0,
+            BtcWalletTransaction.timestamp <= target_time,
+            BtcWalletTransaction.timestamp >= start_time,
+        )
+    ).scalar()
+
+    if manual_out_amount is not None:
+        ret_val["manual_out"] += manual_out_amount
+
+    # backup wallet transactions
+
+    manual_out_amount = dbsession.execute(
+        select(sql_func.sum(sql_func.abs(backup_subquery.c.net_change)))
+        .select_from(
+            outerjoin(
+                backup_subquery,
+                not_backup_wallet_subquery,
+                backup_subquery.c.tx_hash == not_backup_wallet_subquery.c.tx_hash,
+                full=False,
+            )
+        )
+        .where(
+            not_backup_wallet_subquery.c.tx_hash.is_(None),
+            backup_subquery.c.amount_sent > 0,
+            backup_subquery.c.timestamp <= target_time,
+            backup_subquery.c.timestamp >= start_time,
+        )
+    ).scalar()
+
+    if manual_out_amount is not None:
+        ret_val["manual_out"] += manual_out_amount
+
+    manual_in_amount = dbsession.execute(
+        select(sql_func.sum(sql_func.abs(backup_subquery.c.net_change)))
+        .select_from(
+            outerjoin(
+                backup_subquery,
+                not_backup_wallet_subquery,
+                backup_subquery.c.tx_hash == not_backup_wallet_subquery.c.tx_hash,
+                full=False,
+            )
+        )
+        .where(
+            not_backup_wallet_subquery.c.tx_hash.is_(None),
+            backup_subquery.c.amount_received > 0,
+            backup_subquery.c.timestamp <= target_time,
+            backup_subquery.c.timestamp >= start_time,
+        )
+    ).scalar()
+    if manual_in_amount is not None:
+        ret_val["manual_in"] += manual_in_amount
+
+    return ret_val
+
+
 def get_closest_block(
     dbsession: Session,
     chain_name: str,
@@ -346,7 +625,7 @@ def get_closest_block(
     *,
     not_after: bool = True,
     allowed_diff_seconds: int = 10 * 60,
-) -> BlockData:
+) -> BlockInfo:
     wanted_timestamp = int(wanted_datetime.timestamp())
     logger.debug("Wanted timestamp: %s", wanted_timestamp)
 
@@ -384,6 +663,12 @@ def get_closest_block(
         block: BlockData = web3.eth.get_block(target_block_number)
         block_timestamp = block["timestamp"]
 
+        block = BlockInfo(
+            block_number=block["number"],
+            timestamp=datetime.fromtimestamp(block["timestamp"], timezone.utc),
+            block_chain_id=-1,
+        )
+
         diff = block_timestamp - wanted_timestamp
         logger.debug(
             "target: %s, timestamp: %s, diff %s",
@@ -400,10 +685,10 @@ def get_closest_block(
 
         if block_timestamp > wanted_timestamp:
             # block is after wanted, move end
-            end_block_number = block["number"] - 1
+            end_block_number = block["block_number"] - 1
         elif block_timestamp < wanted_timestamp:
             # block is before wanted, move start
-            start_block_number = block["number"] + 1
+            start_block_number = block["block_number"] + 1
         else:
             # timestamps are exactly the same, just return block
             return block
@@ -419,10 +704,15 @@ def get_closest_block(
         closest_diff,
     )
 
-    if not_after and closest_block["timestamp"] > wanted_timestamp:
+    if not_after and closest_block["timestamp"] > wanted_datetime:
         logger.debug(
             "Block is after wanted timestamp and not_after=True, returning previous block"
         )
-        return web3.eth.get_block(closest_block["number"] - 1)
+        prev_block = web3.eth.get_block(closest_block["block_number"] - 1)
+        return BlockInfo(
+            block_number=prev_block["number"],
+            timestamp=prev_block["timestamp"],
+            block_chain_id=-1,
+        )
 
     return closest_block
