@@ -55,7 +55,6 @@ def sanity_check(request: Request):
         models=[ProfitCalculation],
         default="this_month",
     )
-    end = datetime(year=2024, month=5, day=27, tzinfo=timezone.utc)
 
     # PnL:= user-fees - tx_cost - failing_tx_cost
     pnl_rows = get_pnl_rows(
@@ -64,7 +63,6 @@ def sanity_check(request: Request):
         start=start,
         end=end,
     )
-    # end = datetime(year=2024, month=5, day=27, hour=0, tzinfo=timezone.utc)
     pnl_total = sum(
         (r.net_profit_btc for r in pnl_rows),
         start=Decimal(0),
