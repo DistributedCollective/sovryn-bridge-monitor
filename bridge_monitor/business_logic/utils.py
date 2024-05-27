@@ -507,12 +507,6 @@ def get_btc_manual_transfers(
     out_subquery = select(BtcWalletTransaction).where(
         BtcWalletTransaction.wallet == fastbtc_out_entry
     )
-    backup_subquery = select(BtcWalletTransaction).where(
-        BtcWalletTransaction.wallet == backup_wallet_entry
-    )
-    not_backup_wallet_subquery = select(BtcWalletTransaction).where(
-        BtcWalletTransaction.wallet != backup_wallet_entry
-    )
 
     ret_val = {
         "manual_out": Decimal(0),
@@ -581,22 +575,14 @@ def get_btc_manual_transfers(
         ret_val["manual_out"] += manual_out_amount
 
     # backup wallet transactions
+    # all backup wallet transactions are manual
 
     manual_out_amount = dbsession.execute(
-        select(sql_func.sum(sql_func.abs(backup_subquery.c.net_change)))
-        .select_from(
-            outerjoin(
-                backup_subquery,
-                not_backup_wallet_subquery,
-                backup_subquery.c.tx_hash == not_backup_wallet_subquery.c.tx_hash,
-                full=False,
-            )
-        )
-        .where(
-            not_backup_wallet_subquery.c.tx_hash.is_(None),
-            backup_subquery.c.amount_sent > 0,
-            backup_subquery.c.timestamp <= target_time,
-            backup_subquery.c.timestamp >= start_time,
+        select(sql_func.sum(sql_func.abs(BtcWalletTransaction.net_change))).where(
+            BtcWalletTransaction.wallet == backup_wallet_entry,
+            BtcWalletTransaction.amount_sent > 0,
+            BtcWalletTransaction.timestamp <= target_time,
+            BtcWalletTransaction.timestamp >= start_time,
         )
     ).scalar()
 
@@ -604,20 +590,11 @@ def get_btc_manual_transfers(
         ret_val["manual_out"] += manual_out_amount
 
     manual_in_amount = dbsession.execute(
-        select(sql_func.sum(sql_func.abs(backup_subquery.c.net_change)))
-        .select_from(
-            outerjoin(
-                backup_subquery,
-                not_backup_wallet_subquery,
-                backup_subquery.c.tx_hash == not_backup_wallet_subquery.c.tx_hash,
-                full=False,
-            )
-        )
-        .where(
-            not_backup_wallet_subquery.c.tx_hash.is_(None),
-            backup_subquery.c.amount_received > 0,
-            backup_subquery.c.timestamp <= target_time,
-            backup_subquery.c.timestamp >= start_time,
+        select(sql_func.sum(sql_func.abs(BtcWalletTransaction.net_change))).where(
+            BtcWalletTransaction.wallet == backup_wallet_entry,
+            BtcWalletTransaction.amount_received > 0,
+            BtcWalletTransaction.timestamp <= target_time,
+            BtcWalletTransaction.timestamp >= start_time,
         )
     ).scalar()
     if manual_in_amount is not None:
