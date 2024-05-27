@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from bridge_monitor.business_logic.utils import (
     get_closest_block,
     get_web3,
+    get_incomplete_transfer_amounts,
 )
 from bridge_monitor.models.pnl import ProfitCalculation
 from .utils import parse_time_range
@@ -54,7 +55,7 @@ def sanity_check(request: Request):
         models=[ProfitCalculation],
         default="this_month",
     )
-    end = datetime(year=2024, month=5, day=16, tzinfo=timezone.utc)
+    end = datetime(year=2024, month=5, day=27, tzinfo=timezone.utc)
 
     # PnL:= user-fees - tx_cost - failing_tx_cost
     pnl_rows = get_pnl_rows(
@@ -63,6 +64,7 @@ def sanity_check(request: Request):
         start=start,
         end=end,
     )
+    # end = datetime(year=2024, month=5, day=27, hour=0, tzinfo=timezone.utc)
     pnl_total = sum(
         (r.net_profit_btc for r in pnl_rows),
         start=Decimal(0),
@@ -111,6 +113,9 @@ def sanity_check(request: Request):
             # ignore for now
             "rsk_tx_cost": Decimal(0),
             # failing_tx_cost:=approx 10$ per day (paid by federator wallets, ignore for the moment)
+            "transfer_in_progress": get_incomplete_transfer_amounts(
+                dbsession, start, end
+            ),
         }
         # calculating manual transfers after above to make sure btc wallet tx table is up to date
         manual_rsk_result = get_rsk_manual_transfers(
@@ -128,7 +133,10 @@ def sanity_check(request: Request):
         )
         for key, value in totals.items():
             logger.info("%s: %s", key, value)
-        sanity_check_formula = "{end_balance} - {start_balance} - {pnl} - {manual_in} + {manual_out} + {rsk_tx_cost}"
+        sanity_check_formula = (
+            "{end_balance} - {start_balance} - {pnl} - {manual_in}"
+            " + {manual_out} + {rsk_tx_cost} + {transfer_in_progress}"
+        )
 
         sanity_check_value = (
             totals["end_balance"]
@@ -137,6 +145,7 @@ def sanity_check(request: Request):
             - totals["manual_in"]
             + totals["manual_out"]
             + totals["rsk_tx_cost"]
+            + totals["transfer_in_progress"]
         )
         logger.info("sanity check value: %s", sanity_check_value)
         ret.update(

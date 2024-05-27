@@ -23,14 +23,14 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import func as sql_func
 from sqlalchemy.sql.operators import and_
 from sqlalchemy.sql.expression import select
-from sqlalchemy import outerjoin
+from sqlalchemy import outerjoin, join
 
 from .retry_middleware import http_retry_request_middleware
 from ..models.chain_info import BlockInfo, BlockChain
 from ..models.rsk_transaction_info import RskTxTrace, RskAddressBookkeeper, RskAddress
-from ..models.fastbtc_in import FastBTCInTransfer
+from ..models.fastbtc_in import FastBTCInTransfer, FastBTCInTransferStatus
 from ..models.bitcoin_tx_info import BtcWalletTransaction, BtcWallet
-from ..models.bidirectional_fastbtc import BidirectionalFastBTCTransfer
+from ..models.bidirectional_fastbtc import BidirectionalFastBTCTransfer, TransferStatus
 
 THIS_DIR = os.path.dirname(__file__)
 ABI_DIR = os.path.join(THIS_DIR, "abi")
@@ -407,29 +407,13 @@ def get_rsk_manual_transfers(
         start_time.isoformat(),
         target_time.isoformat(),
     )
-    fastbtc_in_addr_id = (
-        dbsession.query(RskAddress.address_id)
-        .filter(RskAddress.name == "fastbtc-in")
-        .scalar()
-    )
+
     fastbtc_in_entry = (
-        dbsession.query(RskAddressBookkeeper)
-        .filter(
-            RskAddressBookkeeper.address_id == fastbtc_in_addr_id,
-        )
-        .one()
+        dbsession.query(RskAddress).filter(RskAddress.name == "fastbtc-in").one()
     )
-    fastbtc_out_addr_id = (
-        dbsession.query(RskAddress.address_id)
-        .filter(RskAddress.name == "fastbtc-out")
-        .scalar()
-    )
+
     fastbtc_out_entry = (
-        dbsession.query(RskAddressBookkeeper)
-        .filter(
-            RskAddressBookkeeper.address_id == fastbtc_out_addr_id,
-        )
-        .one()
+        dbsession.query(RskAddress).filter(RskAddress.name == "fastbtc-out").one()
     )
     ret_val = {
         "manual_out": Decimal(0),
@@ -438,8 +422,8 @@ def get_rsk_manual_transfers(
     # fastbtc-out manual out
     manual_out_amount = dbsession.execute(
         select(sql_func.sum(RskTxTrace.value)).where(
-            RskTxTrace.from_address == fastbtc_out_entry.address.address,
-            RskTxTrace.to_address != fastbtc_in_entry.address.address,
+            RskTxTrace.from_address == fastbtc_out_entry.address,
+            RskTxTrace.to_address != fastbtc_in_entry.address,
             RskTxTrace.error.is_(None),
             RskTxTrace.block_time >= start_time,
             RskTxTrace.block_time <= target_time,
@@ -452,8 +436,8 @@ def get_rsk_manual_transfers(
     # fastbtc-in manual in
     manual_in_amount = dbsession.execute(
         select(sql_func.sum(RskTxTrace.value)).where(
-            RskTxTrace.to_address == fastbtc_in_entry.address.address,
-            RskTxTrace.from_address != fastbtc_out_entry.address.address,
+            RskTxTrace.to_address == fastbtc_in_entry.address,
+            RskTxTrace.from_address != fastbtc_out_entry.address,
             RskTxTrace.error.is_(None),
             RskTxTrace.block_time >= start_time,
             RskTxTrace.block_time <= target_time,
@@ -466,7 +450,7 @@ def get_rsk_manual_transfers(
     # fastbtc-in manual out
     manual_out_amount = dbsession.execute(
         select(sql_func.sum(RskTxTrace.value)).where(
-            RskTxTrace.from_address == fastbtc_in_entry.address.address,
+            RskTxTrace.from_address == fastbtc_in_entry.address,
             ~dbsession.query(FastBTCInTransfer)
             .filter(FastBTCInTransfer.executed_transaction_hash == RskTxTrace.tx_hash)
             .exists(),
@@ -599,6 +583,82 @@ def get_btc_manual_transfers(
     ).scalar()
     if manual_in_amount is not None:
         ret_val["manual_in"] += manual_in_amount
+
+    return ret_val
+
+
+def get_incomplete_transfer_amounts(
+    dbsession: Session,
+    target_time: datetime,
+    start_time: datetime = datetime.fromtimestamp(0),
+) -> Decimal:
+    ret_val = Decimal(0)
+    fastbtc_out_addr = (
+        dbsession.query(RskAddress.address)
+        .filter(RskAddress.name == "fastbtc-out")
+        .scalar()
+    )
+    fastbtc_in_wallet_id = (
+        dbsession.query(BtcWallet.id).filter(BtcWallet.name == "fastbtc-in").scalar()
+    )
+
+    fastbtc_out_sending_subquery = (
+        select(BidirectionalFastBTCTransfer)
+        .where(BidirectionalFastBTCTransfer.status == TransferStatus.SENDING)
+        .subquery()
+    )
+    trace_fastbtc_out_subquery = (
+        select(RskTxTrace).where(RskTxTrace.to_address == fastbtc_out_addr).subquery()
+    )
+
+    fastbtc_in_tx_subquery = (
+        select(BtcWalletTransaction)
+        .where(BtcWalletTransaction.wallet_id == fastbtc_in_wallet_id)
+        .subquery()
+    )
+    fastbtc_in_sending_subquery = (
+        select(FastBTCInTransfer)
+        .where(FastBTCInTransfer.status == FastBTCInTransferStatus.SUBMITTED)
+        .subquery()
+    )
+
+    transfer_total = dbsession.execute(
+        select(sql_func.sum(RskTxTrace.value))
+        .select_from(
+            join(
+                fastbtc_out_sending_subquery,
+                trace_fastbtc_out_subquery,
+                fastbtc_out_sending_subquery.c.marked_as_sending_transaction_hash
+                == trace_fastbtc_out_subquery.c.tx_hash,
+            )
+        )
+        .where(
+            trace_fastbtc_out_subquery.c.block_time >= start_time,
+            trace_fastbtc_out_subquery.c.block_time <= target_time,
+        )
+    ).scalar()
+
+    if transfer_total is not None:
+        ret_val += transfer_total
+
+    transfer_total = dbsession.execute(
+        select(sql_func.sum(BtcWalletTransaction.net_change))
+        .select_from(
+            join(
+                fastbtc_in_sending_subquery,
+                fastbtc_in_tx_subquery,
+                fastbtc_in_sending_subquery.c.submission_transaction_hash
+                == fastbtc_in_tx_subquery.c.tx_hash,
+            )
+        )
+        .where(
+            fastbtc_in_tx_subquery.c.timestamp >= start_time,
+            fastbtc_in_tx_subquery.c.timestamp <= target_time,
+        )
+    ).scalar()
+
+    if transfer_total is not None:
+        ret_val += transfer_total
 
     return ret_val
 
