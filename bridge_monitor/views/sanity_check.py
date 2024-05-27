@@ -71,7 +71,6 @@ def sanity_check(request: Request):
         "end": end,
         "pnl_rows": pnl_rows,
     }
-
     if request.method == "POST":
         totals = {
             # PnL := user - fees - tx_cost - failing_tx_cost  (failing tx cost ignored)
@@ -126,17 +125,19 @@ def sanity_check(request: Request):
         totals["manual_in"] = (
             manual_btc_result["manual_in"] + manual_rsk_result["manual_in"]
         )
-
-        sanity_check_formula = "{end_balance} - {start_balance} + {pnl} + {manual_in} - {manual_out} - {rsk_tx_cost}"
+        for key, value in totals.items():
+            logger.info("%s: %s", key, value)
+        sanity_check_formula = "{end_balance} - {start_balance} - {pnl} - {manual_in} + {manual_out} + {rsk_tx_cost}"
 
         sanity_check_value = (
             totals["end_balance"]
             - totals["start_balance"]
-            + totals["pnl"]
-            + totals["manual_in"]
-            - totals["manual_out"]
-            - totals["rsk_tx_cost"]
+            - totals["pnl"]
+            - totals["manual_in"]
+            + totals["manual_out"]
+            + totals["rsk_tx_cost"]
         )
+        logger.info("sanity check value: %s", sanity_check_value)
         ret.update(
             {
                 "totals": totals,

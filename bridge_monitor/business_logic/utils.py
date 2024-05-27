@@ -402,7 +402,11 @@ def get_rsk_manual_transfers(
     target_time: datetime,
     start_time: datetime = datetime.fromtimestamp(0),
 ) -> dict[str, Decimal]:
-    logger.info("getting rsk manual transfers")
+    logger.info(
+        "getting rsk manual transfers from %s to %s",
+        start_time.isoformat(),
+        target_time.isoformat(),
+    )
     fastbtc_in_addr_id = (
         dbsession.query(RskAddress.address_id)
         .filter(RskAddress.name == "fastbtc-in")
@@ -482,7 +486,11 @@ def get_btc_manual_transfers(
     target_time: datetime,
     start_time: datetime = datetime.fromtimestamp(0),
 ) -> dict[str, Decimal]:
-    logger.info("getting btc manual transfers")
+    logger.info(
+        "getting btc manual transfers from %s to %s",
+        start_time.isoformat(),
+        target_time.isoformat(),
+    )
     fastbtc_in_entry = (
         dbsession.query(BtcWallet).filter(BtcWallet.name == "fastbtc-in").one()
     )

@@ -102,8 +102,15 @@ def get_wallet_transactions_from_block(
                 .first()
             )
             if exists_entry is None:
-                logger.info("Transaction %s already exists in db", entry["txid"])
                 dbsession.add(transaction)
+            else:
+                logger.info("Transaction %s already exists in db", entry["txid"])
+                if transaction.block_height is not None:
+                    # update the existing transaction with the new block height
+                    logger.info(
+                        "updating block height for transaction %s", entry["txid"]
+                    )
+                    exists_entry.block_height = transaction.block_height
 
         if entry["category"] == "send":
             transaction.amount_sent += -Decimal(str(entry["amount"]))
@@ -133,6 +140,8 @@ def get_new_btc_transactions(dbsession: Session, wallet_name: str) -> None:
         .filter(BtcWalletTransaction.wallet_id == wallet_id)
         .scalar()
     )
+    if newest_block_n is None:
+        newest_block_n = 1
     get_wallet_transactions_from_block(dbsession, newest_block_n, wallet_name)
 
 
@@ -149,7 +158,10 @@ def get_btc_wallet_balance_at_date(
         .order_by(BtcWalletTransaction.timestamp.desc())
         .first()
     )
-    if target_date > newest_tx.timestamp:
+    if newest_tx is None:
+        logger.info("Btc wallet tx table has no entries for wallet %s", wallet_name)
+        get_new_btc_transactions(dbsession, wallet_name)
+    elif target_date > newest_tx.timestamp:
         logger.info(
             "Newest transaction timestamp older than requested, fetching new transactions"
         )
@@ -161,5 +173,8 @@ def get_btc_wallet_balance_at_date(
             BtcWalletTransaction.wallet_id == wallet_id,
         )
         .scalar()
+    )
+    logger.info(
+        "Balance for %s at %s is %s", wallet_name, target_date, sum_of_transactions
     )
     return sum_of_transactions
