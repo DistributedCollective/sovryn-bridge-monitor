@@ -1,5 +1,17 @@
 {% extends "layout.jinja2" %}
 
+{% macro tx_link(chain_name, tx_hash) -%}
+
+{% if chain_name == "rsk_mainnet" %} <a href="https://explorer.rootstock.io/tx/{{ tx_hash }}"><code>{{ tx_hash }}</code></a>
+{% elif chain_name == "rsk_testnet" %} <a href="https://explorer.testnet.rootstock.co/tx/{{ tx_hash }}"><code>{{ tx_hash }}</code></a>
+{% elif chain_name == "bsc_mainnet" %} <a href="https://bscscan.com/tx/{{ tx_hash }}"><code>{{ tx_hash }}</code></a>
+{% elif chain_name == "eth_mainnet" %} <a href="https://etherscan.io/tx/{{ tx_hash }}"><code>{{ tx_hash }}</code></a>
+{% else %} {{ tx_hash }}
+{% endif %}
+
+{%- endmacro %}
+
+
 {% block content %}
 <div class="content">
     <h1>Sovryn Bridge Transfers</h1>
@@ -128,16 +140,12 @@
                             <span>TxIdU:</span><code>{{ transfer.transaction_id }}</code><br/>
                             <div style="display: flex">
                                 <span>EventTx:</span>
-                                <a href="https://explorer.rootstock.io/tx/{{ transfer.event_transaction_hash }}">
-                                    <code>{{ transfer.event_transaction_hash }}</code>
-                                </a>
+                                {{ tx_link(transfer.from_chain, transfer.event_transaction_hash) }}
                                 <br/>
                             </div>
                             <div style="display: flex">
                                 <span>ExecTx:</span>
-                                <a href="https://explorer.rootstock.io/tx/{{ transfer.executed_transaction_hash }}">
-                                    <code>{{ transfer.executed_transaction_hash }}</code>
-                                </a>
+                                {{ tx_link(transfer.to_chain, transfer.executed_transaction_hash)}}
                                 <br/>
                             </div>
                             <div style="display: flex">
