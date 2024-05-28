@@ -111,7 +111,9 @@
                         <a href="https://mempool.space/tx/{{ transfer.bitcoin_tx_hash }}#vout={{ transfer.bitcoin_tx_vout }}">
                             <code>{{ transfer.bitcoin_tx_hash }}</code>
                         </a>
+                        {% if transfer.bitcoin_tx_vout != -1 %}
                         <small>(VOUT {{ transfer.bitcoin_tx_vout }})</small>
+                        {% endif %}
                         <br/>
                         {% if transfer.submission_transaction_hash %}
                             <span>SubmissionTx:</span>
