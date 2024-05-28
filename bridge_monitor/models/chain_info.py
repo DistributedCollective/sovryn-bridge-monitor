@@ -25,3 +25,6 @@ class BlockInfo(Base):
     )
     block_number = Column(Integer, primary_key=True, nullable=False)
     timestamp = Column(DateTime(timezone=True), nullable=False)
+
+    def __getitem__(self, item):
+        return getattr(self, item)

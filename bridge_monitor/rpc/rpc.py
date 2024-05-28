@@ -40,7 +40,7 @@ def get_block_hash(block_n: int, wallet_url):
 
 
 def get_wallet_transactions_from_block(
-    dbsession: Session, block_n: int, wallet_name: str
+    dbsession: Session, block_n: int, wallet_name: str, safety_limit: int = 8
 ):
     logger.info(
         "Searching for transaction from block: %d on wallet: %s", block_n, wallet_name
@@ -52,16 +52,21 @@ def get_wallet_transactions_from_block(
         logger.info("Wallet with name %s not found in db", wallet_name)
         logger.info("Adding wallet %s into db", wallet_name)
         wallet = BtcWallet(name=wallet_name)
+
     wallet_url = f"{RPC_URL}/wallet/{wallet_name}"
+
     if block_n > 0:
         block_response = send_rpc_request(
             "getblockstats", [block_n, ["height", "blockhash"]], wallet_url
         ).json()
         main_request_params.append(block_response["result"]["blockhash"])
+
     response = send_rpc_request(
         "listsinceblock", main_request_params, wallet_url
     ).json()
     results = response["result"]["transactions"]
+
+    curr_block_height = send_rpc_request("getblockcount", [], RPC_URL).json()["result"]
 
     if not results:
         logger.info("Found no transactions since block %d", block_n)
@@ -71,6 +76,12 @@ def get_wallet_transactions_from_block(
     transaction = None
     for entry in results:
         if entry["txid"] != prev_tx_hash:
+            if (
+                entry.get("blockheight") is not None
+                and entry.get("blockheight") + safety_limit > curr_block_height
+            ):
+                continue
+
             dbsession.flush()
             transaction = BtcWalletTransaction(
                 wallet=wallet,
@@ -82,7 +93,24 @@ def get_wallet_transactions_from_block(
                 amount_received=Decimal(),
                 amount_fees=Decimal(),
             )
-            dbsession.add(transaction)
+            exists_entry = (
+                dbsession.query(BtcWalletTransaction)
+                .filter(
+                    BtcWalletTransaction.tx_hash == entry["txid"],
+                    BtcWalletTransaction.wallet_id == wallet.id,
+                )
+                .first()
+            )
+            if exists_entry is None:
+                dbsession.add(transaction)
+            else:
+                logger.info("Transaction %s already exists in db", entry["txid"])
+                if transaction.block_height is not None:
+                    # update the existing transaction with the new block height
+                    logger.info(
+                        "updating block height for transaction %s", entry["txid"]
+                    )
+                    exists_entry.block_height = transaction.block_height
 
         if entry["category"] == "send":
             transaction.amount_sent += -Decimal(str(entry["amount"]))
@@ -112,6 +140,8 @@ def get_new_btc_transactions(dbsession: Session, wallet_name: str) -> None:
         .filter(BtcWalletTransaction.wallet_id == wallet_id)
         .scalar()
     )
+    if newest_block_n is None:
+        newest_block_n = 1
     get_wallet_transactions_from_block(dbsession, newest_block_n, wallet_name)
 
 
@@ -128,7 +158,10 @@ def get_btc_wallet_balance_at_date(
         .order_by(BtcWalletTransaction.timestamp.desc())
         .first()
     )
-    if target_date > newest_tx.timestamp:
+    if newest_tx is None:
+        logger.info("Btc wallet tx table has no entries for wallet %s", wallet_name)
+        get_new_btc_transactions(dbsession, wallet_name)
+    elif target_date > newest_tx.timestamp:
         logger.info(
             "Newest transaction timestamp older than requested, fetching new transactions"
         )
@@ -140,5 +173,8 @@ def get_btc_wallet_balance_at_date(
             BtcWalletTransaction.wallet_id == wallet_id,
         )
         .scalar()
+    )
+    logger.info(
+        "Balance for %s at %s is %s", wallet_name, target_date, sum_of_transactions
     )
     return sum_of_transactions

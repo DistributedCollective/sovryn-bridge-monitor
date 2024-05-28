@@ -1,36 +1,60 @@
 import argparse
 import configparser
 import sys
-from collections import defaultdict
-from itertools import cycle
+from decimal import Decimal
+from itertools import groupby
 from json import dumps
-from typing import Sequence, List, Any
+from typing import Sequence, List, Any, Optional
 import time
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+
+import requests
 import web3
-from eth_utils import is_checksum_address
+from eth_utils import is_checksum_address, to_checksum_address
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.expression import select, or_, and_
+import sqlalchemy.sql.functions as sql_func
 import sqlalchemy
 from pyramid.paster import setup_logging
+
 from ..models.rsk_transaction_info import (
     RskAddressBookkeeper,
     RskAddress,
-    RskTransactionInfo,
+    RskTxTrace,
 )
 from ..models.chain_info import BlockInfo, BlockChain
+from ..business_logic.utils import get_web3
 
 logger = logging.getLogger(__name__)
 
 
 class Bookkeeper:
+    FIXED_SANITY_CHECK_INTERVAL = 3600
+
     def __init__(self, passed_web3: web3.Web3, engine: Engine):
         self.web3 = passed_web3
         self.db_engine = engine
+        self.should_sanity_check = False
+        self.traces_scanned_down = 0
+        self.last_sanity_check = 0
+        self.last_failed_sanity_check_time = datetime.fromtimestamp(0)
+
+    @property
+    def sanity_check_now(self):
+        if self.last_sanity_check + self.FIXED_SANITY_CHECK_INTERVAL < time.time():
+            self.last_sanity_check = time.time()
+            return True
+
+        if self.should_sanity_check:
+            self.should_sanity_check = False
+            self.traces_scanned_down = 0
+            return True
+
+        return False
 
     def add_address(
         self,
@@ -39,7 +63,7 @@ class Bookkeeper:
         name: str,
         initial_block: int,
         start: int = 1,
-        end: int | None = None,
+        end: Optional[int] = None,
     ):
         initial_block = max(initial_block, start)
         dbsession = Session(self.db_engine)
@@ -54,7 +78,7 @@ class Bookkeeper:
                 address_db_entry = RskAddress(address=address, name=name)
             else:
                 logger.info(
-                    "Address %s alread exists in db with name %s",
+                    "Address %s already exists in db with name %s",
                     address,
                     address_db_entry.name,
                 )
@@ -113,68 +137,74 @@ class Bookkeeper:
         *,
         dbsession: Session,
         block_n: int,
-        included_rows: Sequence[RskAddressBookkeeper],
-        result: dict,
+        address_bookkeepers: Sequence[RskAddressBookkeeper],
+        result: dict[str, list[dict]],
         block_info: BlockInfo,
         scanning_up: bool = True,
     ) -> None:
+        try:
+            dumps(result)
+        except TypeError:
+            logger.warning(
+                "Traces cannot be serialized for block_n %d, skipping", block_n
+            )
+            raise ValueError("Traces cannot be serialized")
         if result:
             logger.info(
                 "Found %d matching transactions in block %d", len(result), block_n
             )
-        for addr_and_tx_hash, traces in result.items():
-            addr = addr_and_tx_hash[0]
-            tx_hash = addr_and_tx_hash[1]
-            address_db_entry = (
-                dbsession.query(RskAddress).filter(RskAddress.address == addr).one()
-            )
-            try:
-                dumps(traces)
-            except TypeError:
-                logger.warning(
-                    "Traces cannot be serialized for addr %s, tx_hash %s, skipping",
-                    addr,
-                    tx_hash,
+        for tx_hash, traces in result.items():
+            if not scanning_up:
+                self.traces_scanned_down += 1
+                if self.traces_scanned_down > 100:
+                    self.should_sanity_check = True
+            else:
+                self.should_sanity_check = True
+            trace_exists = dbsession.query(
+                dbsession.query(RskTxTrace)
+                .filter(RskTxTrace.tx_hash == tx_hash)
+                .exists()
+            ).scalar()
+            if trace_exists:
+                continue
+            for trace_index, trace in enumerate(traces):
+                assert trace.pop("blockNumber") == block_info.block_number
+
+                trace = RskTxTrace(
+                    tx_hash=trace.pop("transactionHash"),
+                    unmapped=trace,
+                    from_address=trace["action"].pop("from", ""),
+                    to_address=trace["action"].pop("to", ""),
+                    trace_index=trace_index,
+                    value=trace["action"].pop("value", 0) / Decimal("1e18"),
+                    block_info=block_info,
+                    block_time=block_info.timestamp,
+                    error=trace.pop("error", None),
                 )
-                continue
-            skip_entry = False
-            for row in included_rows:
-                if row.address == address_db_entry and not (
-                    row.start <= block_n and (row.end is None or block_n < row.end)
-                ):
-                    skip_entry = True
-            if skip_entry:
-                continue
-            tx = RskTransactionInfo(
-                address=address_db_entry,
-                tx_hash=tx_hash,
-                trace_json=traces,
-                block_n=block_n,
-                blocktime=block_info.timestamp,
-            )
-            dbsession.add(tx)
+
+                dbsession.add(trace)
         if scanning_up:
-            for row in included_rows:
-                row.next_to_scan_high = block_n + 1
+            for bookkeeper in address_bookkeepers:
+                bookkeeper.next_to_scan_high = block_n + 1
         else:
-            for row in included_rows:
-                row.lowest_scanned = block_n
+            for bookkeeper in address_bookkeepers:
+                bookkeeper.lowest_scanned = block_n
 
     def scan_up(
         self, dbsession: Session, chain_id: int, safety_limit: int = 12
     ) -> bool:
         current_block = self.web3.eth.block_number
-
         high_scan_rows = (
             dbsession.execute(
                 select(RskAddressBookkeeper)
                 .where(
                     and_(
-                        RskAddressBookkeeper.next_to_scan_high <= current_block,
+                        RskAddressBookkeeper.next_to_scan_high + safety_limit
+                        <= current_block,
                         or_(
                             RskAddressBookkeeper.end.is_(None),
                             RskAddressBookkeeper.end
-                            > RskAddressBookkeeper.next_to_scan_high + safety_limit,
+                            > RskAddressBookkeeper.next_to_scan_high,
                         ),
                     )
                 )
@@ -190,52 +220,27 @@ class Bookkeeper:
 
         next_to_scan_high = high_scan_rows[0].next_to_scan_high
 
-        block_info = (
-            dbsession.query(BlockInfo)
-            .filter(
-                and_(
-                    BlockInfo.block_chain_id == chain_id,
-                    BlockInfo.block_number == next_to_scan_high,
-                )
-            )
-            .first()
+        block_info = self.get_or_create_block_info(
+            dbsession, next_to_scan_high, chain_id
         )
-        if block_info is None:
-            block = self.web3.eth.get_block(next_to_scan_high)
-            block_info = BlockInfo(
-                block_chain_id=chain_id,
-                block_number=next_to_scan_high,
-                timestamp=datetime.fromtimestamp(block["timestamp"], tz=timezone.utc),
-            )
-            dbsession.add(block_info)
 
         try:
-            result = self.address_transactions_in_block(
-                next_to_scan_high, high_scan_rows
-            )
+            result = self.address_traces_in_block(next_to_scan_high, high_scan_rows)
             self.add_result_to_db(
                 dbsession=dbsession,
                 block_n=next_to_scan_high,
-                included_rows=high_scan_rows,
+                address_bookkeepers=high_scan_rows,
                 result=result,
                 scanning_up=True,
                 block_info=block_info,
             )
         except Exception:
             logger.exception("Error in scan_up")
-            dbsession.rollback()
+            raise
         dbsession.flush()
         return True
 
     def scan_down(self, dbsession: Session, chain_id: int) -> bool:
-        block_info = (
-            dbsession.query(BlockInfo)
-            .filter(BlockInfo.block_chain_id == chain_id)
-            .order_by(BlockInfo.block_number.desc())
-            .first()
-        )
-        if block_info is None:
-            raise LookupError("No block info found when scanning down")
         low_scan_rows = (
             dbsession.execute(
                 select(RskAddressBookkeeper)
@@ -249,47 +254,174 @@ class Bookkeeper:
 
         if not low_scan_rows:
             return False
+
         try:
-            result = self.address_transactions_in_block(
-                low_scan_rows[0].lowest_scanned - 1, low_scan_rows
+            new_block_number = low_scan_rows[0].lowest_scanned - 1
+            block_info = (
+                dbsession.query(BlockInfo)
+                .filter(
+                    BlockInfo.block_chain_id == chain_id,
+                    BlockInfo.block_number == new_block_number,
+                )
+                .one()
             )
+            result = self.address_traces_in_block(new_block_number, low_scan_rows)
             self.add_result_to_db(
                 dbsession=dbsession,
-                block_n=low_scan_rows[0].lowest_scanned - 1,
-                included_rows=low_scan_rows,
+                block_n=new_block_number,
+                address_bookkeepers=low_scan_rows,
                 result=result,
                 scanning_up=False,
                 block_info=block_info,
             )
         except Exception:
             logger.exception("Error in scan_down")
-            dbsession.rollback()
+            raise
         dbsession.flush()
         return True
 
-    def address_transactions_in_block(
+    def get_or_create_block_info(self, dbsession: Session, block_n: int, chain_id: int):
+        block_info = (
+            dbsession.query(BlockInfo)
+            .filter(
+                and_(
+                    BlockInfo.block_chain_id == chain_id,
+                    BlockInfo.block_number == block_n,
+                )
+            )
+            .first()
+        )
+        if block_info is None:
+            block = self.web3.eth.get_block(block_n)
+            block_info = BlockInfo(
+                block_chain_id=chain_id,
+                block_number=block_n,
+                timestamp=datetime.fromtimestamp(block["timestamp"], tz=timezone.utc),
+            )
+            dbsession.add(block_info)
+        return block_info
+
+    def sanity_check_on_address(
+        self,
+        dbsession: Session,
+        bk: RskAddressBookkeeper,
+        config: configparser.ConfigParser,
+        sensitivity: int = 100,
+    ):
+        def on_fail(st):
+            logger.warning(
+                "sanity check failed for: %s, with message: %s", bk.address.address, st
+            )
+            if (
+                self.last_failed_sanity_check_time + timedelta(minutes=1)
+                < datetime.now()
+            ):
+                return
+            post_url = config.get("slack", {}).get("sanity_check_hook", "")
+            if not post_url:
+                return
+            payload = {
+                "username": "Trace table sanity check -bot",
+                "icon_emoji": ":skull:",
+                "blocks": [
+                    {
+                        "type": "header",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "RSK trace table sanity check failed",
+                        },
+                    },
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": f"Address: {bk.address.address}\nMessage: {st}",
+                        },
+                    },
+                ],
+            }
+            response = requests.post(post_url, json=payload)
+            if response.status_code != 200:
+                logger.warning(
+                    "Failed to send slack message, status code: %d",
+                    response.status_code,
+                )
+            self.last_failed_sanity_check_time = datetime.now()
+
+        current_block = self.web3.eth.block_number
+
+        if bk.start >= bk.lowest_scanned:
+            if bk.next_to_scan_high < current_block - sensitivity:
+                on_fail(f"fell behind by {current_block - bk.next_to_scan_high} blocks")
+
+        bk_checksum_addr = to_checksum_address(bk.address.address)
+
+        expected_value_delta = self.web3.eth.get_balance(
+            bk_checksum_addr, bk.next_to_scan_high - 1
+        ) - self.web3.eth.get_balance(bk_checksum_addr, bk.lowest_scanned - 1)
+
+        expected_value_delta = Decimal(expected_value_delta) / Decimal("1e18")
+
+        to_values = dbsession.execute(
+            select(sql_func.sum(RskTxTrace.value)).where(
+                and_(
+                    RskTxTrace.to_address == bk.address.address,
+                    RskTxTrace.error.is_(None),
+                    RskTxTrace.block_number.between(
+                        bk.lowest_scanned, bk.next_to_scan_high - 1
+                    ),
+                )
+            )
+        ).scalar()
+
+        from_values = dbsession.execute(
+            select(sql_func.sum(RskTxTrace.value)).where(
+                and_(
+                    RskTxTrace.from_address == bk.address.address,
+                    RskTxTrace.error.is_(None),
+                    RskTxTrace.block_number.between(
+                        bk.lowest_scanned, bk.next_to_scan_high - 1
+                    ),
+                )
+            )
+        ).scalar()
+
+        if to_values is None and from_values is None:
+            logger.warning("sanity check returns None for both sums")
+            return
+
+        value_delta = to_values - from_values
+        if expected_value_delta != value_delta:
+            on_fail("value delta mismatch")
+        logger.info(
+            "sanity check complete for address %s, with deviation "
+            + str(value_delta - expected_value_delta),
+            bk.address.address,
+        )
+
+    def address_traces_in_block(
         self, block_n: int, included_rows: Sequence[RskAddressBookkeeper]
-    ) -> dict[tuple[str, str], list[dict]]:
+    ) -> dict[str, list[dict]]:
         if not included_rows:
-            return dict()
+            return {}
         if block_n < 1:
-            return dict()
+            return {}
         if block_n % 1000 == 0:
             logger.info("Scanning block %d", block_n)
 
         addr_set = set(bk.address.address for bk in included_rows)
         result = self.web3.tracing.trace_block(block_n)
-        result = convert_result_to_json_serializable(result)
-        address_traces = defaultdict(list)
+        result = convert_to_json_serializable(result)
+        result = groupby(result, lambda x: x["transactionHash"])
 
-        for trace in result:
-            trace_transaction_hash = trace["transactionHash"]
-            if (from_addr := trace["action"].get("from")) and from_addr in addr_set:
-                address_traces[from_addr, trace_transaction_hash].append(trace)
-            if (to_addr := trace["action"].get("to")) and to_addr in addr_set:
-                address_traces[to_addr, trace_transaction_hash].append(trace)
-
-        return dict(address_traces)
+        ret_val = {}
+        for tx_hash, tx in result:
+            tx = list(tx)
+            if any(trace["action"].get("from") in addr_set for trace in tx) or any(
+                trace["action"].get("to") in addr_set for trace in tx
+            ):
+                ret_val[tx_hash] = tx
+        return ret_val
 
 
 def convert_to_json_serializable(obj: Any) -> Any:
@@ -304,16 +436,12 @@ def convert_to_json_serializable(obj: Any) -> Any:
     return obj
 
 
-def convert_result_to_json_serializable(result: List[dict]) -> list[dict]:
-    ret_val = []
-    for trace in result:
-        ret_val.append(convert_to_json_serializable(trace))
-    return ret_val
-
-
-def parse_args(argv: List[str] | None = None):
+def parse_args(argv: Optional[List[str]] = None):
     parser = argparse.ArgumentParser()
     parser.add_argument("config_uri", help="Path to the config file")
+    parser.add_argument(
+        "-chain_env", default="local_node", help="Default is local node"
+    )
     return parser.parse_args()
 
 
@@ -327,7 +455,7 @@ def main(argv: List[str]):
     config.read(args.config_uri)
     db_url = config["app:main"]["sqlalchemy.url"]
     engine = create_engine(db_url)
-    w3 = web3.Web3(web3.HTTPProvider("http://localhost:4444"))
+    w3 = get_web3(args.chain_env)
     bookkeeper = Bookkeeper(w3, engine)
     dbsession = Session(engine)
     block_chain_meta = (
@@ -362,24 +490,38 @@ def main(argv: List[str]):
         start=5074757,
     )
 
-    for i in cycle(range(1000)):
+    while True:
         try:
-            scanned_down = bookkeeper.scan_down(dbsession, chain_id=rsk_id)
-            if not scanned_down:
-                scanned_up = bookkeeper.scan_up(
-                    dbsession, chain_id=rsk_id, safety_limit=block_chain_meta.safe_limit
-                )
-                if not scanned_up:
-                    dbsession.commit()
-                    time.sleep(10)
-            elif i % 100 == 99:
-                bookkeeper.scan_up(
-                    dbsession, chain_id=rsk_id, safety_limit=block_chain_meta.safe_limit
-                )
-                dbsession.commit()
+            for i in range(100):
+                scanned_down = bookkeeper.scan_down(dbsession, chain_id=rsk_id)
+                if not scanned_down:
+                    break
+
+            scanned_up = bookkeeper.scan_up(
+                dbsession, chain_id=rsk_id, safety_limit=block_chain_meta.safe_limit
+            )
+
+            # logger.info("Committing")
+            dbsession.commit()
+
+            if not (scanned_down or scanned_up):
+                time.sleep(1)
+
         except Exception:
             logger.exception("Error scanning")
+            dbsession.rollback()
             time.sleep(10)
+
+        try:
+            if bookkeeper.sanity_check_now:
+                all_bookkeepers = (
+                    dbsession.execute(select(RskAddressBookkeeper)).scalars().all()
+                )
+                for bk in all_bookkeepers:
+                    bookkeeper.sanity_check_on_address(dbsession, bk, config=config)
+
+        except Exception:
+            logger.exception("Error in sanity check")
 
 
 if __name__ == "__main__":

@@ -6,15 +6,12 @@ from datetime import (
     timezone,
 )
 from decimal import Decimal
-from typing import (
-    Optional,
-)
 
 from eth_utils import to_checksum_address
 from pyramid.httpexceptions import HTTPBadRequest
 from pyramid.request import Request
 from pyramid.view import view_config
-from sqlalchemy import func
+from sqlalchemy import func, select, outerjoin
 from sqlalchemy.orm import Session
 
 from bridge_monitor.business_logic.utils import (
@@ -23,7 +20,16 @@ from bridge_monitor.business_logic.utils import (
 )
 from bridge_monitor.models.pnl import ProfitCalculation
 from .utils import parse_time_range
+from ..models import (
+    RskAddress,
+    RskTxTrace,
+    FastBTCInTransfer,
+    BidirectionalFastBTCTransfer,
+    BtcWallet,
+    BtcWalletTransaction,
+)
 from ..rpc.rpc import get_btc_wallet_balance_at_date
+
 
 logger = logging.getLogger(__name__)
 
@@ -35,43 +41,6 @@ class PnlRow:
     gross_profit_btc: Decimal
     cost_btc: Decimal
     net_profit_btc: Decimal
-
-
-@dataclasses.dataclass
-class FormVariable:
-    name: str
-    title: str
-    value: Optional[Decimal]
-    value_getter_url: Optional[str] = None
-    help_text: Optional[str] = None
-
-    @classmethod
-    def from_params(
-        cls,
-        *,
-        params: dict,
-        name: str,
-        title: Optional[str] = None,
-        help_text: Optional[str] = None,
-        value_getter_url: Optional[str] = None,
-        default=None,
-    ):
-        if default is not None:
-            default = Decimal(default)
-        if not title:
-            title = name
-        value = params.get(name, default)
-        if value is None or value == "":
-            value = None
-        else:
-            value = Decimal(value)
-        return cls(
-            name=name,
-            title=title,
-            value=value,
-            value_getter_url=value_getter_url,
-            help_text=help_text,
-        )
 
 
 @view_config(
@@ -110,28 +79,19 @@ def sanity_check(request: Request):
         "end": end,
         "pnl_rows": pnl_rows,
     }
-
     if request.method == "POST":
-
-        def getval(name):
-            raise NotImplementedError
-
         totals = {
             # PnL := user - fees - tx_cost - failing_tx_cost  (failing tx cost ignored)
             "pnl": pnl_total,
-            # manual_out:= withdrawals for operation cost or payrolls
-            "manual_out": Decimal("0"),
-            # manual_in:=deposits from xchequer or other system components (eg watcher)
-            "manual_in": Decimal("0"),
             # Start/End_balance:= Btc_peg_in+Btc_peg_out+Rsk_peg_in+Rsk_peg_out+Btc_backup_wallet
             "start_balance": sum(
                 (
                     rsk_balance_at_time(
                         dbsession, start, bidi_fastbtc_contract_address, chain
-                    )["balance_decimal"],
+                    )["balance"],
                     rsk_balance_at_time(
                         dbsession, start, fastbtc_in_contract_address, chain
-                    )["balance_decimal"],
+                    )["balance"],
                     get_btc_wallet_balance_at_date(dbsession, "fastbtc-out", start),
                     get_btc_wallet_balance_at_date(dbsession, "fastbtc-in", start),
                     get_btc_wallet_balance_at_date(dbsession, "btc-backup", start),
@@ -141,35 +101,57 @@ def sanity_check(request: Request):
                 (
                     rsk_balance_at_time(
                         dbsession, end, bidi_fastbtc_contract_address, chain
-                    )["balance_decimal"],
+                    )["balance"],
                     rsk_balance_at_time(
                         dbsession, end, fastbtc_in_contract_address, chain
-                    )["balance_decimal"],
+                    )["balance"],
                     get_btc_wallet_balance_at_date(dbsession, "fastbtc-out", end),
                     get_btc_wallet_balance_at_date(dbsession, "fastbtc-in", end),
                     get_btc_wallet_balance_at_date(dbsession, "btc-backup", end),
                 )
             ),
+            # manual_out:= withdrawals for operation cost or payrolls
+            "manual_out": Decimal("0"),
+            # manual_in:=deposits from xchequer or other system components (eg watcher)
+            "manual_in": Decimal("0"),
             # Rsk_tx_cost:=federator_tx_cost peg_in + federator_tx_cost_peg_out
             # ignore for now
             "rsk_tx_cost": Decimal(0),
             # failing_tx_cost:=approx 10$ per day (paid by federator wallets, ignore for the moment)
         }
-        sanity_check_formula = "{end_balance} - {start_balance} + {pnl} + {manual_in} - {manual_out} - {rsk_tx_cost}"
+        # calculating manual transfers after above to make sure btc wallet tx table is up to date
+        manual_rsk_result = get_rsk_manual_transfers(
+            dbsession, start_time=start, target_time=end
+        )
+        manual_btc_result = get_btc_manual_transfers(
+            dbsession, start_time=start, target_time=end
+        )
+        totals["manual_out"] = (
+            manual_btc_result["manual_out"] + manual_rsk_result["manual_out"]
+        )
+
+        totals["manual_in"] = (
+            manual_btc_result["manual_in"] + manual_rsk_result["manual_in"]
+        )
+        for key, value in totals.items():
+            logger.info("%s: %s", key, value)
+        sanity_check_formula = "{end_balance} - {start_balance} - {pnl} - {manual_in} + {manual_out} + {rsk_tx_cost}"
 
         sanity_check_value = (
             totals["end_balance"]
             - totals["start_balance"]
-            + totals["pnl"]
-            + totals["manual_in"]
-            - totals["manual_out"]
-            - totals["rsk_tx_cost"]
+            - totals["pnl"]
+            - totals["manual_in"]
+            + totals["manual_out"]
+            + totals["rsk_tx_cost"]
         )
+        logger.info("sanity check value: %s", sanity_check_value)
         ret.update(
             {
                 "totals": totals,
                 "sanity_check": {
                     "formula": sanity_check_formula,
+                    "expanded_formula": sanity_check_formula.format(**totals),
                     "value": sanity_check_value,
                 },
             }
@@ -182,23 +164,22 @@ def rsk_balance_at_time(
 ):
     block = get_closest_block(
         chain_name=chain_name,
-        wanted_datetime=datetime(time.year, time.month, time.day),
+        wanted_datetime=time,
         dbsession=dbsession,
     )
     balance_wei = get_rsk_balance_at_block(
         web3=get_web3(chain_name),
         address=address,
-        block_number=block["number"],
+        block_number=block["block_number"],
     )
 
     return {
-        "block_number": block["number"],
-        "block_time": datetime.fromtimestamp(
-            block["timestamp"], timezone.utc
-        ).isoformat(),
+        "block_number": block["block_number"],
+        "block_time": block["timestamp"].isoformat(),
         "address": address,
         "balance_wei": balance_wei,
         "balance_decimal": format(balance_wei / Decimal(10) ** 18, ".6f"),
+        "balance": balance_wei / Decimal(10) ** 18,
     }
 
 
@@ -274,3 +255,194 @@ def get_chain(request: Request) -> str:
 def includeme(config):
     config.add_route("sanity_check", "/sanity-check/")
     config.add_route("rsk_balance_at_time", "/rsk-balance-at-time/")
+
+
+def get_rsk_manual_transfers(
+    dbsession: Session,
+    *,
+    target_time: datetime,
+    start_time: datetime = datetime.fromtimestamp(0),
+) -> dict[str, Decimal]:
+    logger.info(
+        "getting rsk manual transfers from %s to %s",
+        start_time.isoformat(),
+        target_time.isoformat(),
+    )
+
+    fastbtc_in_entry = (
+        dbsession.query(RskAddress).filter(RskAddress.name == "fastbtc-in").one()
+    )
+
+    fastbtc_out_entry = (
+        dbsession.query(RskAddress).filter(RskAddress.name == "fastbtc-out").one()
+    )
+    ret_val = {
+        "manual_out": Decimal(0),
+        "manual_in": Decimal(0),
+    }
+    # fastbtc-out manual out
+    manual_out_amount = dbsession.execute(
+        select(func.sum(RskTxTrace.value)).where(
+            RskTxTrace.from_address == fastbtc_out_entry.address,
+            RskTxTrace.to_address != fastbtc_in_entry.address,
+            RskTxTrace.error.is_(None),
+            RskTxTrace.block_time >= start_time,
+            RskTxTrace.block_time <= target_time,
+        )
+    ).scalar()
+
+    if manual_out_amount is not None:
+        ret_val["manual_out"] += manual_out_amount
+
+    # fastbtc-in manual in
+    manual_in_amount = dbsession.execute(
+        select(func.sum(RskTxTrace.value)).where(
+            RskTxTrace.to_address == fastbtc_in_entry.address,
+            RskTxTrace.from_address != fastbtc_out_entry.address,
+            RskTxTrace.error.is_(None),
+            RskTxTrace.block_time >= start_time,
+            RskTxTrace.block_time <= target_time,
+        )
+    ).scalar()
+
+    if manual_in_amount is not None:
+        ret_val["manual_in"] += manual_in_amount
+
+    # fastbtc-in manual out
+    manual_out_amount = dbsession.execute(
+        select(func.sum(RskTxTrace.value)).where(
+            RskTxTrace.from_address == fastbtc_in_entry.address,
+            ~dbsession.query(FastBTCInTransfer)
+            .filter(FastBTCInTransfer.executed_transaction_hash == RskTxTrace.tx_hash)
+            .exists(),
+            RskTxTrace.block_time >= start_time,
+            RskTxTrace.block_time <= target_time,
+        )
+    ).scalar()
+
+    if manual_out_amount is not None:
+        ret_val["manual_out"] += manual_out_amount
+
+    return ret_val
+
+
+def get_btc_manual_transfers(
+    dbsession: Session,
+    target_time: datetime,
+    start_time: datetime = datetime.fromtimestamp(0),
+) -> dict[str, Decimal]:
+    logger.info(
+        "getting btc manual transfers from %s to %s",
+        start_time.isoformat(),
+        target_time.isoformat(),
+    )
+    fastbtc_in_entry = (
+        dbsession.query(BtcWallet).filter(BtcWallet.name == "fastbtc-in").one()
+    )
+    fastbtc_out_entry = (
+        dbsession.query(BtcWallet).filter(BtcWallet.name == "fastbtc-out").one()
+    )
+    backup_wallet_entry = (
+        dbsession.query(BtcWallet).filter(BtcWallet.name == "btc-backup").one()
+    )
+
+    in_subquery = select(BtcWalletTransaction).where(
+        BtcWalletTransaction.wallet == fastbtc_in_entry
+    )
+    out_subquery = select(BtcWalletTransaction).where(
+        BtcWalletTransaction.wallet == fastbtc_out_entry
+    )
+
+    ret_val = {
+        "manual_out": Decimal(0),
+        "manual_in": Decimal(0),
+    }
+
+    manual_out_amount = dbsession.execute(
+        select(func.sum(func.abs(in_subquery.c.net_change)))
+        .select_from(
+            outerjoin(
+                in_subquery,
+                out_subquery,
+                in_subquery.c.tx_hash == out_subquery.c.tx_hash,
+                full=False,
+            )
+        )
+        .where(
+            out_subquery.c.tx_hash.is_(None),
+            in_subquery.c.amount_sent > 0,
+            in_subquery.c.timestamp <= target_time,
+            in_subquery.c.timestamp >= start_time,
+        )
+    ).scalar()
+
+    if manual_out_amount is not None:
+        ret_val["manual_out"] += manual_out_amount
+
+    manual_in_amount = dbsession.execute(
+        select(func.sum(func.abs(out_subquery.c.net_change)))
+        .select_from(
+            outerjoin(
+                out_subquery,
+                in_subquery,
+                out_subquery.c.tx_hash == in_subquery.c.tx_hash,
+                full=False,
+            )
+        )
+        .where(
+            in_subquery.c.tx_hash.is_(None),
+            out_subquery.c.amount_received > 0,
+            out_subquery.c.amount_sent == 0,
+            out_subquery.c.timestamp <= target_time,
+            out_subquery.c.timestamp >= start_time,
+        )
+    ).scalar()
+
+    if manual_in_amount is not None:
+        ret_val["manual_in"] += manual_in_amount
+
+    manual_out_amount = dbsession.execute(
+        select(func.sum(func.abs(BtcWalletTransaction.net_change))).where(
+            BtcWalletTransaction.wallet == fastbtc_out_entry,
+            ~dbsession.query(BidirectionalFastBTCTransfer)
+            .filter(
+                BidirectionalFastBTCTransfer.bitcoin_tx_id
+                == BtcWalletTransaction.tx_hash
+            )
+            .exists(),
+            BtcWalletTransaction.amount_sent > 0,
+            BtcWalletTransaction.timestamp <= target_time,
+            BtcWalletTransaction.timestamp >= start_time,
+        )
+    ).scalar()
+
+    if manual_out_amount is not None:
+        ret_val["manual_out"] += manual_out_amount
+
+    # backup wallet transactions
+    # all backup wallet transactions are manual
+
+    manual_out_amount = dbsession.execute(
+        select(func.sum(func.abs(BtcWalletTransaction.net_change))).where(
+            BtcWalletTransaction.wallet == backup_wallet_entry,
+            BtcWalletTransaction.amount_sent > 0,
+            BtcWalletTransaction.timestamp <= target_time,
+            BtcWalletTransaction.timestamp >= start_time,
+        )
+    ).scalar()
+
+    if manual_out_amount is not None:
+        ret_val["manual_out"] += manual_out_amount
+
+    manual_in_amount = dbsession.execute(
+        select(func.sum(func.abs(BtcWalletTransaction.net_change))).where(
+            BtcWalletTransaction.wallet == backup_wallet_entry,
+            BtcWalletTransaction.amount_received > 0,
+            BtcWalletTransaction.timestamp <= target_time,
+            BtcWalletTransaction.timestamp >= start_time,
+        )
+    ).scalar()
+    if manual_in_amount is not None:
+        ret_val["manual_in"] += manual_in_amount
+
+    return ret_val

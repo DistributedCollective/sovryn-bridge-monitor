@@ -25,6 +25,11 @@ requires = [
     "web3",
     "requests",
     "python-dateutil",
+    "pandas",
+    "pyarrow",
+    "openpyxl",
+    "zstandard",
+    "dotenv",
 ]
 
 tests_require = [

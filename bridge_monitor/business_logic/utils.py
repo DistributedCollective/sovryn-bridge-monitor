@@ -9,19 +9,24 @@ import sys
 from datetime import datetime, timezone
 from time import sleep
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from decimal import Decimal
 
 from eth_account.signers.local import LocalAccount
 from eth_typing import AnyAddress
-from eth_utils import to_checksum_address
+from eth_utils import to_checksum_address, is_checksum_address
 from web3 import Web3
 from web3.contract import Contract
 from web3.middleware import construct_sign_and_send_raw_middleware, geth_poa_middleware
 from web3.exceptions import MismatchedABI
 from web3.types import BlockData
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import func as sql_func
+from sqlalchemy.sql.operators import and_
+from sqlalchemy.sql.expression import select
 
 from .retry_middleware import http_retry_request_middleware
 from ..models.chain_info import BlockInfo, BlockChain
+from ..models.rsk_transaction_info import RskTxTrace, RskAddressBookkeeper
 
 THIS_DIR = os.path.dirname(__file__)
 ABI_DIR = os.path.join(THIS_DIR, "abi")
@@ -44,6 +49,7 @@ RPC_URLS = {
     ),
     "eth_testnet_ropsten": f"https://ropsten.infura.io/v3/{INFURA_API_KEY}",
     "eth_testnet": f"https://sepolia.infura.io/v3/{INFURA_API_KEY}",
+    "local_node": "http://localhost:4444",
 }
 
 
@@ -167,7 +173,12 @@ def get_events(*, event, from_block: int, to_block: int, batch_size: int = None)
 
 
 def get_all_contract_events(
-    *, contract: Contract, from_block: int, to_block: int, batch_size: int = None
+    *,
+    contract: Contract,
+    from_block: int,
+    to_block: int,
+    batch_size: int = None,
+    web3=None,
 ):
     """Get all events of a single contract"""
     if to_block < from_block:
@@ -198,7 +209,7 @@ def get_all_contract_events(
 
         logs = get_log_batch_with_retries(
             contract_address=contract.address,
-            web3=contract.web3,
+            web3=web3 or contract.web3,
             from_block=batch_from_block,
             to_block=batch_to_block,
         )
@@ -209,7 +220,7 @@ def get_all_contract_events(
                 parsed = None
                 for event in contract.events:
                     try:
-                        parsed = event().processLog(log)
+                        parsed = event().process_log(log)
                         if parsed is not None:
                             break
                     except MismatchedABI:
@@ -229,7 +240,7 @@ def get_event_batch_with_retries(event, from_block, to_block, *, retries=6):
     original_retries = retries
     while True:
         try:
-            return event.getLogs(
+            return event.get_logs(
                 fromBlock=from_block,
                 toBlock=to_block,
             )
@@ -248,7 +259,7 @@ def get_log_batch_with_retries(
     original_retries = retries
     while True:
         try:
-            return web3.eth.getLogs(
+            return web3.eth.get_logs(
                 dict(
                     address=contract_address,
                     fromBlock=from_block,
@@ -258,7 +269,7 @@ def get_log_batch_with_retries(
         except ValueError as e:
             if retries <= 0:
                 raise e
-            logger.warning("error in web3.eth.getLogs: %s, retrying (%s)", e, retries)
+            logger.warning("error in web3.eth.get_logs: %s, retrying (%s)", e, retries)
             retries -= 1
             attempt = original_retries - retries
             exponential_sleep(attempt)
@@ -332,7 +343,55 @@ def call_concurrently(*funcs: Callable, retry: bool = False) -> List[Any]:
     return _call()
 
 
-@functools.lru_cache(maxsize=1024)
+def get_rsk_balance_from_db(
+    dbsession: Session, *, address: str, target_time: datetime
+) -> Decimal:
+    target_block = get_closest_block(dbsession, "rsk", target_time)
+
+    if is_checksum_address(address):
+        address = address.lower()
+
+    address_bookkeeper = (
+        dbsession.query(RskAddressBookkeeper)
+        .filter(
+            RskAddressBookkeeper.address == address,
+        )
+        .one()
+    )
+
+    if (
+        address_bookkeeper.start < address_bookkeeper.lowest_scanned
+        or address_bookkeeper.next_to_scan_high <= target_block.number
+    ):
+        logger.warning(
+            "Address %s not fully scanned when querying balance at %s",
+            address,
+            target_time,
+        )
+
+    to_values = dbsession.execute(
+        select(sql_func.sum(RskTxTrace.value)).where(
+            and_(
+                RskTxTrace.to_address == address,
+                RskTxTrace.error.is_(None),
+                RskTxTrace.block_number <= target_block,
+            )
+        )
+    ).scalar()
+
+    from_values = dbsession.execute(
+        select(sql_func.sum(RskTxTrace.value)).where(
+            and_(
+                RskTxTrace.from_address == address,
+                RskTxTrace.error.is_(None),
+                RskTxTrace.block_number <= target_block,
+            )
+        )
+    ).scalar()
+
+    return to_values - from_values
+
+
 def get_closest_block(
     dbsession: Session,
     chain_name: str,
@@ -340,7 +399,7 @@ def get_closest_block(
     *,
     not_after: bool = True,
     allowed_diff_seconds: int = 10 * 60,
-) -> BlockData:
+) -> BlockInfo:
     wanted_timestamp = int(wanted_datetime.timestamp())
     logger.debug("Wanted timestamp: %s", wanted_timestamp)
 
@@ -378,6 +437,12 @@ def get_closest_block(
         block: BlockData = web3.eth.get_block(target_block_number)
         block_timestamp = block["timestamp"]
 
+        block = BlockInfo(
+            block_number=block["number"],
+            timestamp=datetime.fromtimestamp(block["timestamp"], timezone.utc),
+            block_chain_id=-1,
+        )
+
         diff = block_timestamp - wanted_timestamp
         logger.debug(
             "target: %s, timestamp: %s, diff %s",
@@ -394,10 +459,10 @@ def get_closest_block(
 
         if block_timestamp > wanted_timestamp:
             # block is after wanted, move end
-            end_block_number = block["number"] - 1
+            end_block_number = block["block_number"] - 1
         elif block_timestamp < wanted_timestamp:
             # block is before wanted, move start
-            start_block_number = block["number"] + 1
+            start_block_number = block["block_number"] + 1
         else:
             # timestamps are exactly the same, just return block
             return block
@@ -413,10 +478,15 @@ def get_closest_block(
         closest_diff,
     )
 
-    if not_after and closest_block["timestamp"] > wanted_timestamp:
+    if not_after and closest_block["timestamp"] > wanted_datetime:
         logger.debug(
             "Block is after wanted timestamp and not_after=True, returning previous block"
         )
-        return web3.eth.get_block(closest_block["number"] - 1)
+        prev_block = web3.eth.get_block(closest_block["block_number"] - 1)
+        return BlockInfo(
+            block_number=prev_block["number"],
+            timestamp=prev_block["timestamp"],
+            block_chain_id=-1,
+        )
 
     return closest_block

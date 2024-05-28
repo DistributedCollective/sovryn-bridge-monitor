@@ -73,7 +73,7 @@ class PnLService:
                 )
                 .all()
             )
-            num_transfers = sum(len(b["ids"]) for b in mined_transfer_batches)
+            num_transfers = sum(len(b.ids) for b in mined_transfer_batches)
             logger.info(
                 "Got %d mined transfer batches, %d transfers in total",
                 len(mined_transfer_batches),
@@ -95,16 +95,16 @@ class PnLService:
                 logger.error("Failed to process batch %s, skipping", batch)
 
     def _update_pnl_for_mined_bidi_transfer_batch(self, batch):
-        transfer_ids = batch["ids"]
-        chain = batch["chain"]
-        sending_tx_hash = batch["marked_as_sending_transaction_hash"]
-        mined_tx_hashes = batch["mined_tx_hashes"]
+        transfer_ids = batch.ids
+        chain = batch.chain
+        sending_tx_hash = batch.marked_as_sending_transaction_hash
+        mined_tx_hashes = batch.mined_tx_hashes
         if not len(set(mined_tx_hashes)) == 1:
             raise Exception(
                 f"Expected exactly one mined tx hash, got {mined_tx_hashes}"
             )
         mined_tx_hash = mined_tx_hashes[0]
-        bitcoin_tx_ids = batch["bitcoin_tx_ids"]
+        bitcoin_tx_ids = batch.bitcoin_tx_ids
         if not len(set(bitcoin_tx_ids)) == 1:
             raise Exception(f"Expected exactly one bitcoin tx id, got {bitcoin_tx_ids}")
         bitcoin_tx_id = bitcoin_tx_ids[0]
@@ -365,7 +365,7 @@ class PnLService:
         gas_used = receipt["gasUsed"]
         gas_price_wei = transaction["gasPrice"]
         gas_cost_wei = gas_used * gas_price_wei
-        gas_cost_btc = Decimal(web3.fromWei(gas_cost_wei, "ether"))
+        gas_cost_btc = Decimal(web3.from_wei(gas_cost_wei, "ether"))
         return PnLTransaction(
             transaction_chain=chain,
             transaction_id=transaction_hash,

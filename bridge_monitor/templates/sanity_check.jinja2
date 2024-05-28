@@ -73,39 +73,15 @@ value    = {{ sanity_check['value'] }}</pre>
     <div>
         <br>
         Foo
-        <script>
-            (function() {
-                function fetchValue(button, url, inputName, retAttribute) {
-                    const input = document.querySelector(`input[name="${inputName}"]`);
-                    console.log('button');
-                    console.log(button);
-                    const origText = button.textContent;
-                    button.disabled = true;
-                    button.textContent = 'Fetching...';
-                    fetch(url)
-                        .then(r => r.json())
-                        .then(data => input.value = data[retAttribute])
-                        .catch(err => {
-                            console.error(err);
-                            alert('Error fetching value.')
-                        })
-                        .finally(() => {
-                            button.disabled = false;
-                            button.textContent = origText;
-                        });
-                }
-
-                document.querySelectorAll('button[data-fetchvalue-url]').forEach(button => {
-                    const url = button.getAttribute('data-fetchvalue-url');
-                    const inputName = button.getAttribute('data-fetchvalue-input-name');
-                    const retAttribute = button.getAttribute('data-fetchvalue-ret-attribute');
-                    button.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        fetchValue(button, url, inputName, retAttribute);
-                    });
-                });
-            }());
-        </script>
+       <form
+              method="POST"
+              action="{{ request.current_route_path() }}"
+       >
+           <button
+               type="submit"
+            >
+           Sanity check</button>
+       </form>
     </div>
 </div>
 {% endblock content %}
