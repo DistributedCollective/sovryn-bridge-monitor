@@ -76,3 +76,9 @@ code.vote-command {
   color: #999;
   font-size: small;
 }
+
+#main-submit {
+  width: 20rem;
+  height: 5rem;
+  font-size: 2rem;
+}

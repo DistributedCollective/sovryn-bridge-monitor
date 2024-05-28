@@ -64,6 +64,7 @@ def parse_time_range(
         start = datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc)
         end = datetime.combine(end, datetime.min.time(), tzinfo=timezone.utc)
 
+    end = min(end, datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)) if end else None
     return ParsedTimeRange(
         start=start,
         end=end,

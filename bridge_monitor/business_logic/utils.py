@@ -434,7 +434,7 @@ def get_closest_block(
     closest_diff = 2**256 - 1
     while start_block_number <= end_block_number:
         target_block_number = (start_block_number + end_block_number) // 2
-        block: BlockData = web3.eth.get_block(target_block_number)
+        block: BlockData | BlockInfo = web3.eth.get_block(target_block_number)
         block_timestamp = block["timestamp"]
 
         block = BlockInfo(
@@ -485,7 +485,7 @@ def get_closest_block(
         prev_block = web3.eth.get_block(closest_block["block_number"] - 1)
         return BlockInfo(
             block_number=prev_block["number"],
-            timestamp=prev_block["timestamp"],
+            timestamp=datetime.fromtimestamp(prev_block["timestamp"]),
             block_chain_id=-1,
         )
 

@@ -80,6 +80,8 @@ def sanity_check(request: Request):
         "pnl_rows": pnl_rows,
     }
     if request.method == "POST":
+        logger.info("sanity check post request received for time range %s to %s",
+                    start.isoformat(), end.isoformat())
         totals = {
             # PnL := user - fees - tx_cost - failing_tx_cost  (failing tx cost ignored)
             "pnl": pnl_total,
