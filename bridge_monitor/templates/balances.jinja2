@@ -1,0 +1,33 @@
+{% extends "layout.jinja2" %}
+
+{% block content %}
+    <div class="content">
+        <nav>
+            <h2>Filter by source:</h2>
+            <!-- filter by db or api datasource-->
+            <a href={{ request.current_route_path(
+                                _query={"filter": "db"})
+                            }}>
+                    DB
+                </a> |
+                <a href={{ request.current_route_path(
+                                _query={"filter": "api"})
+                            }}>
+                    API
+                </a>
+        </nav>
+        <h1>Results</h1>
+        {% for display in displays %}
+            <div class="display">
+                <h3>{{ display.name }}</h3>
+                <p>Balance: {{ display.balance }}</p>
+                <p>Method: {{ display.method }}</p>
+                <p>Chain: {{ display.chain_name }}</p>
+                {% if display.address %}
+                    <p>Address: {{ display.address }}</p>
+                {% endif %}
+
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}
