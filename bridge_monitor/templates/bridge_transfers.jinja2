@@ -169,7 +169,10 @@
                                 <span>ErrorData:</span><code>{{ transfer.error_data }}</code><br/>
                             {% endif %}
                             {% if not transfer.was_processed  %}
-                                <span>Cmd</span> <a href="#" data-vote-command="{{ transfer.vote_command  }}">show vote command</a>
+                                <span>Cmd</span>
+                                <a href="#" data-vote-command="{{ transfer.vote_command  }}">
+                                    <code>show vote command</code>
+                                </a>
                             {% endif %}
                         </td>
                     </tr>
