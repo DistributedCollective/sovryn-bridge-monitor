@@ -25,7 +25,6 @@ from ..models import (
     RskTxTrace,
     FastBTCInTransfer,
     BidirectionalFastBTCTransfer,
-    BtcWallet,
     BtcWalletTransaction,
 )
 from ..rpc.rpc import get_btc_wallet_balance_at_date
@@ -80,8 +79,11 @@ def sanity_check(request: Request):
         "pnl_rows": pnl_rows,
     }
     if request.method == "POST":
-        logger.info("sanity check post request received for time range %s to %s",
-                    start.isoformat(), end.isoformat())
+        logger.info(
+            "sanity check post request received for time range %s to %s",
+            start.isoformat(),
+            end.isoformat(),
+        )
         totals = {
             # PnL := user - fees - tx_cost - failing_tx_cost  (failing tx cost ignored)
             "pnl": pnl_total,
@@ -338,21 +340,12 @@ def get_btc_manual_transfers(
         start_time.isoformat(),
         target_time.isoformat(),
     )
-    fastbtc_in_entry = (
-        dbsession.query(BtcWallet).filter(BtcWallet.name == "fastbtc-in").one()
-    )
-    fastbtc_out_entry = (
-        dbsession.query(BtcWallet).filter(BtcWallet.name == "fastbtc-out").one()
-    )
-    backup_wallet_entry = (
-        dbsession.query(BtcWallet).filter(BtcWallet.name == "btc-backup").one()
-    )
 
     in_subquery = select(BtcWalletTransaction).where(
-        BtcWalletTransaction.wallet == fastbtc_in_entry
+        BtcWalletTransaction.wallet.has(name="fastbtc-in")
     )
     out_subquery = select(BtcWalletTransaction).where(
-        BtcWalletTransaction.wallet == fastbtc_out_entry
+        BtcWalletTransaction.wallet.has(name="fastbtc-out")
     )
 
     ret_val = {
@@ -405,7 +398,7 @@ def get_btc_manual_transfers(
 
     manual_out_amount = dbsession.execute(
         select(func.sum(func.abs(BtcWalletTransaction.net_change))).where(
-            BtcWalletTransaction.wallet == fastbtc_out_entry,
+            BtcWalletTransaction.wallet.has(name="fastbtc-out"),
             ~dbsession.query(BidirectionalFastBTCTransfer)
             .filter(
                 BidirectionalFastBTCTransfer.bitcoin_tx_id
@@ -426,7 +419,7 @@ def get_btc_manual_transfers(
 
     manual_out_amount = dbsession.execute(
         select(func.sum(func.abs(BtcWalletTransaction.net_change))).where(
-            BtcWalletTransaction.wallet == backup_wallet_entry,
+            BtcWalletTransaction.wallet.has(name="btc-backup"),
             BtcWalletTransaction.amount_sent > 0,
             BtcWalletTransaction.timestamp <= target_time,
             BtcWalletTransaction.timestamp >= start_time,
@@ -438,7 +431,7 @@ def get_btc_manual_transfers(
 
     manual_in_amount = dbsession.execute(
         select(func.sum(func.abs(BtcWalletTransaction.net_change))).where(
-            BtcWalletTransaction.wallet == backup_wallet_entry,
+            BtcWalletTransaction.wallet.has(name="btc-backup"),
             BtcWalletTransaction.amount_received > 0,
             BtcWalletTransaction.timestamp <= target_time,
             BtcWalletTransaction.timestamp >= start_time,

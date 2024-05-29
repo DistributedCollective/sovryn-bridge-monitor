@@ -132,12 +132,9 @@ def get_wallet_transactions_from_block(
 def get_new_btc_transactions(dbsession: Session, wallet_name: str) -> None:
     logger.info("Searching for new blocks")
 
-    wallet_id = (
-        dbsession.query(BtcWallet.id).filter(BtcWallet.name == wallet_name).scalar()
-    )
     newest_block_n = (
         dbsession.query(func.max(BtcWalletTransaction.block_height))
-        .filter(BtcWalletTransaction.wallet_id == wallet_id)
+        .filter(BtcWalletTransaction.wallet.has(name=wallet_name))
         .scalar()
     )
     if newest_block_n is None:
@@ -149,12 +146,9 @@ def get_btc_wallet_balance_at_date(
     dbsession: Session, wallet_name: str, target_date: datetime
 ) -> Decimal:
     logger.info("Getting %s balance at %s", wallet_name, target_date.isoformat())
-    wallet_id = (
-        dbsession.query(BtcWallet.id).filter(BtcWallet.name == wallet_name).scalar()
-    )
     newest_tx = (
         dbsession.query(BtcWalletTransaction)
-        .filter(BtcWalletTransaction.wallet_id == wallet_id)
+        .filter(BtcWalletTransaction.wallet.has(name=wallet_name))
         .order_by(BtcWalletTransaction.timestamp.desc())
         .first()
     )
@@ -170,7 +164,7 @@ def get_btc_wallet_balance_at_date(
         dbsession.query(func.sum(BtcWalletTransaction.net_change))
         .filter(
             BtcWalletTransaction.timestamp < target_date,
-            BtcWalletTransaction.wallet_id == wallet_id,
+            BtcWalletTransaction.wallet.has(name=wallet_name),
         )
         .scalar()
     )
