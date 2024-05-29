@@ -21,7 +21,6 @@ from web3.exceptions import MismatchedABI
 from web3.types import BlockData
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func as sql_func
-from sqlalchemy.sql.operators import and_
 from sqlalchemy.sql.expression import select
 
 from .retry_middleware import http_retry_request_middleware
@@ -346,22 +345,20 @@ def call_concurrently(*funcs: Callable, retry: bool = False) -> List[Any]:
 def get_rsk_balance_from_db(
     dbsession: Session, *, address: str, target_time: datetime
 ) -> Decimal:
+    logger.info("Getting balance for %s at %s, from db", address, target_time)
     target_block = get_closest_block(dbsession, "rsk", target_time)
 
     if is_checksum_address(address):
         address = address.lower()
 
-    address_bookkeeper = (
-        dbsession.query(RskAddressBookkeeper)
-        .filter(
-            RskAddressBookkeeper.address == address,
+    address_bookkeeper = dbsession.execute(
+        select(RskAddressBookkeeper).where(
+            RskAddressBookkeeper.address.has(address=address)
         )
-        .one()
-    )
-
+    ).scalar_one()
     if (
         address_bookkeeper.start < address_bookkeeper.lowest_scanned
-        or address_bookkeeper.next_to_scan_high <= target_block.number
+        or address_bookkeeper.next_to_scan_high <= target_block.block_number
     ):
         logger.warning(
             "Address %s not fully scanned when querying balance at %s",
@@ -371,21 +368,17 @@ def get_rsk_balance_from_db(
 
     to_values = dbsession.execute(
         select(sql_func.sum(RskTxTrace.value)).where(
-            and_(
-                RskTxTrace.to_address == address,
-                RskTxTrace.error.is_(None),
-                RskTxTrace.block_number <= target_block,
-            )
+            RskTxTrace.to_address == address,
+            RskTxTrace.error.is_(None),
+            RskTxTrace.block_number <= target_block.block_number,
         )
     ).scalar()
 
     from_values = dbsession.execute(
         select(sql_func.sum(RskTxTrace.value)).where(
-            and_(
-                RskTxTrace.from_address == address,
-                RskTxTrace.error.is_(None),
-                RskTxTrace.block_number <= target_block,
-            )
+            RskTxTrace.from_address == address,
+            RskTxTrace.error.is_(None),
+            RskTxTrace.block_number <= target_block.block_number,
         )
     ).scalar()
 
