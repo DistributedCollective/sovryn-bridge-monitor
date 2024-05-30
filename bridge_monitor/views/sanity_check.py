@@ -130,12 +130,15 @@ def sanity_check(request: Request):
         manual_btc_result = get_btc_manual_transfers(
             dbsession, start_time=start, target_time=end
         )
+        pending_total = Decimal(0)
+        if end > datetime.now(timezone.utc):
+            # we only care about pending transactions if the end time is in the future
+            pending_total = (
+                get_btc_pending_tx_total(dbsession, "fastbtc-in")
+                + get_btc_pending_tx_total(dbsession, "fastbtc-out")
+                + get_btc_pending_tx_total(dbsession, "btc-backup")
+            ).normalize()
 
-        pending_total = (
-            get_btc_pending_tx_total(dbsession, "fastbtc-in")
-            + get_btc_pending_tx_total(dbsession, "fastbtc-out")
-            + get_btc_pending_tx_total(dbsession, "btc-backup")
-        ).normalize()
         totals["manual_out"] = (
             manual_btc_result["manual_out"] + manual_rsk_result["manual_out"]
         )
