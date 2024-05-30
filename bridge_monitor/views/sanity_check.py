@@ -28,7 +28,7 @@ from ..models import (
     BtcWalletTransaction,
 )
 from ..rpc.rpc import get_btc_wallet_balance_at_date
-
+from bridge_monitor.views.balances import get_btc_pending_tx_total
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +130,12 @@ def sanity_check(request: Request):
         manual_btc_result = get_btc_manual_transfers(
             dbsession, start_time=start, target_time=end
         )
+
+        pending_total = (
+            get_btc_pending_tx_total(dbsession, "fastbtc-in")
+            + get_btc_pending_tx_total(dbsession, "fastbtc-out")
+            + get_btc_pending_tx_total(dbsession, "btc-backup")
+        ).normalize()
         totals["manual_out"] = (
             manual_btc_result["manual_out"] + manual_rsk_result["manual_out"]
         )
@@ -137,6 +143,7 @@ def sanity_check(request: Request):
         totals["manual_in"] = (
             manual_btc_result["manual_in"] + manual_rsk_result["manual_in"]
         )
+        totals = {k: v.normalize() for k, v in totals.items()}
         for key, value in totals.items():
             logger.info("%s: %s", key, value)
         sanity_check_formula = "{end_balance} - {start_balance} - {pnl} - {manual_in} + {manual_out} + {rsk_tx_cost}"
@@ -157,6 +164,7 @@ def sanity_check(request: Request):
                     "formula": sanity_check_formula,
                     "expanded_formula": sanity_check_formula.format(**totals),
                     "value": sanity_check_value,
+                    "pending_total": pending_total,
                 },
             }
         )

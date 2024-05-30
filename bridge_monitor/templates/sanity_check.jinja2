@@ -64,8 +64,10 @@
     {% if sanity_check %}
         <pre>
 formula  = {{ sanity_check['formula'] }}
-expanded = {{ sanity_check['expanded'] }}
-value    = {{ sanity_check['value'] }}</pre>
+expanded = {{ sanity_check['expanded_formula'] }}
+value    = {{ sanity_check['value'] }}
+total_pending = {{ sanity_check['pending_total'] }}
+        </pre>
         <br>
     {% endif %}
 
