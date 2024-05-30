@@ -119,7 +119,6 @@ def get_wallet_transactions_from_block(
                     ).scalar()
                 )
                 if pending_entry is not None:
-                    logger.info("expungin entry %s", pending_entry.tx_hash)
                     transaction = pending_entry.to_complete()
                     transaction.block_height = entry["blockheight"]
                     dbsession.delete(pending_entry)
