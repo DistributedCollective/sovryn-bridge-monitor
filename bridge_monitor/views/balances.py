@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from decimal import Decimal
+from enum import Enum
 from typing import List
 from datetime import datetime
 
@@ -9,8 +10,13 @@ from eth_utils import to_checksum_address
 from pyramid.view import view_config
 
 from bridge_monitor.models import BtcWallet, RskAddress
-from bridge_monitor.rpc.rpc import get_btc_wallet_balance_at_date, send_rpc_request, RPC_URL, RPC_USER, RPC_PASSWORD
+from bridge_monitor.rpc.rpc import get_btc_wallet_balance_at_date, send_rpc_request, RPC_URL
 from bridge_monitor.business_logic.utils import get_rsk_balance_from_db, get_web3
+
+
+class DisplayMethods(str, Enum):
+    DB = "DB"
+    API = "API"
 
 
 @dataclass
@@ -18,7 +24,7 @@ class BalanceDisplay:
     name: str
     balance: Decimal
     chain_name: str
-    method: str         # "db" / "api"
+    method: DisplayMethods
     address: str = ""
 
 
@@ -27,6 +33,7 @@ class BalanceDisplay:
     renderer="bridge_monitor:templates/balances.jinja2",
 )
 def get_balances(request):
+
     dbsession: Session = request.dbsession
     # chain_env = request.registry.get("chain_env", "mainnet")
     # chain_name = f"rsk_{chain_env}"
@@ -40,7 +47,7 @@ def get_balances(request):
             name=wallet.name,
             balance=get_btc_wallet_balance_at_date(dbsession, wallet.name, datetime.now()),
             chain_name="btc",
-            method="db",
+            method=DisplayMethods.DB,
             )
         )
 
@@ -49,7 +56,7 @@ def get_balances(request):
             name=wallet.name,
             balance=Decimal(Decimal(response["result"]) / Decimal("1e8")),
             chain_name="btc",
-            method="api",
+            method=DisplayMethods.API,
             )
         )
 
@@ -58,7 +65,7 @@ def get_balances(request):
             name=address.name,
             balance=get_rsk_balance_from_db(dbsession, address=address.address, target_time=datetime.now()),
             chain_name="rsk",
-            method="db",
+            method=DisplayMethods.DB,
             address=address.address,
             )
         )
@@ -67,11 +74,12 @@ def get_balances(request):
             name=address.name,
             balance=w3.eth.get_balance(to_checksum_address(address.address)) / Decimal("1e18"),
             chain_name="rsk",
-            method="api",
+            method=DisplayMethods.API,
             address=address.address,
             )
         )
 
     return {
         "displays": displays,
+        "display_methods": DisplayMethods,
     }

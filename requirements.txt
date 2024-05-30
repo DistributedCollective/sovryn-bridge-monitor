@@ -15,7 +15,6 @@ ckzg==1.0.1
 coverage==5.5
 cytoolz==0.12.3
 distlib==0.3.8
-ens==0.6.1
 et-xmlfile==1.1.0
 eth-account==0.11.2
 eth-hash==0.7.0
@@ -47,14 +46,14 @@ multiaddr==0.0.9
 multidict==5.1.0
 netaddr==0.8.0
 nodeenv==1.8.0
-numpy==1.26.4
+numpy>=1.2
 openpyxl==3.1.2
 packaging==21.0
 pandas==2.2.2
 numpy==1.24.4
 openpyxl==3.1.2
 packaging==21.0
-pandas==2.0.3
+pandas>=2.0.3
 parsimonious==0.10.0
 PasteDeploy==2.1.1
 plaster==1.0

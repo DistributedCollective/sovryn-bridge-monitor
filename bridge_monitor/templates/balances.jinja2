@@ -5,28 +5,44 @@
         <nav>
             <h2>Filter by source:</h2>
             <!-- filter by db or api datasource-->
-            <a href={{ request.current_route_path(
-                                _query={"filter": "db"})
+                {% for method in display_methods %}
+
+                    <a href={{ request.current_route_path(
+                                _query={"filter": method.value})
                             }}>
-                    DB
-                </a> |
+                        {{ method.value }}
+                    </a> |
+                {% endfor %}
                 <a href={{ request.current_route_path(
-                                _query={"filter": "api"})
+                                _query={"filter": ""})
                             }}>
-                    API
+                    All
                 </a>
         </nav>
         <h1>Results</h1>
         {% for display in displays %}
+            {% if not request.params.get("filter") or display.method ==  request.params.get("filter")%}
             <div class="display">
-                <h3>{{ display.name }}</h3>
-                <p>Balance: {{ display.balance }}</p>
-                <p>Method: {{ display.method }}</p>
-                <p>Chain: {{ display.chain_name }}</p>
-                {% if display.address %}
-                    <p>Address: {{ display.address }}</p>
-                {% endif %}
-
+                <h3 class="name">{{ display.name }}</h3>
+                <table class="display-content">
+                <tr>
+                    <th>Balance</th>
+                    <th>Method</th>
+                    <th>Chain</th>
+                    {% if display.address %}
+                        <th>Address</th>
+                    {% endif %}
+                </tr>
+                <tr>
+                    <td>{{ display.balance }}</td>
+                    <td>{{ display.method.value }}</td>
+                    <td>{{ display.chain_name }}</td>
+                    {% if display.address %}
+                        <td class="address">{{ display.address }}</td>
+                    {% endif %}
+                </tr>
+                </table>
+            {% endif %}
             </div>
         {% endfor %}
     </div>
