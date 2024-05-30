@@ -34,16 +34,22 @@
                     {% endif %}
                 </tr>
                 <tr>
-                    <td>{{ display.balance }}</td>
+                    <td>{{ display.balance }}
+                    {% if display.pending_total != 0 %}
+                    <br/>
+                    With pending: {{ display.balance + display.pending_total }}
+                    {% endif %}
+                    </td>
                     <td>{{ display.method.value }}</td>
-                    <td>{{ display.chain_name }}</td>
+                    <td>{{ display.chain_name }} <br/>
+                        </td>
                     {% if display.address %}
                         <td class="address">{{ display.address }}</td>
                     {% endif %}
                 </tr>
                 </table>
-            {% endif %}
             </div>
+            {% endif %}
         {% endfor %}
     </div>
 {% endblock %}

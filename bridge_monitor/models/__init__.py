@@ -13,7 +13,11 @@ from .fastbtc_in import FastBTCInTransfer, FastBTCInTransferStatus  # flake8: no
 from .pnl import ProfitCalculation, PnLTransaction  # flake8: noqa
 from .replenisher import BidirectionalFastBTCReplenisherTransaction  # flake8: noqa
 from .chain_info import BlockChain, BlockInfo
-from .bitcoin_tx_info import BtcWallet, BtcWalletTransaction
+from .bitcoin_tx_info import (
+    BtcWallet,
+    BtcWalletTransaction,
+    PendingBtcWalletTransaction,
+)
 from .rsk_transaction_info import (
     RskAddressBookkeeper,
     RskAddress,

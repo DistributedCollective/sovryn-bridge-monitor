@@ -6,11 +6,11 @@ from datetime import datetime, timezone
 import logging
 
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, func
 from eth_utils import to_checksum_address
 from pyramid.view import view_config
 
-from bridge_monitor.models import BtcWallet, RskAddress
+from bridge_monitor.models import BtcWallet, RskAddress, PendingBtcWalletTransaction
 
 from bridge_monitor.rpc.rpc import (
     get_btc_wallet_balance_at_date,
@@ -33,6 +33,7 @@ class BalanceDisplay:
     balance: Decimal
     chain_name: str
     method: DisplayMethods
+    pending_total: Decimal = Decimal("0")
     address: str = ""
 
 
@@ -41,7 +42,6 @@ class BalanceDisplay:
     renderer="bridge_monitor:templates/balances.jinja2",
 )
 def get_balances(request):
-
     dbsession: Session = request.dbsession
     # chain_env = request.registry.get("chain_env", "mainnet")
     # chain_name = f"rsk_{chain_env}"
@@ -52,7 +52,6 @@ def get_balances(request):
     displays: List[BalanceDisplay] = []
     logger.info("Fetching balances for btc wallets")
     for wallet in btc_wallets:
-
         displays.append(
             BalanceDisplay(
                 name=wallet.name,
@@ -61,6 +60,7 @@ def get_balances(request):
                 ),
                 chain_name="btc",
                 method=DisplayMethods.DB,
+                pending_total=get_btc_pending_tx_total(dbsession, wallet.name),
             )
         )
 
@@ -78,7 +78,6 @@ def get_balances(request):
     logger.info("Fetching balances for rsk addresses")
 
     for address in rsk_addresses:
-      
         displays.append(
             BalanceDisplay(
                 name=address.name,
@@ -105,8 +104,18 @@ def get_balances(request):
         )
     for d in displays:
         d.balance = d.balance.normalize()
+        d.pending_total = d.pending_total.normalize()
 
     return {
         "displays": displays,
         "display_methods": DisplayMethods,
     }
+
+
+def get_btc_pending_tx_total(dbsession: Session, wallet_name: str) -> Decimal:
+    total = dbsession.execute(
+        select(func.sum(PendingBtcWalletTransaction.net_change)).where(
+            PendingBtcWalletTransaction.wallet.has(name=wallet_name)
+        )
+    ).scalar()
+    return total if total is not None else Decimal("0")
