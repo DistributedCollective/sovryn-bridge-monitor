@@ -84,31 +84,20 @@ code.vote-command {
 }
 
 /*Balances page*/
-.display {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-top: 1px solid white;
-}
+ .display-table {
+    display: table;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+ }
 
-.display:last-child {
-  border-bottom: 1px solid white;
-}
+ .display-table th {
+   padding: 15px 0;
+   text-align: center;
+ }
 
-.display-content {
-  width: 90%;
-  padding: 7px 0;
-  table-layout: fixed;
-}
-
-.display td {
-  word-wrap: anywhere;
-}
-.display .balance {
-  font-weight: bold;
-}
-
-.display .address {
-  font-size: 0.9em;
-}
+ .display-table td {
+   padding: 20px 10px;
+   border: rgba(255, 255, 255, 0.33) 1px solid;
+   text-align: center;
+ }
