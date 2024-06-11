@@ -20,30 +20,31 @@
                 </a>
         </nav>
         <h1>Results</h1>
-        {% for display in displays %}
-            {% if not request.params.get("filter") or display.method ==  request.params.get("filter")%}
-            <div class="display">
-                <h3 class="name">{{ display.name }}</h3>
-                <table class="display-content">
-                <tr>
-                    <th>Balance</th>
-                    <th>Method</th>
+        <table class="display-table">
+            <tr>
+                    <th>Name</th>
                     <th>Chain</th>
-                    {% if display.address %}
-                        <th>Address</th>
-                    {% endif %}
-                </tr>
+                    <th>Method</th>
+                    <th>Balance</th>
+                    <th>Address</th>
+            </tr>
+            {% for display in displays %}
+            {% if not request.params.get("filter") or display.method ==  request.params.get("filter")%}
+
                 <tr>
-                    <td>{{ display.balance }}</td>
-                    <td>{{ display.method.value }}</td>
+                    <td>{{ display.name }}</td>
                     <td>{{ display.chain_name }}</td>
+                    <td>{{ display.method.value }}</td>
+                    <td>{{ display.balance }}</td>
+                    <td class="address">
                     {% if display.address %}
-                        <td class="address">{{ display.address }}</td>
+                        {{ display.address }}
                     {% endif %}
+                    </td>
                 </tr>
-                </table>
+
             {% endif %}
-            </div>
         {% endfor %}
+        </table>
     </div>
 {% endblock %}

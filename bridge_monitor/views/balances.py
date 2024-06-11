@@ -52,7 +52,6 @@ def get_balances(request):
     displays: List[BalanceDisplay] = []
     logger.info("Fetching balances for btc wallets")
     for wallet in btc_wallets:
-
         displays.append(
             BalanceDisplay(
                 name=wallet.name,
@@ -77,8 +76,7 @@ def get_balances(request):
         )
     logger.info("Fetching balances for rsk addresses")
 
-    for address in rsk_addresses:
-      
+    for address in rsk_addresses:      
         displays.append(
             BalanceDisplay(
                 name=address.name,

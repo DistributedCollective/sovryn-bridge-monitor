@@ -1,0 +1,115 @@
+{% extends "layout.jinja2" %}
+
+{% block content %}
+<div class="content">
+    <h1>Ledger entries</h1>
+    {# TODO: enable filters on the view #}
+    <nav>
+        <div
+            style="margin-bottom: .5em;"
+        >
+        Time period
+        {% for option in time_filter_options %}
+            {% if loop.index0 != 0 %}| {% endif %}<a href="{{ request.current_route_path(_query=option.query) }}">
+            {{ option.label }}
+        </a>
+        {% endfor %}
+        </div>
+
+        <form
+            style="margin-bottom: .5em;"
+            method="GET"
+            action="{{ request.current_route_path() }}"
+        >
+            Start <input type="date" name="start" value="{{ start.isoformat() if start else '' }}" placeholder="start date">
+            End <input type="date" name="end" value="{{ end.isoformat() if end else '' }}" placeholder="end date">
+            <button
+                type="submit"
+            >Filter</button>
+        </form>
+    </nav>
+    {% if request.params.get("start") or request.params.get("end") %}
+    <h2>Accounts</h2>
+    <table class="display-table">
+        <thead>
+            <tr>
+                <th>Account</th>
+                <th>Credit Total</th>
+                <th>Debit total</th>
+                <th>Balance</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for account in account_balances %}
+            <tr>
+                <td>{{ account.account_name }}</td>
+                <td>{{ account.credit }}</td>
+                <td>{{ account.debit }}</td>
+                <td>{{ account.balance }}</td>
+            </tr>
+            {% endfor %}
+    </table>
+        <form
+            method="POST"
+            action="{{ request.current_route_path() }}"
+        >
+            <input type="hidden" name="start" value="{{ start.isoformat() if start else '' }}">
+            <input type="hidden" name="end" value="{{ end.isoformat() if end else '' }}">
+            <input type="hidden" name="first_entry" value="{{ first_entry }}">
+            <button
+                type="submit"
+            >Export to .xlsx</button>
+        </form>
+    <div class="entries">
+        <table>
+            <thead>
+                <tr>
+                    <th>Account</th>
+                    <th>Value</th>
+                    <th>Tx hash</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+        <tbody>
+        {% for entry in ledger_entries %}
+            <tr>
+                <td>{{ entry.account_name }}</td>
+                <td>{{ entry.value }}</td>
+                <td>{{ entry.tx_hash }}</td>
+                <td>{{ entry.timestamp }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+        </table>
+        <div class="submit-button">
+            <a href="{{ request.current_route_path(_query=
+            {
+                'first_entry': first_entry - amount_in_page,
+                'start': request.params.get('start'),
+                'end': request.params.get('end'),
+            }
+            )}}">
+                <button>
+                    Previous
+                </button>
+            </a>
+        </div>
+        {{ first_entry }} - {{ last_entry }}
+        <div class="submit-button">
+            <a href="{{ request.current_route_path(_query=
+            {
+                'first_entry': first_entry + amount_in_page,
+                'start': request.params.get('start'),
+                'end': request.params.get('end'),
+            }
+            )}}">
+                <button>
+                    Next
+                </button>
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock content %}

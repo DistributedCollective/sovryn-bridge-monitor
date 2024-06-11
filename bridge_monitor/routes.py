@@ -11,3 +11,4 @@ def includeme(config):
     config.include(sanity_check)
     config.add_route("pnl_details_csv", "/pnl/details.csv")
     config.add_route("balances", "/balances/")
+    config.add_route("ledger", "/ledger/")
