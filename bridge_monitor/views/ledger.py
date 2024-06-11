@@ -113,7 +113,7 @@ def ledger(request):
         ledger_entries = [EntryDisplay(get_account_name(entry.account_id, account_balances),
                                        entry.value, entry.timestamp, entry.tx_hash) for entry in ledger_entries]
 
-        last_entry_number = len(ledger_entries) + first_entry_number
+        last_entry_number = len(ledger_entries) + first_entry_number - 1
         if first_entry_number > last_entry_number:
             first_entry_number -= amount_in_page
     return {

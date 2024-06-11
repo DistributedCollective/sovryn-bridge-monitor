@@ -43,9 +43,9 @@
             {% for account in account_balances %}
             <tr>
                 <td>{{ account.account_name }}</td>
-                <td>{{ account.credit }}</td>
-                <td>{{ account.debit }}</td>
-                <td>{{ account.balance }}</td>
+                <td>{{ '{0:f}'.format(account.credit) }}</td>
+                <td>{{ '{0:f}'.format(account.debit) }}</td>
+                <td>{{ '{0:f}'.format(account.balance) }}</td>
             </tr>
             {% endfor %}
     </table>
@@ -74,7 +74,7 @@
         {% for entry in ledger_entries %}
             <tr>
                 <td>{{ entry.account_name }}</td>
-                <td>{{ entry.value }}</td>
+                <td>{{ '{0:f}'.format(entry.value) }}</td>
                 <td>{{ entry.tx_hash }}</td>
                 <td>{{ entry.timestamp }}</td>
             </tr>

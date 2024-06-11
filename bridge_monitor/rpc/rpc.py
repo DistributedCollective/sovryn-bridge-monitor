@@ -47,6 +47,9 @@ def get_block_hash(block_n: int, wallet_url):
 def get_wallet_transactions_from_block(
     dbsession: Session, block_n: int, wallet_name: str, safety_limit: int = 5
 ):
+    if RPC_URL is None:
+        logger.error("No bitcoin rpc url specified")
+        return
     logger.debug(
         "Searching for transaction from block: %d on wallet: %s", block_n, wallet_name
     )
@@ -65,7 +68,6 @@ def get_wallet_transactions_from_block(
             "getblockstats", [block_n, ["height", "blockhash"]], wallet_url
         ).json()
         main_request_params.append(block_response["result"]["blockhash"])
-
     response = send_rpc_request(
         "listsinceblock", main_request_params, wallet_url
     ).json()

@@ -346,7 +346,7 @@ def get_rsk_balance_from_db(
     dbsession: Session, *, address: str, target_time: datetime
 ) -> Decimal:
     logger.info("Getting balance for %s at %s, from db", address, target_time)
-    target_block = get_closest_block(dbsession, "rsk", target_time)
+    target_block = get_closest_block(dbsession, "rsk_mainnet", target_time)
 
     if is_checksum_address(address):
         address = address.lower()

@@ -76,7 +76,6 @@ $$ language plpgsql stable;
 insert into ledger_account (id, name, is_debit)
 values (1910, 'fastbtc in btc wallet', true),
        (1911, 'fastbtc out btc wallet', true),
-       (1912, 'backup btc wallet', true),
        (1913, 'fastbtc in rsk wallet', true),
        (1914, 'fastbtc out rsk wallet', true),
        (1915, 'btc backup wallet', true);
@@ -84,7 +83,6 @@ values (1910, 'fastbtc in btc wallet', true),
 insert into ledger_account (id, name, is_debit)
 values (-1910, 'fastbtc in btc wallet credit', false),
        (-1911, 'fastbtc out btc wallet credit', false),
-       (-1912, 'backup btc wallet credit', false),
        (-1913, 'fastbtc in rsk wallet credit', false),
        (-1914, 'fastbtc out rsk wallet credit', false),
        (-1915, 'btc backup wallet credit', false);
@@ -130,13 +128,9 @@ values (-310, 'fastbtc out processed deposits credit', false),
        (310, 'fastbtc out processed deposits', true);
 
 insert into ledger_account (id, name, is_debit)
-values (400, 'btc replenisher fees', true),
-       (401, 'btc self deposit fees', true),
-       (402, 'fastbtc out btc fees', true),
+values (402, 'fastbtc out btc fees', true),
        (403, 'fastbtc in btc fees', true),
        (404, 'btc backup wallet fees', true),
-       (-400, 'btc replenisher fees credit', false),
-       (-401, 'btc self deposit fees credit', false),
        (-402, 'fastbtc out btc fees credit', false),
        (-403, 'fastbtc in btc fees credit', false),
        (-404, 'btc backup wallet fees credit', false);

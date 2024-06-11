@@ -43,9 +43,9 @@ class BalanceDisplay:
 )
 def get_balances(request):
     dbsession: Session = request.dbsession
-    # chain_env = request.registry.get("chain_env", "mainnet")
-    # chain_name = f"rsk_{chain_env}"
-    w3 = get_web3("local_node")
+    chain_env = request.registry.get("chain_env", "mainnet")
+    chain_name = f"rsk_{chain_env}"
+    w3 = get_web3(chain_name)
     btc_wallets = dbsession.execute(select(BtcWallet)).scalars().all()
     rsk_addresses = dbsession.execute(select(RskAddress)).scalars().all()
 
@@ -63,10 +63,13 @@ def get_balances(request):
                 pending_total=get_btc_pending_tx_total(dbsession, wallet.name),
             )
         )
-
-        response = send_rpc_request(
-            "getbalance", [], f"{RPC_URL}/wallet/{wallet.name}", id="getbalance"
-        ).json()
+        if RPC_URL is not None:
+            response = send_rpc_request(
+                "getbalance", [], f"{RPC_URL}/wallet/{wallet.name}", id="getbalance"
+            ).json()
+        else:
+            logger.error("No bitcoin rpc url specified")
+            response = {"result": 0}
         displays.append(
             BalanceDisplay(
                 name=wallet.name,
