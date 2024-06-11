@@ -33,23 +33,25 @@ button, input, optgroup, select, textarea {
 .font-bold {
   font-weight: 700;
 }
-
+.no-hover {
+  pointer-events: none;
+}
 td.details {
   font-size: smaller;
 }
 td.details span {
+  margin: 3px 0;
   display: inline-block;
   vertical-align: top;
-  min-width: 60px;
+  min-width: 80px;
 }
 td.details code {
   display: inline-block;
   vertical-align: top;
-  max-width: 430px;
+  max-width: 400px;
   word-wrap: break-word;
   padding-top: 0;
   padding-bottom: 0;
-  color: white;
   background-color: transparent;
   border-radius: 0;
 }
@@ -75,6 +77,43 @@ code.vote-command {
   border-color: #333 !important;
   color: #999;
   font-size: small;
+}
+
+tbody code {
+  color: white;
+  font-size: 100%;
+  background: none;
+}
+
+tbody code.profit, i.glyphicon-ok {
+  color: #008126;
+}
+
+tbody code.loss {
+  color: #f00;
+  position: relative;       /*offset the text by the length of the negative sign to align with other text*/
+  right: 1ch;
+}
+
+nav>form {
+  width: 20%;
+}
+
+nav>form>* {
+  width: 100%;
+  margin: 4px auto;
+}
+
+nav>form>input {
+  display: block;
+}
+a>code {
+  text-decoration: underline;
+  color: #89cde3;
+}
+
+* {                 /*Globally increase the font size a little (has a greater impact than 1%*/
+  font-size: 101%;
 }
 /* Sanity check page*/
 #main-submit {
