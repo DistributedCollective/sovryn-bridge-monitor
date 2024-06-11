@@ -36,6 +36,7 @@
                 <th>Account</th>
                 <th>Credit Total</th>
                 <th>Debit total</th>
+                <th>Account type</th>
                 <th>Balance</th>
             </tr>
         </thead>
@@ -45,6 +46,7 @@
                 <td>{{ account.account_name }}</td>
                 <td>{{ '{0:f}'.format(account.credit) }}</td>
                 <td>{{ '{0:f}'.format(account.debit) }}</td>
+                <td>{{ "Debit" if account.is_debit else "Credit" }}</td>
                 <td>{{ '{0:f}'.format(account.balance) }}</td>
             </tr>
             {% endfor %}

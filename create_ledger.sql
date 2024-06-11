@@ -81,62 +81,62 @@ values (1910, 'fastbtc in btc wallet', true),
        (1915, 'btc backup wallet', true);
 
 insert into ledger_account (id, name, is_debit)
-values (-1910, 'fastbtc in btc wallet credit', false),
-       (-1911, 'fastbtc out btc wallet credit', false),
-       (-1913, 'fastbtc in rsk wallet credit', false),
-       (-1914, 'fastbtc out rsk wallet credit', false),
-       (-1915, 'btc backup wallet credit', false);
+values (-1910, 'fastbtc in btc wallet credit', true),
+       (-1911, 'fastbtc out btc wallet credit', true),
+       (-1913, 'fastbtc in rsk wallet credit', true),
+       (-1914, 'fastbtc out rsk wallet credit', true),
+       (-1915, 'btc backup wallet credit', true);
 
 insert into ledger_account (id, name, is_debit)
-values (10, 'fastbtc in rsk manual transfer', true),
+values (10, 'fastbtc in rsk manual transfer', false),
        (-10, 'fastbtc in rsk manual transfer credit', false),
-       (20, 'fastbtc out rsk manual transfer', true),
+       (20, 'fastbtc out rsk manual transfer', false),
        (-20, 'fastbtc out rsk manual transfer credit', false),
-       (30, 'fastbtc in btc manual transfer', true),
+       (30, 'fastbtc in btc manual transfer', false),
        (-30, 'fastbtc in btc manual transfer credit', false),
-       (40, 'fastbtc out btc manual transfer', true),
+       (40, 'fastbtc out btc manual transfer', false),
        (-40, 'fastbtc out btc manual transfer credit', false),
-       (50, 'btc backup manual transfer', true),
+       (50, 'btc backup manual transfer', false),
        (-50, 'btc backup manual transfer credit', false);
 
 
 insert into ledger_account (id, name, is_debit)
 values (-100, 'fastbtc user prepayments credit', false),
-       (100, 'fastbtc user prepayments', true),
+       (100, 'fastbtc user prepayments', false),
        (-110, 'fastbtc btc self prepayments credit', false),
-       (110, 'fastbtc btc self prepayments', true),
+       (110, 'fastbtc btc self prepayments', false),
        (111, 'fastbtc in self deposit', true),
-       (-111, 'fastbtc in self deposit credit', false),
+       (-111, 'fastbtc in self deposit credit', true),
        (-120, 'fastbtc user donations credit', false),
-       (120, 'fastbtc user donations', true);
+       (120, 'fastbtc user donations', false);
 
 
 insert into ledger_account (id, name, is_debit)
 values (-200, 'fastbtc in processed withdrawals credit', false),
-       (200, 'fastbtc in processed withdrawals', true);
+       (200, 'fastbtc in processed withdrawals', false);
 
 insert into ledger_account (id, name, is_debit)
 values (-210, 'fastbtc in processed deposits credit', false),
-       (210, 'fastbtc in processed deposits', true);
+       (210, 'fastbtc in processed deposits', false);
 
 insert into ledger_account (id, name, is_debit)
 values (-300, 'fastbtc out processed withdrawals credit', false),
-       (300, 'fastbtc out processed withdrawals', true);
+       (300, 'fastbtc out processed withdrawals', false);
 
 insert into ledger_account (id, name, is_debit)
 values (-310, 'fastbtc out processed deposits credit', false),
-       (310, 'fastbtc out processed deposits', true);
+       (310, 'fastbtc out processed deposits', false);
 
 insert into ledger_account (id, name, is_debit)
-values (402, 'fastbtc out btc fees', true),
-       (403, 'fastbtc in btc fees', true),
-       (404, 'btc backup wallet fees', true),
+values (402, 'fastbtc out btc fees', false),
+       (403, 'fastbtc in btc fees', false),
+       (404, 'btc backup wallet fees', false),
        (-402, 'fastbtc out btc fees credit', false),
        (-403, 'fastbtc in btc fees credit', false),
        (-404, 'btc backup wallet fees credit', false);
 
 insert into ledger_account (id, name, is_debit)
-values (500, 'fastbtc out refunds', true),
+values (500, 'fastbtc out refunds', false),
        (-500, 'fastbtc out refunds credit', false);
 
 
@@ -853,7 +853,7 @@ $$
         select count(*)
         into total
         from ledger_entry
-        where (select is_debit from ledger_account where ledger_account.id = ledger_entry.account_id)
+        where account_id > 0
           and value < 0;
         if total != 0 then
             raise exception 'ledger_entry has negative debit entries: %', total;
@@ -869,7 +869,7 @@ $$
         select count(*)
         into total
         from ledger_entry
-        where not (select is_debit from ledger_account where ledger_account.id = ledger_entry.account_id)
+        where account_id < 0
           and value > 0;
         if total != 0 then
             raise exception 'ledger_entry has positive credit entries: %', total;

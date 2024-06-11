@@ -134,13 +134,13 @@ a>code {
 
  .display-table th {
    padding: 15px 0;
-   text-align: center;
+   text-align: left;
  }
 
  .display-table td {
    padding: 10px 5px;
    border: rgba(255, 255, 255, 0.33) 1px solid;
-   text-align: center;
+   text-align: left;
  }
 
 .entries {
@@ -152,12 +152,12 @@ a>code {
 
 .entries th {
     padding: 15px 0;
-    text-align: center;
+    text-align: left;
 }
 .entries td {
     padding: 1px 10px;
     border: rgba(255, 255, 255, 0.33) 1px solid;
-    text-align: center;
+    text-align: left;
 }
 
 .entries tbody tr:nth-child(odd) {
