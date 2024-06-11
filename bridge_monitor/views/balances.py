@@ -22,17 +22,12 @@ from bridge_monitor.business_logic.utils import get_rsk_balance_from_db, get_web
 logger = logging.getLogger(__name__)
 
 
-class DisplayMethods(str, Enum):
-    DB = "DB"
-    API = "API"
-
-
 @dataclass
 class BalanceDisplay:
     name: str
-    balance: Decimal
+    balance_api: Decimal
+    balance_db: Decimal
     chain_name: str
-    method: DisplayMethods
     pending_total: Decimal = Decimal("0")
     address: str = ""
 
@@ -52,17 +47,6 @@ def get_balances(request):
     displays: List[BalanceDisplay] = []
     logger.info("Fetching balances for btc wallets")
     for wallet in btc_wallets:
-        displays.append(
-            BalanceDisplay(
-                name=wallet.name,
-                balance=get_btc_wallet_balance_at_date(
-                    dbsession, wallet.name, datetime.now(tz=timezone.utc)
-                ),
-                chain_name="btc",
-                method=DisplayMethods.DB,
-                pending_total=get_btc_pending_tx_total(dbsession, wallet.name),
-            )
-        )
         if RPC_URL is not None:
             response = send_rpc_request(
                 "getbalance", [], f"{RPC_URL}/wallet/{wallet.name}", id="getbalance"
@@ -73,45 +57,38 @@ def get_balances(request):
         displays.append(
             BalanceDisplay(
                 name=wallet.name,
-                balance=Decimal(str(response["result"])),
+                balance_db=get_btc_wallet_balance_at_date(
+                    dbsession, wallet.name, datetime.now(tz=timezone.utc)
+                ),
+                balance_api=Decimal(str(response["result"])),
                 chain_name="btc",
-                method=DisplayMethods.API,
+                pending_total=get_btc_pending_tx_total(dbsession, wallet.name),
             )
         )
+
     logger.info("Fetching balances for rsk addresses")
 
     for address in rsk_addresses:
         displays.append(
             BalanceDisplay(
                 name=address.name,
-                balance=get_rsk_balance_from_db(
+                balance_db=get_rsk_balance_from_db(
                     dbsession,
                     address=address.address,
                     target_time=datetime.now(tz=timezone.utc),
                 ),
+                balance_api=w3.eth.get_balance(to_checksum_address(address.address)) / Decimal("1e18"),
                 chain_name="rsk",
-                method=DisplayMethods.DB,
-                address=address.address,
-            )
-        )
-
-        displays.append(
-            BalanceDisplay(
-                name=address.name,
-                balance=w3.eth.get_balance(to_checksum_address(address.address))
-                / Decimal("1e18"),
-                chain_name="rsk",
-                method=DisplayMethods.API,
                 address=address.address,
             )
         )
     for d in displays:
-        d.balance = d.balance.normalize()
+        d.balance_api = d.balance_api.normalize()
+        d.balance_db = d.balance_db.normalize()
         d.pending_total = d.pending_total.normalize()
 
     return {
         "displays": displays,
-        "display_methods": DisplayMethods,
     }
 
 

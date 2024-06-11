@@ -2,54 +2,30 @@
 
 {% block content %}
     <div class="content">
-        <nav>
-            <h2>Filter by source:</h2>
-            <!-- filter by db or api datasource-->
-                {% for method in display_methods %}
-
-                    <a href={{ request.current_route_path(
-                                _query={"filter": method.value})
-                            }}>
-                        {{ method.value }}
-                    </a> |
-                {% endfor %}
-                <a href={{ request.current_route_path(
-                                _query={"filter": ""})
-                            }}>
-                    All
-                </a>
-        </nav>
-        
         <h1>Results</h1>
         <table class="display-table">
             <tr>
                     <th>Name</th>
                     <th>Chain</th>
-                    <th>Method</th>
-                    <th>Balance</th>
-                    <th>Address</th>
+                    <th>Balance DB</th>
+                    <th>Balance Api</th>
             </tr>
             {% for display in displays %}
-            {% if not request.params.get("filter") or display.method ==  request.params.get("filter")%}
 
                 <tr>
                     <td>{{ display.name }}</td>
                     <td>{{ display.chain_name }}</td>
-                    <td>{{ display.method.value }}</td>
-                    <td>{{ display.balance }}
+                    <td>{{ display.balance_db }}
                     {% if display.pending_total != 0 %}
                     <br/>
-                    With pending: {{ display.balance + display.pending_total }}
+                    With pending: {{ display.balance_db + display.pending_total }}
                     {% endif %}
                     </td>
-                    <td class="address">
-                    {% if display.address %}
-                        {{ display.address }}
-                    {% endif %}
+                    <td>
+                        {{ display.balance_api }}
                     </td>
                 </tr>
 
-            {% endif %}
         {% endfor %}
         </table>
     </div>
