@@ -12,12 +12,9 @@ class Messager(Protocol):
 
 def get_preferred_messager(*, discord_webhook_url: Optional[str], **kwargs) -> Messager:
     if not discord_webhook_url:
-        logger.warning('discord_webhook_url not given, Discord messages disabled')
+        logger.warning("discord_webhook_url not given, Discord messages disabled")
         return NullMessager()
-    return DiscordMessager(
-        discord_webhook_url,
-        **kwargs
-    )
+    return DiscordMessager(discord_webhook_url, **kwargs)
 
 
 class NullMessager:
@@ -32,16 +29,14 @@ class DiscordMessager:
         username: Optional[str] = None,
     ):
         if not webhook_url:
-            raise ValueError('webhook_url is required')
+            raise ValueError("webhook_url is required")
         self._webhook_url = webhook_url
         self._username = username
 
     def send_message(self, content: str):
-        json_body = dict(
-            content=content
-        )
+        json_body = dict(content=content)
         if self._username:
-            json_body['username'] = self._username
+            json_body["username"] = self._username
         response = requests.post(
             self._webhook_url,
             json=json_body,

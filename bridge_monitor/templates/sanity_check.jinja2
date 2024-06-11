@@ -1,0 +1,90 @@
+{% extends "layout.jinja2" %}
+
+{% block content %}
+<div class="content">
+    <h1>Sanity Check</h1>
+    <nav>
+        <div
+            style="margin-bottom: .5em;"
+        >
+        Time period
+        {% for option in time_filter_options %}
+            {% if loop.index0 != 0 %}| {% endif %}<a href="{{ request.current_route_path(_query=option.query) }}">
+            {{ option.label }}
+        </a>
+        {% endfor %}
+        </div>
+
+        <form
+            style="margin-bottom: .5em;"
+            method="GET"
+            action="{{ request.current_route_path() }}"
+        >
+            Start <input type="date" name="start" value="{{ start.isoformat() if start else '' }}" placeholder="start date">
+            End <input type="date" name="end" value="{{ end.isoformat() if end else '' }}" placeholder="end date">
+            <button
+                type="submit"
+            >Filter</button>
+        </form>
+    </nav>
+
+    <div>
+        <h3>
+            {% if start and end  %}
+                Sanity check between {{ start }} and {{ end }}
+            {% elif start %}
+                Sanity check since {{ start }}
+            {% elif end %}
+                Sanity check until {{ end }}
+            {% else %}
+                Sanity check from the beginning
+            {% endif %}
+        </h3>
+    </div>
+
+    {% if totals %}
+        <table class="table">
+            <thead>
+            <tr>
+                {% for name in totals.keys() %}
+                    <th>{{ name }}</th>
+                {% endfor %}
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                {% for value in totals.values() %}
+                    <td>{{ "%.6f"|format(value) }}</td>
+                {% endfor %}
+            </tr>
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% if sanity_check %}
+        <pre>
+formula  = {{ sanity_check['formula'] }}
+expanded = {{ sanity_check['expanded_formula'] }}
+value    = {{ sanity_check['value'] }}
+{% if sanity_check['pending_total'] != 0 %}
+total_pending = {{ sanity_check['pending_total'] }}
+{% endif %}
+        </pre>
+        <br>
+    {% endif %}
+
+
+    <div>
+        <br>
+       <form
+              method="POST"
+              action="{{ request.current_route_path() }}"
+       >
+           <button id="main-submit"
+               type="submit"
+            >
+           Sanity check</button>
+       </form>
+    </div>
+</div>
+{% endblock content %}
