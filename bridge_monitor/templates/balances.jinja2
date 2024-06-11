@@ -19,6 +19,7 @@
                     All
                 </a>
         </nav>
+        
         <h1>Results</h1>
         <table class="display-table">
             <tr>
@@ -35,7 +36,12 @@
                     <td>{{ display.name }}</td>
                     <td>{{ display.chain_name }}</td>
                     <td>{{ display.method.value }}</td>
-                    <td>{{ display.balance }}</td>
+                    <td>{{ display.balance }}
+                    {% if display.pending_total != 0 %}
+                    <br/>
+                    With pending: {{ display.balance + display.pending_total }}
+                    {% endif %}
+                    </td>
                     <td class="address">
                     {% if display.address %}
                         {{ display.address }}
