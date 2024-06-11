@@ -48,7 +48,6 @@ def upgrade():
             "tx_hash", "trace_index", name=op.f("uq_rsk_tx_trace_tx_hash")
         ),
     )
-    op.drop_index("block_n_index_old", table_name="block_info")
     op.drop_constraint("unique_tx", "rsk_tx_info_old", type_="unique")
     op.create_unique_constraint(
         op.f("uq_rsk_tx_info_old_address_id"),
@@ -64,5 +63,4 @@ def downgrade():
     op.create_unique_constraint(
         "unique_tx", "rsk_tx_info_old", ["address_id", "tx_hash"]
     )
-    op.create_index("block_n_index_old", "block_info", ["block_number"], unique=False)
     op.drop_table("rsk_tx_trace")
