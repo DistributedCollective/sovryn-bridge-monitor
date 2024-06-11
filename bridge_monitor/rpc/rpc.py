@@ -2,6 +2,7 @@ import os
 from datetime import datetime, timezone
 from decimal import Decimal, getcontext
 import logging
+from itertools import groupby
 from typing import List, Any, Optional
 
 import requests
@@ -46,7 +47,7 @@ def get_block_hash(block_n: int, wallet_url):
 def get_wallet_transactions_from_block(
     dbsession: Session, block_n: int, wallet_name: str, safety_limit: int = 5
 ):
-    logger.info(
+    logger.debug(
         "Searching for transaction from block: %d on wallet: %s", block_n, wallet_name
     )
     main_request_params = []
@@ -73,69 +74,82 @@ def get_wallet_transactions_from_block(
     curr_block_height = send_rpc_request("getblockcount", [], RPC_URL).json()["result"]
 
     if not results:
-        logger.info("Found no transactions since block %d", block_n)
+        logger.debug("Found no transactions since block %d", block_n)
         return
+    temp_results = []
 
-    logger.info("Results found: %d", len(results))
-    prev_tx_hash = ""
+    # sum all duplicate transactions
+    for k, v in groupby(
+        sorted(results, key=lambda x: (x["txid"], x.get("vout", -1))),
+        lambda x: (x["txid"], x.get("vout", -1)),
+    ):
+        v = list(v)
+        if len(v) < 2:
+            temp_results.append(v[0])
+            continue
+        v[0]["amount"] = sum([Decimal(str(x["amount"])) for x in v])
+        if v[0]["amount"] != Decimal("0"):
+            temp_results.append(v[0])
+
+    results = temp_results
+
     transaction: Optional[BtcWalletTransaction | PendingBtcWalletTransaction] = None
+    logger.debug("Results found: %d", len(results))
+    for entry in temp_results:
+        if (
+            entry.get("blockheight") is None
+            or entry.get("blockheight") + safety_limit > curr_block_height
+        ):
+            transaction = PendingBtcWalletTransaction(
+                wallet=wallet,
+                tx_hash=entry["txid"],
+                vout=entry.get("vout", -1),
+                block_height=entry.get("blockheight", None),
+                timestamp=datetime.fromtimestamp(entry["time"], tz=timezone.utc),
+                net_change=Decimal(),
+                amount_sent=Decimal(),
+                amount_received=Decimal(),
+                amount_fees=Decimal(),
+            )
 
-    for entry in results:
-        if entry["txid"] != prev_tx_hash:
+            # check if transaction is already marked as pending in db
             if (
-                entry.get("blockheight") is None
-                or entry.get("blockheight") + safety_limit > curr_block_height
+                dbsession.execute(
+                    select(PendingBtcWalletTransaction.wallet_id).where(
+                        PendingBtcWalletTransaction.tx_hash == entry["txid"],
+                        PendingBtcWalletTransaction.wallet_id == wallet.id,
+                        PendingBtcWalletTransaction.vout == entry.get("vout", -1),
+                    )
+                ).scalar_one_or_none()
+                is not None
             ):
-                transaction = PendingBtcWalletTransaction(
+                continue
+
+        else:
+            pending_entry: Optional[PendingBtcWalletTransaction] = dbsession.execute(
+                select(PendingBtcWalletTransaction).where(
+                    PendingBtcWalletTransaction.tx_hash == entry["txid"],
+                    PendingBtcWalletTransaction.wallet_id == wallet.id,
+                    PendingBtcWalletTransaction.vout == entry.get("vout", -1),
+                )
+            ).scalar()
+            if pending_entry is not None:
+                transaction = pending_entry.to_complete()
+                transaction.block_height = entry["blockheight"]
+                dbsession.delete(pending_entry)
+            else:
+                transaction = BtcWalletTransaction(
                     wallet=wallet,
                     tx_hash=entry["txid"],
-                    block_height=entry.get("blockheight", None),
+                    vout=entry.get("vout", -1),
+                    block_height=entry["blockheight"],
                     timestamp=datetime.fromtimestamp(entry["time"], tz=timezone.utc),
                     net_change=Decimal(),
                     amount_sent=Decimal(),
                     amount_received=Decimal(),
                     amount_fees=Decimal(),
                 )
-
-                # check if transaction is already marked as pending in db
-                if (
-                    dbsession.execute(
-                        select(PendingBtcWalletTransaction.wallet_id).where(
-                            PendingBtcWalletTransaction.tx_hash == entry["txid"],
-                            PendingBtcWalletTransaction.wallet_id == wallet.id,
-                        )
-                    ).scalar_one_or_none()
-                    is not None
-                ):
-                    continue
-
-            else:
-                pending_entry: Optional[PendingBtcWalletTransaction] = (
-                    dbsession.execute(
-                        select(PendingBtcWalletTransaction).where(
-                            PendingBtcWalletTransaction.tx_hash == entry["txid"],
-                            PendingBtcWalletTransaction.wallet_id == wallet.id,
-                        )
-                    ).scalar()
-                )
-                if pending_entry is not None:
-                    transaction = pending_entry.to_complete()
-                    transaction.block_height = entry["blockheight"]
-                    dbsession.delete(pending_entry)
-                else:
-                    transaction = BtcWalletTransaction(
-                        wallet=wallet,
-                        tx_hash=entry["txid"],
-                        block_height=entry["blockheight"],
-                        timestamp=datetime.fromtimestamp(
-                            entry["time"], tz=timezone.utc
-                        ),
-                        net_change=Decimal(),
-                        amount_sent=Decimal(),
-                        amount_received=Decimal(),
-                        amount_fees=Decimal(),
-                    )
-            dbsession.add(transaction)
+        dbsession.add(transaction)
         if entry["category"] == "send":
             transaction.amount_sent += -Decimal(str(entry["amount"]))
             transaction.amount_fees = -Decimal(str(entry["fee"]))
@@ -144,7 +158,6 @@ def get_wallet_transactions_from_block(
         else:
             raise ValueError(f"Unknown transaction type {entry['category']}")
 
-        prev_tx_hash = entry["txid"]
         transaction.net_change = (
             transaction.amount_received
             - transaction.amount_sent
@@ -154,7 +167,7 @@ def get_wallet_transactions_from_block(
 
 
 def get_new_btc_transactions(dbsession: Session, wallet_name: str) -> None:
-    logger.info("Searching for new blocks")
+    logger.debug("Searching for new blocks")
 
     newest_block_n = (
         dbsession.query(func.max(BtcWalletTransaction.block_height))
@@ -180,7 +193,7 @@ def get_btc_wallet_balance_at_date(
         logger.info("Btc wallet tx table has no entries for wallet %s", wallet_name)
         get_new_btc_transactions(dbsession, wallet_name)
     elif target_date > newest_tx.timestamp:
-        logger.info(
+        logger.debug(
             "Newest transaction timestamp older than requested, fetching new transactions"
         )
         get_new_btc_transactions(dbsession, wallet_name)
@@ -195,4 +208,4 @@ def get_btc_wallet_balance_at_date(
     logger.info(
         "Balance for %s at %s is %s", wallet_name, target_date, sum_of_transactions
     )
-    return sum_of_transactions
+    return sum_of_transactions if sum_of_transactions is not None else Decimal(0)

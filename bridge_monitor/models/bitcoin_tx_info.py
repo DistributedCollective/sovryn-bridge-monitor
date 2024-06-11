@@ -25,6 +25,7 @@ class BtcWalletTransaction(Base):
         Integer, ForeignKey("btc_wallet.id"), nullable=False, primary_key=True
     )
     tx_hash = Column(Text, primary_key=True, nullable=False)
+    vout = Column(Integer, primary_key=True, nullable=False)
     timestamp = Column(DateTime(timezone=True), nullable=False)
     net_change = Column(Numeric(40, 32), nullable=False)
     amount_sent = Column(Numeric(40, 32), nullable=False)
@@ -43,6 +44,7 @@ class PendingBtcWalletTransaction(Base):
         Integer, ForeignKey("btc_wallet.id"), nullable=False, primary_key=True
     )
     tx_hash = Column(Text, primary_key=True, nullable=False)
+    vout = Column(Integer, primary_key=True, nullable=False)
     timestamp = Column(DateTime(timezone=True), nullable=False)
     net_change = Column(Numeric(40, 32), nullable=False)
     amount_sent = Column(Numeric(40, 32), nullable=False)
@@ -57,6 +59,7 @@ class PendingBtcWalletTransaction(Base):
         return BtcWalletTransaction(
             wallet=self.wallet,
             tx_hash=self.tx_hash,
+            vout=self.vout,
             timestamp=self.timestamp,
             net_change=self.net_change,
             amount_sent=self.amount_sent,
