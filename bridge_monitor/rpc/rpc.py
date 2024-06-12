@@ -199,25 +199,41 @@ def get_btc_wallet_balance_at_date(
             "Newest transaction timestamp older than requested, fetching new transactions"
         )
         get_new_btc_transactions(dbsession, wallet_name)
-    amount_received = (
-        dbsession.query(func.sum(BtcWalletTransaction.amount_received))
-        .filter(
-            BtcWalletTransaction.timestamp <= target_date,
-            BtcWalletTransaction.wallet.has(name=wallet_name),
-        )
-        .scalar()
-    )
 
-    amount_sent = (
-        dbsession.query(func.sum(BtcWalletTransaction.amount_sent + BtcWalletTransaction.amount_fees))
-        .filter(
-            BtcWalletTransaction.timestamp <= target_date,
-            BtcWalletTransaction.wallet.has(name=wallet_name),
-            BtcWalletTransaction.amount_sent > 0,
+    '''
+    select tx_hash,
+       max(timestamp)                                             as timestamp,
+       wallet_id,
+       sum(amount_received) - sum(amount_sent) - max(amount_fees) as net_change,
+       sum(amount_received)                                       as amount_received,
+       sum(amount_sent)                                           as amount_sent,
+       max(amount_fees)                                           as amount_fees
+    from btc_wallet_transaction
+    group by tx_hash, wallet_id;
+
+    '''
+    target_wallet_id = dbsession.execute(select(BtcWallet.id).where(BtcWallet.name == wallet_name)).scalar()
+
+    full_transaction_subquery = (
+        select(
+                BtcWalletTransaction.tx_hash,
+                func.max(BtcWalletTransaction.timestamp).label("timestamp"),
+                BtcWalletTransaction.wallet_id,
+                (func.sum(BtcWalletTransaction.amount_received)
+                    - func.sum(BtcWalletTransaction.amount_sent)
+                    - func.max(BtcWalletTransaction.amount_fees)).label("net_change"),
+                func.sum(BtcWalletTransaction.amount_received).label("amount_received"),
+                func.sum(BtcWalletTransaction.amount_sent).label("amount_sent"),
+                func.max(BtcWalletTransaction.amount_fees).label("amount_fees")
+        ).group_by(BtcWalletTransaction.tx_hash, BtcWalletTransaction.wallet_id).subquery())
+
+    sum_of_transactions = dbsession.execute(
+        select(func.sum(full_transaction_subquery.c.net_change)).where(
+            full_transaction_subquery.c.timestamp <= target_date,
+            full_transaction_subquery.c.wallet_id == target_wallet_id
         )
-        .scalar()
-    )
-    sum_of_transactions = amount_received - amount_sent
+    ).scalar()
+
     logger.info(
         "Balance for %s at %s is %s", wallet_name, target_date, sum_of_transactions
     )
