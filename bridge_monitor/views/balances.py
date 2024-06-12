@@ -48,7 +48,7 @@ def get_balances(request):
     fetch_btc_from_api = False
 
     if target_date:
-        target_date = datetime.fromisoformat(target_date).replace(tzinfo=timezone.utc)
+        target_date = datetime.fromisoformat(target_date).replace(hour=0, minute=0, second=0, tzinfo=timezone.utc)
     else:
         target_date = datetime.now(tz=timezone.utc)
         fetch_btc_from_api = True

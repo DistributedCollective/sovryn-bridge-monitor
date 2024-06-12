@@ -105,8 +105,8 @@ values (-100, 'fastbtc user prepayments credit', false),
        (100, 'fastbtc user prepayments', false),
        (-110, 'fastbtc btc self prepayments credit', false),
        (110, 'fastbtc btc self prepayments', false),
-       (111, 'fastbtc in self deposit', true),
-       (-111, 'fastbtc in self deposit credit', true),
+       (111, 'fastbtc in self deposit', false),
+       (-111, 'fastbtc in self deposit credit', false),
        (-120, 'fastbtc user donations credit', false),
        (120, 'fastbtc user donations', false);
 

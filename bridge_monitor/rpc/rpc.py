@@ -199,14 +199,25 @@ def get_btc_wallet_balance_at_date(
             "Newest transaction timestamp older than requested, fetching new transactions"
         )
         get_new_btc_transactions(dbsession, wallet_name)
-    sum_of_transactions = (
-        dbsession.query(func.sum(BtcWalletTransaction.net_change))
+    amount_received = (
+        dbsession.query(func.sum(BtcWalletTransaction.amount_received))
         .filter(
-            BtcWalletTransaction.timestamp < target_date,
+            BtcWalletTransaction.timestamp <= target_date,
             BtcWalletTransaction.wallet.has(name=wallet_name),
         )
         .scalar()
     )
+
+    amount_sent = (
+        dbsession.query(func.sum(BtcWalletTransaction.amount_sent + BtcWalletTransaction.amount_fees))
+        .filter(
+            BtcWalletTransaction.timestamp <= target_date,
+            BtcWalletTransaction.wallet.has(name=wallet_name),
+            BtcWalletTransaction.amount_sent > 0,
+        )
+        .scalar()
+    )
+    sum_of_transactions = amount_received - amount_sent
     logger.info(
         "Balance for %s at %s is %s", wallet_name, target_date, sum_of_transactions
     )
