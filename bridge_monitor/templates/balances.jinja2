@@ -1,8 +1,20 @@
 {% extends "layout.jinja2" %}
 
 {% block content %}
+
     <div class="content">
-        <h1>Results</h1>
+        <h1>Balances {{ ("at " + request.params.get("target_date")) if request.params.get("target_date") else '' }}</h1>
+        <form
+            style="margin-bottom: .5em;"
+            method="GET"
+            action="{{ request.current_route_path() }}"
+        >
+            Get balance at timestamp
+            <input type="date" name="target_date" value="{{ request.params.get("target_date") }}" placeholder="target date">
+            <button
+                type="submit"
+            >Filter</button>
+        </form>
         <table class="display-table">
             <tr>
                     <th>Name</th>
@@ -16,13 +28,13 @@
                     <td>{{ display.name }}</td>
                     <td>{{ display.chain_name }}</td>
                     <td>{{ display.balance_db }}
-                    {% if display.pending_total != 0 %}
+                    {% if display.pending_total != 0 and not target_date%}
                     <br/>
                     With pending: {{ display.balance_db + display.pending_total }}
                     {% endif %}
                     </td>
                     <td>
-                        {{ display.balance_api }}
+                        {{ display.balance_api if display.balance_api else 'N/A'}}
                     </td>
                 </tr>
 

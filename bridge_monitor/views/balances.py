@@ -17,8 +17,8 @@ from bridge_monitor.rpc.rpc import (
     send_rpc_request,
     RPC_URL,
 )
-from bridge_monitor.business_logic.utils import get_rsk_balance_from_db, get_web3
-
+from bridge_monitor.business_logic.utils import get_rsk_balance_from_db, get_web3, get_closest_block
+import bridge_monitor.views.sanity_check as sanity_check
 logger = logging.getLogger(__name__)
 
 
@@ -44,21 +44,35 @@ def get_balances(request):
     btc_wallets = dbsession.execute(select(BtcWallet)).scalars().all()
     rsk_addresses = dbsession.execute(select(RskAddress)).scalars().all()
 
+    target_date = request.params.get("target_date", "")
+    fetch_btc_from_api = False
+
+    if target_date:
+        target_date = datetime.fromisoformat(target_date).replace(tzinfo=timezone.utc)
+    else:
+        target_date = datetime.now(tz=timezone.utc)
+        fetch_btc_from_api = True
+
+    closest_rsk_block = get_closest_block(dbsession, chain_name, target_date).block_number
+
     displays: List[BalanceDisplay] = []
     logger.info("Fetching balances for btc wallets")
     for wallet in btc_wallets:
-        if RPC_URL is not None:
+        if RPC_URL is not None and fetch_btc_from_api:
             response = send_rpc_request(
                 "getbalance", [], f"{RPC_URL}/wallet/{wallet.name}", id="getbalance"
             ).json()
+        elif not fetch_btc_from_api:
+            response = {"result": Decimal(0)}
         else:
             logger.error("No bitcoin rpc url specified")
-            response = {"result": 0}
+            response = {"result": Decimal(0)}
+
         displays.append(
             BalanceDisplay(
                 name=wallet.name,
                 balance_db=get_btc_wallet_balance_at_date(
-                    dbsession, wallet.name, datetime.now(tz=timezone.utc)
+                    dbsession, wallet.name, target_date=target_date
                 ),
                 balance_api=Decimal(str(response["result"])),
                 chain_name="btc",
@@ -75,9 +89,9 @@ def get_balances(request):
                 balance_db=get_rsk_balance_from_db(
                     dbsession,
                     address=address.address,
-                    target_time=datetime.now(tz=timezone.utc),
+                    target_time=target_date,
                 ),
-                balance_api=w3.eth.get_balance(to_checksum_address(address.address)) / Decimal("1e18"),
+                balance_api=sanity_check.get_rsk_balance_at_block(w3, to_checksum_address(address.address), closest_rsk_block) / Decimal(10) ** 18,
                 chain_name="rsk",
                 address=address.address,
             )
