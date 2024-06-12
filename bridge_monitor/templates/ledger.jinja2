@@ -47,7 +47,7 @@
                 <td>{{ '{0:f}'.format(account.credit) }}</td>
                 <td>{{ '{0:f}'.format(account.debit) }}</td>
                 <td>{{ "Debit" if account.is_debit else "Credit" }}</td>
-                <td>{{ '{0:f}'.format(account.balance) }}</td>
+                <td>{{ '{0:f}'.format(account.balance) if account.balance > 0 or account.balance < 0 else 0 }}</td>
             </tr>
             {% endfor %}
     </table>
