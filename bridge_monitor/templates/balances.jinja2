@@ -28,7 +28,7 @@
                     <td>{{ display.name }}</td>
                     <td>{{ display.chain_name }}</td>
                     <td>{{ display.balance_db }}
-                    {% if display.pending_total != 0 and not target_date%}
+                    {% if display.pending_total != 0 and not request.params.get("target_date") %}
                     <br/>
                     With pending: {{ display.balance_db + display.pending_total }}
                     {% endif %}
