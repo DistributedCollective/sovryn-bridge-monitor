@@ -37,13 +37,6 @@ def send_rpc_request(
     )
 
 
-def get_block_hash(block_n: int, wallet_url):
-    block_response = send_rpc_request(
-        "getblockstats", [block_n, ["height", "blockhash"]], wallet_url
-    ).json()
-    return block_response["result"]["blockhash"]
-
-
 def get_wallet_transactions_from_block(
     dbsession: Session, block_n: int, wallet_name: str, safety_limit: int = 5
 ):
@@ -200,18 +193,6 @@ def get_btc_wallet_balance_at_date(
         )
         get_new_btc_transactions(dbsession, wallet_name)
 
-    '''
-    select tx_hash,
-       max(timestamp)                                             as timestamp,
-       wallet_id,
-       sum(amount_received) - sum(amount_sent) - max(amount_fees) as net_change,
-       sum(amount_received)                                       as amount_received,
-       sum(amount_sent)                                           as amount_sent,
-       max(amount_fees)                                           as amount_fees
-    from btc_wallet_transaction
-    group by tx_hash, wallet_id;
-
-    '''
     target_wallet_id = dbsession.execute(select(BtcWallet.id).where(BtcWallet.name == wallet_name)).scalar()
 
     full_transaction_subquery = (
