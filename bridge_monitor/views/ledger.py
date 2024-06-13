@@ -12,10 +12,11 @@ from sqlalchemy.sql.expression import func
 
 from openpyxl import Workbook
 
-from .pnl import _parse_time_range, ParsedTimeRange
+from .pnl import _parse_time_range
 from bridge_monitor.models.ledger_entry import LedgerEntry, LedgerAccount
 
 logger = getLogger(__name__)
+
 
 @dataclass
 class AccountBalance:
@@ -26,6 +27,7 @@ class AccountBalance:
     debit: Decimal
     is_debit: bool
 
+
 @dataclass
 class EntryDisplay:
     account_name: str
@@ -33,12 +35,12 @@ class EntryDisplay:
     timestamp: datetime
     tx_hash: str
 
+
 @view_config(
     route_name="ledger",
     renderer="bridge_monitor:templates/ledger.jinja2",
 )
 def ledger(request):
-
     def get_account_name(account_id: int, account_list: list[AccountBalance]) -> str:
         for acc in account_list:
             if acc.account_id == abs(account_id):
@@ -54,64 +56,102 @@ def ledger(request):
     first_entry_number = max(1, int(first_entry_number))
     last_entry_number = first_entry_number + amount_in_page - 1
 
-    accounts = dbsession.execute(select(LedgerAccount)
-                                 .where(LedgerAccount.id > 0)
-                                 .order_by(LedgerAccount.id)).scalars().all()
+    accounts = (
+        dbsession.execute(
+            select(LedgerAccount).where(LedgerAccount.id > 0).order_by(LedgerAccount.id)
+        )
+        .scalars()
+        .all()
+    )
 
     account_balances = []
     ledger_entries = []
 
     if start and end:
         for account in accounts:
-
-            credit = dbsession.execute(select(func.sum(LedgerEntry.value))
-                                        .where(LedgerEntry.account_id == -account.id,
-                                               LedgerEntry.timestamp >= start,
-                                               LedgerEntry.timestamp <= end)).scalar()
+            credit = dbsession.execute(
+                select(func.sum(LedgerEntry.value)).where(
+                    LedgerEntry.account_id == -account.id,
+                    LedgerEntry.timestamp >= start,
+                    LedgerEntry.timestamp <= end,
+                )
+            ).scalar()
             credit = Decimal(0) if credit is None else abs(credit).normalize()
 
-            debit = dbsession.execute(select(func.sum(LedgerEntry.value))
-                                       .where(LedgerEntry.account_id == account.id,
-                                              LedgerEntry.timestamp >= start,
-                                              LedgerEntry.timestamp <= end)).scalar()
+            debit = dbsession.execute(
+                select(func.sum(LedgerEntry.value)).where(
+                    LedgerEntry.account_id == account.id,
+                    LedgerEntry.timestamp >= start,
+                    LedgerEntry.timestamp <= end,
+                )
+            ).scalar()
             debit = Decimal(0) if debit is None else debit.normalize()
 
             balance = (debit - credit).normalize() * (1 if account.is_debit else -1)
 
-            account_balances.append(AccountBalance(account.id, account.name, balance, credit, debit, account.is_debit))
+            account_balances.append(
+                AccountBalance(
+                    account.id, account.name, balance, credit, debit, account.is_debit
+                )
+            )
 
-        ledger_entries = dbsession.execute(
-            select(LedgerEntry)
-            .where(LedgerEntry.timestamp >= start,
-                   LedgerEntry.timestamp <= end)
-            .order_by(LedgerEntry.timestamp, LedgerEntry.id)
-        ).scalars().all()
+        ledger_entries = (
+            dbsession.execute(
+                select(LedgerEntry)
+                .where(LedgerEntry.timestamp >= start, LedgerEntry.timestamp <= end)
+                .order_by(LedgerEntry.timestamp, LedgerEntry.id)
+            )
+            .scalars()
+            .all()
+        )
 
         # if request type is post then download all the data in excel format
         if request.method == "POST":
             wb = Workbook()
             curr_sheet = wb.active
-            curr_sheet.title = 'Accounts'
-            curr_sheet.append(['Account Name', "Account type", 'Balance', 'Credit', 'Debit'])
+            curr_sheet.title = "Accounts"
+            curr_sheet.append(
+                ["Account Name", "Account type", "Balance", "Credit", "Debit"]
+            )
             for account in account_balances:
-                curr_sheet.append([account.account_name, "debit" if account.is_debit else "credit",
-                                   account.balance, account.credit, account.debit])
-            curr_sheet = wb.create_sheet(title='Ledger Entries')
-            curr_sheet.append(['Account Name', 'Value', 'Timestamp', 'Tx Hash'])
+                curr_sheet.append(
+                    [
+                        account.account_name,
+                        "debit" if account.is_debit else "credit",
+                        account.balance,
+                        account.credit,
+                        account.debit,
+                    ]
+                )
+            curr_sheet = wb.create_sheet(title="Ledger Entries")
+            curr_sheet.append(["Account Name", "Value", "Timestamp", "Tx Hash"])
             for entry in ledger_entries:
-                curr_sheet.append([get_account_name(entry.account_id, account_balances),
-                                   entry.value, entry.timestamp.replace(tzinfo=None), entry.tx_hash])
-            response = Response(content_type='application/vnd.ms-excel')
-            response.content_disposition = 'attachment;filename=ledger.xlsx'
+                curr_sheet.append(
+                    [
+                        get_account_name(entry.account_id, account_balances),
+                        entry.value,
+                        entry.timestamp.replace(tzinfo=None),
+                        entry.tx_hash,
+                    ]
+                )
+            response = Response(content_type="application/vnd.ms-excel")
+            response.content_disposition = "attachment;filename=ledger.xlsx"
             with NamedTemporaryFile() as tmp:
                 wb.save(tmp.name)
                 tmp.seek(0)
                 response.body = tmp.read()
                 return response
 
-        ledger_entries = ledger_entries[first_entry_number - 1:last_entry_number]
-        ledger_entries = [EntryDisplay(get_account_name(entry.account_id, account_balances),
-                                       entry.value, entry.timestamp, entry.tx_hash) for entry in ledger_entries]
+        ledger_entries = ledger_entries[first_entry_number - 1 : last_entry_number]
+        ledger_entries = [
+            EntryDisplay(
+                get_account_name(entry.account_id, account_balances),
+                entry.value,
+                entry.timestamp,
+                entry.tx_hash,
+            )
+            for entry in ledger_entries
+        ]
 
         last_entry_number = len(ledger_entries) + first_entry_number - 1
         if first_entry_number > last_entry_number:

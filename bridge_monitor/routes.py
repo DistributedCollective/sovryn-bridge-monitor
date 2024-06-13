@@ -2,7 +2,7 @@ from .views import sanity_check
 
 
 def includeme(config):
-    config.add_route('pnl_details', '/pnl/details/')
+    config.add_route("pnl_details", "/pnl/details/")
     config.add_static_view("static", "static", cache_max_age=3600)
     config.add_route("bridge_transfers", "/")
     config.add_route("bidirectional_fastbtc", "/bidirectional-fastbtc/")

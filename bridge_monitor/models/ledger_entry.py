@@ -12,6 +12,7 @@ from sqlalchemy.orm import relationship
 
 from .meta import Base
 
+
 class LedgerAccount(Base):
     __tablename__ = "ledger_account"
 
@@ -19,7 +20,6 @@ class LedgerAccount(Base):
     name = Column(Text, nullable=False, unique=True)
     is_debit = Column(Boolean, nullable=False)
     entries = relationship("LedgerEntry", back_populates="account")
-
 
 
 class LedgerEntry(Base):
@@ -32,4 +32,3 @@ class LedgerEntry(Base):
     value = Column(Numeric(40, 18), nullable=False)
     vout = Column(Integer, nullable=True)
     account = relationship("LedgerAccount", back_populates="entries")
-

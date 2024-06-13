@@ -16,8 +16,13 @@ from bridge_monitor.rpc.rpc import (
     send_rpc_request,
     RPC_URL,
 )
-from bridge_monitor.business_logic.utils import get_rsk_balance_from_db, get_web3, get_closest_block
+from bridge_monitor.business_logic.utils import (
+    get_rsk_balance_from_db,
+    get_web3,
+    get_closest_block,
+)
 import bridge_monitor.views.sanity_check as sanity_check
+
 logger = logging.getLogger(__name__)
 
 
@@ -47,12 +52,16 @@ def get_balances(request):
     fetch_btc_from_api = False
 
     if target_date:
-        target_date = datetime.fromisoformat(target_date).replace(hour=0, minute=0, second=0, tzinfo=timezone.utc)
+        target_date = datetime.fromisoformat(target_date).replace(
+            hour=0, minute=0, second=0, tzinfo=timezone.utc
+        )
     else:
         target_date = datetime.now(tz=timezone.utc)
         fetch_btc_from_api = True
 
-    closest_rsk_block = get_closest_block(dbsession, chain_name, target_date).block_number
+    closest_rsk_block = get_closest_block(
+        dbsession, chain_name, target_date
+    ).block_number
 
     displays: List[BalanceDisplay] = []
     logger.info("Fetching balances for btc wallets")
@@ -90,7 +99,10 @@ def get_balances(request):
                     address=address.address,
                     target_time=target_date,
                 ),
-                balance_api=sanity_check.get_rsk_balance_at_block(w3, to_checksum_address(address.address), closest_rsk_block) / Decimal(10) ** 18,
+                balance_api=sanity_check.get_rsk_balance_at_block(
+                    w3, to_checksum_address(address.address), closest_rsk_block
+                )
+                / Decimal(10) ** 18,
                 chain_name="rsk",
                 address=address.address,
             )

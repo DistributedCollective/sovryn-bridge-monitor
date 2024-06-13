@@ -193,25 +193,32 @@ def get_btc_wallet_balance_at_date(
         )
         get_new_btc_transactions(dbsession, wallet_name)
 
-    target_wallet_id = dbsession.execute(select(BtcWallet.id).where(BtcWallet.name == wallet_name)).scalar()
+    target_wallet_id = dbsession.execute(
+        select(BtcWallet.id).where(BtcWallet.name == wallet_name)
+    ).scalar()
 
     full_transaction_subquery = (
         select(
-                BtcWalletTransaction.tx_hash,
-                func.max(BtcWalletTransaction.timestamp).label("timestamp"),
-                BtcWalletTransaction.wallet_id,
-                (func.sum(BtcWalletTransaction.amount_received)
-                    - func.sum(BtcWalletTransaction.amount_sent)
-                    - func.max(BtcWalletTransaction.amount_fees)).label("net_change"),
-                func.sum(BtcWalletTransaction.amount_received).label("amount_received"),
-                func.sum(BtcWalletTransaction.amount_sent).label("amount_sent"),
-                func.max(BtcWalletTransaction.amount_fees).label("amount_fees")
-        ).group_by(BtcWalletTransaction.tx_hash, BtcWalletTransaction.wallet_id).subquery())
+            BtcWalletTransaction.tx_hash,
+            func.max(BtcWalletTransaction.timestamp).label("timestamp"),
+            BtcWalletTransaction.wallet_id,
+            (
+                func.sum(BtcWalletTransaction.amount_received)
+                - func.sum(BtcWalletTransaction.amount_sent)
+                - func.max(BtcWalletTransaction.amount_fees)
+            ).label("net_change"),
+            func.sum(BtcWalletTransaction.amount_received).label("amount_received"),
+            func.sum(BtcWalletTransaction.amount_sent).label("amount_sent"),
+            func.max(BtcWalletTransaction.amount_fees).label("amount_fees"),
+        )
+        .group_by(BtcWalletTransaction.tx_hash, BtcWalletTransaction.wallet_id)
+        .subquery()
+    )
 
     sum_of_transactions = dbsession.execute(
         select(func.sum(full_transaction_subquery.c.net_change)).where(
             full_transaction_subquery.c.timestamp <= target_date,
-            full_transaction_subquery.c.wallet_id == target_wallet_id
+            full_transaction_subquery.c.wallet_id == target_wallet_id,
         )
     ).scalar()
 

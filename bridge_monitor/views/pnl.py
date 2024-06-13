@@ -14,6 +14,7 @@ from openpyxl import Workbook
 from bridge_monitor.models.pnl import ProfitCalculation
 from tempfile import NamedTemporaryFile
 
+
 class ParsedTimeRange(NamedTuple):
     start: Optional[date]
     end: Optional[date]
@@ -116,51 +117,59 @@ def pnl(request: Request):
     }
 
 
-@view_config(route_name='pnl_details')
+@view_config(route_name="pnl_details")
 def pnl_details_excel(request: Request) -> Response:
     dbsession: Session = request.dbsession
-    chain_env = request.registry.get('chain_env', 'mainnet')
-    chain = f'rsk_{chain_env}'
+    chain_env = request.registry.get("chain_env", "mainnet")
+    chain = f"rsk_{chain_env}"
 
     parsed_time_range = _parse_time_range(request)
     if parsed_time_range.errors:
         raise HTTPBadRequest(
-            'Error generating Table: ' + ', '.join(parsed_time_range.errors)
+            "Error generating Table: " + ", ".join(parsed_time_range.errors)
         )
 
-    response = Response(content_type='application/vnd.ms-excel')
-    response.content_disposition = 'attachment;filename=details.xlsx'
+    response = Response(content_type="application/vnd.ms-excel")
+    response.content_disposition = "attachment;filename=details.xlsx"
 
-    query = dbsession.query(
-        ProfitCalculation,
-    ).filter(
-        ProfitCalculation.config_chain == chain,
-        *parsed_time_range.profit_calculation_query_filter
-    ).order_by(
-        ProfitCalculation.timestamp,
+    query = (
+        dbsession.query(
+            ProfitCalculation,
+        )
+        .filter(
+            ProfitCalculation.config_chain == chain,
+            *parsed_time_range.profit_calculation_query_filter,
+        )
+        .order_by(
+            ProfitCalculation.timestamp,
+        )
     )
 
     # Creating the Excel workbook
     wb = Workbook()
     curr_sheet = wb.active
-    curr_sheet.title = 'Details'
-    curr_sheet.append([
-            'time',
-            'service',
-            'volume_btc',
-            'gross_profit_btc',
-            'tx_cost_btc',
-            'profit_btc',
-        ])
+    curr_sheet.title = "Details"
+    curr_sheet.append(
+        [
+            "time",
+            "service",
+            "volume_btc",
+            "gross_profit_btc",
+            "tx_cost_btc",
+            "profit_btc",
+        ]
+    )
     for row in query:
-        curr_sheet.append([
-            row.timestamp.isoformat(),
-            row.service,
-            row.volume_btc,
-            row.gross_profit_btc,
-            row.cost_btc,
-            row.net_profit_btc,
-        ])
+        curr_sheet.append(
+            [
+                row.timestamp.isoformat(),
+                row.service,
+                row.volume_btc,
+                row.gross_profit_btc,
+                row.cost_btc,
+                row.net_profit_btc,
+            ]
+        )
     with NamedTemporaryFile() as tmp:
         wb.save(tmp.name)
         tmp.seek(0)
@@ -168,7 +177,7 @@ def pnl_details_excel(request: Request) -> Response:
         return response
 
 
-@view_config(route_name='pnl_details_csv')
+@view_config(route_name="pnl_details_csv")
 def pnl_details_csv(request: Request):
     dbsession: Session = request.dbsession
     chain_env = request.registry.get("chain_env", "mainnet")
