@@ -9,8 +9,8 @@ from pyramid.response import Response
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import select
 from sqlalchemy.sql.expression import func
-
 from openpyxl import Workbook
+from openpyxl.styles import NamedStyle, Font
 
 from .pnl import _parse_time_range
 from bridge_monitor.models.ledger_entry import LedgerEntry, LedgerAccount
@@ -76,7 +76,7 @@ def ledger(request):
                     LedgerEntry.timestamp <= end,
                 )
             ).scalar()
-            credit = Decimal(0) if credit is None else abs(credit).normalize()
+            credit = Decimal(0) if credit is None else abs(credit)
 
             debit = dbsession.execute(
                 select(func.sum(LedgerEntry.value)).where(
@@ -85,9 +85,9 @@ def ledger(request):
                     LedgerEntry.timestamp <= end,
                 )
             ).scalar()
-            debit = Decimal(0) if debit is None else debit.normalize()
+            debit = Decimal(0) if debit is None else debit
 
-            balance = (debit - credit).normalize() * (1 if account.is_debit else -1)
+            balance = (debit - credit) * (1 if account.is_debit else -1)
 
             account_balances.append(
                 AccountBalance(
@@ -109,23 +109,60 @@ def ledger(request):
         if request.method == "POST":
             wb = Workbook()
             curr_sheet = wb.active
+
+            bold_style = NamedStyle(name="bold")
+            bold_style.font = Font(bold=True)
+            number_style = NamedStyle(name="number")
+            number_style.number_format = "0.000000000000"
+
             curr_sheet.title = "Accounts"
-            curr_sheet.append(
-                ["Account Name", "Account type", "Balance", "Credit", "Debit"]
-            )
-            for account in account_balances:
+            curr_sheet.append((f"{start} - {end}",))
+            curr_sheet.cell(row=1, column=1).style = bold_style
+            sub_headings = [
+                "Account Name",
+                "Credit",
+                "Debit",
+                "Account type",
+                "Balance delta",
+            ]
+            for i, heading in enumerate(sub_headings, start=1):
+                curr_sheet.cell(row=2, column=i).value = heading
+                curr_sheet.cell(row=2, column=i).style = bold_style
+            for j, account in enumerate(account_balances, start=3):
                 curr_sheet.append(
                     [
                         account.account_name,
-                        "debit" if account.is_debit else "credit",
-                        account.balance,
                         account.credit,
                         account.debit,
+                        "debit" if account.is_debit else "credit",
+                        account.balance,
                     ]
                 )
+                for i in range(len(sub_headings)):
+                    curr_sheet.cell(row=j, column=i + 1).style = number_style
+
+            curr_sheet["H2"] = "Total change in credit accounts"
+            curr_sheet["H2"].style = bold_style
+            curr_sheet["H3"] = "Total change in debit accounts"
+            curr_sheet["H3"].style = bold_style
+            curr_sheet["I2"] = sum(
+                [
+                    account.balance
+                    for account in account_balances
+                    if not account.is_debit
+                ]
+            )
+            curr_sheet["I3"] = sum(
+                [account.balance for account in account_balances if account.is_debit]
+            )
+
             curr_sheet = wb.create_sheet(title="Ledger Entries")
-            curr_sheet.append(["Account Name", "Value", "Timestamp", "Tx Hash"])
-            for entry in ledger_entries:
+            ledger_sub_headings = ["Account Name", "Value", "Timestamp", "Tx Hash"]
+            for i, heading in enumerate(ledger_sub_headings, start=1):
+                curr_sheet.cell(row=1, column=i).value = heading
+                curr_sheet.cell(row=1, column=i).style = bold_style
+
+            for row, entry in enumerate(ledger_entries, start=2):
                 curr_sheet.append(
                     [
                         get_account_name(entry.account_id, account_balances),
@@ -134,6 +171,7 @@ def ledger(request):
                         entry.tx_hash,
                     ]
                 )
+                curr_sheet.cell(row=row, column=2).style = number_style
             response = Response(content_type="application/vnd.ms-excel")
             response.content_disposition = "attachment;filename=ledger.xlsx"
             with NamedTemporaryFile() as tmp:

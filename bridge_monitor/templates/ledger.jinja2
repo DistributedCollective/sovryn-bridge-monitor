@@ -35,19 +35,19 @@
             <tr>
                 <th>Account</th>
                 <th>Credit Total</th>
-                <th>Debit total</th>
-                <th>Account type</th>
-                <th>Balance</th>
+                <th>Debit Total</th>
+                <th>Account Type</th>
+                <th>Balance Delta</th>
             </tr>
         </thead>
         <tbody>
             {% for account in account_balances %}
             <tr>
                 <td>{{ account.account_name }}</td>
-                <td>{{ '{0:f}'.format(account.credit) }}</td>
-                <td>{{ '{0:f}'.format(account.debit) }}</td>
+                <td class="has-number">{{ '{:.12f}'.format(account.credit) }}</td>
+                <td class="has-number">{{ '{:.12f}'.format(account.debit) }}</td>
                 <td>{{ "Debit" if account.is_debit else "Credit" }}</td>
-                <td>{{ '{0:f}'.format(account.balance) if account.balance > 0 or account.balance < 0 else 0 }}</td>
+                <td class="has-number">{{ '{:.12f}'.format(account.balance) if account.balance > 0 or account.balance < 0 else "0." + "0" * 12 }}</td>
             </tr>
             {% endfor %}
     </table>
@@ -68,7 +68,7 @@
                 <tr>
                     <th>Account</th>
                     <th>Value</th>
-                    <th>Tx hash</th>
+                    <th>Tx Hash</th>
                     <th>Timestamp</th>
                 </tr>
             </thead>
@@ -76,7 +76,7 @@
         {% for entry in ledger_entries %}
             <tr>
                 <td>{{ entry.account_name }}</td>
-                <td>{{ '{0:f}'.format(entry.value) }}</td>
+                <td class="has-number">{{ '{:.12f}'.format(entry.value) }}</td>
                 <td>{{ entry.tx_hash }}</td>
                 <td>{{ entry.timestamp }}</td>
             </tr>

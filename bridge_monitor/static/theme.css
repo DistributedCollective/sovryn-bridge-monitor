@@ -134,7 +134,7 @@ a>code {
 
  .display-table th {
    padding: 15px 0;
-   text-align: left;
+   text-align: center;
  }
 
  .display-table td {
@@ -160,6 +160,10 @@ a>code {
     text-align: left;
 }
 
+table td.has-number {
+    text-align: right;
+    padding-right: 5px;
+}
 .entries tbody tr:nth-child(odd) {
     background-color: rgba(246, 175, 75, 0.06);
 }
