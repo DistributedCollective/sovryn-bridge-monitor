@@ -191,7 +191,10 @@ class Bookkeeper:
                 bookkeeper.lowest_scanned = block_n
 
     def scan_up(
-        self, dbsession: Session, chain_id: int, safety_limit: int = 12
+        self,
+        dbsession: Session,
+        chain_id: int,
+        safety_limit: int = 12,
     ) -> bool:
         current_block = self.web3.eth.block_number
         high_scan_rows = (
@@ -240,7 +243,11 @@ class Bookkeeper:
         dbsession.flush()
         return True
 
-    def scan_down(self, dbsession: Session, chain_id: int) -> bool:
+    def scan_down(
+        self,
+        dbsession: Session,
+        chain_id: int,
+    ) -> bool:
         low_scan_rows = (
             dbsession.execute(
                 select(RskAddressBookkeeper)
@@ -280,7 +287,12 @@ class Bookkeeper:
         dbsession.flush()
         return True
 
-    def get_or_create_block_info(self, dbsession: Session, block_n: int, chain_id: int):
+    def get_or_create_block_info(
+        self,
+        dbsession: Session,
+        block_n: int,
+        chain_id: int,
+    ):
         block_info = (
             dbsession.query(BlockInfo)
             .filter(
@@ -317,7 +329,7 @@ class Bookkeeper:
                 < datetime.now()
             ):
                 return
-            post_url = config.get("slack", {}).get("sanity_check_hook", "")
+            post_url = config.get("slack", "sanity_check_hook")
             if not post_url:
                 return
             payload = {
@@ -400,7 +412,9 @@ class Bookkeeper:
         )
 
     def address_traces_in_block(
-        self, block_n: int, included_rows: Sequence[RskAddressBookkeeper]
+        self,
+        block_n: int,
+        included_rows: Sequence[RskAddressBookkeeper],
     ) -> dict[str, list[dict]]:
         if not included_rows:
             return {}
@@ -491,6 +505,7 @@ def main(argv: List[str]):
     )
 
     while True:
+        scanned_down = False
         try:
             for i in range(100):
                 scanned_down = bookkeeper.scan_down(dbsession, chain_id=rsk_id)
@@ -526,6 +541,3 @@ def main(argv: List[str]):
 
 if __name__ == "__main__":
     main(sys.argv)
-
-# SELECT COUNT(*) FROM rsk_tx_info WHERE address_id=26 AND JSONB_PATH_EXISTS(trace_json, '$[*].action ? (@.from == "0x1a8e78b41bc5ab9ebb6996136622b9b41a601b5c" && @.value > 0 )');
-# SELECT * FROM rsk_tx_info WHERE address_id=29 AND JSONB_PATH_EXISTS(trace_json, '$[*].action ? (@.to == "0xe43cafbdd6674df708ce9dff8762af356c2b454d" &&  !(@.input starts with "0xe01ed1a2" ) )');

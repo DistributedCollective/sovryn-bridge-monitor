@@ -19,7 +19,7 @@ class LedgerAccount(Base):
     id = Column(Integer, primary_key=True)
     name = Column(Text, nullable=False, unique=True)
     is_debit = Column(Boolean, nullable=False)
-    entries = relationship("LedgerEntry", back_populates="account")
+    entries = relationship("LedgerEntry", back_populates="account", lazy="dynamic")
 
 
 class LedgerEntry(Base):
