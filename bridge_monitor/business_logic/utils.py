@@ -208,7 +208,7 @@ def get_all_contract_events(
 
         logs = get_log_batch_with_retries(
             contract_address=contract.address,
-            web3=web3 or contract.web3,
+            web3=web3 if web3 is not None else contract.web3,
             from_block=batch_from_block,
             to_block=batch_to_block,
         )

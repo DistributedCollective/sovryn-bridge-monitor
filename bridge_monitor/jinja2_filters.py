@@ -21,6 +21,7 @@ def _get_explorer_tx_url(chain, tx_id):
     return None
 
 
+# used in replenisher template, could be refactored
 def includeme(config: Configurator):
     # This must be deferred, see
     # https://docs.pylonsproject.org/projects/pyramid_jinja2/en/latest/api.html#pyramid_jinja2.get_jinja2_environment

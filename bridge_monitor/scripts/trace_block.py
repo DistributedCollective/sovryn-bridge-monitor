@@ -33,6 +33,14 @@ logger = logging.getLogger(__name__)
 
 
 class Bookkeeper:
+    """
+    This class is responsible for scanning the RSK blockchain for transactions
+    related to the addresses specified in the database. It scans up from the
+    highest block number for a given address in the database and down from the lowest block number
+    in the database. It also performs sanity checks on the addresses in the
+    database, if the sanity check fails, it sends a message to a slack channel.
+    """
+
     FIXED_SANITY_CHECK_INTERVAL = 3600
 
     def __init__(self, passed_web3: web3.Web3, engine: Engine):
@@ -537,6 +545,7 @@ def main(argv: List[str]):
 
         except Exception:
             logger.exception("Error in sanity check")
+            # maybe these should also send slack alerts
 
 
 if __name__ == "__main__":
