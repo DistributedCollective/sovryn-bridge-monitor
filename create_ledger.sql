@@ -113,16 +113,16 @@ values (-100, 'fastbtc user prepayments credit', false),
 
 
 insert into ledger_account (id, name, is_debit)
-values (-200, 'fastbtc in processed withdrawals credit', false),
-       (200, 'fastbtc in processed withdrawals', false);
+values (-200, 'fastbtc in processed withdrawls credit', false),
+       (200, 'fastbtc in processed withdrawls', false);
 
 insert into ledger_account (id, name, is_debit)
 values (-210, 'fastbtc in processed deposits credit', false),
        (210, 'fastbtc in processed deposits', false);
 
 insert into ledger_account (id, name, is_debit)
-values (-300, 'fastbtc out processed withdrawals credit', false),
-       (300, 'fastbtc out processed withdrawals', false);
+values (-300, 'fastbtc out processed withdrawls credit', false),
+       (300, 'fastbtc out processed withdrawls', false);
 
 insert into ledger_account (id, name, is_debit)
 values (-310, 'fastbtc out processed deposits credit', false),
@@ -220,7 +220,7 @@ $$
                and amount_received != 0);
 
 /*
-fastbtcin withdrawal
+fastbtcin withdrawl
  */
 
         insert into ledger_entry(tx_hash, timestamp, account_id, value)
@@ -234,7 +234,7 @@ fastbtcin withdrawal
         insert into ledger_entry(tx_hash, timestamp, account_id, value)
             (select executed_transaction_hash,
                     executed_block_time,
-                    get_account_id('fastbtc in processed withdrawals'),
+                    get_account_id('fastbtc in processed withdrawls'),
                     net_amount_wei::numeric(40, 18) / 1e18
              from fastbtc_in_transfer_sane
              where status = 'EXECUTED');
@@ -311,13 +311,13 @@ Fastbtc out deposits
                and value > 0);
 
 /*
-Fastbtc out withdrawals
+Fastbtc out withdrawls
  */
 
         insert into ledger_entry(tx_hash, timestamp, account_id, value)
         select tx_hash,
                timestamp,
-               get_account_id('fastbtc out processed withdrawals'),
+               get_account_id('fastbtc out processed withdrawls'),
                amount_sent
         from btc_wallet_transaction
         where amount_sent > 0
