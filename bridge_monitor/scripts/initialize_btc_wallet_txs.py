@@ -45,22 +45,28 @@ def main(argv: List[str] | None = None):
             wallet_id = (
                 dbsession.query(BtcWallet.id).filter(BtcWallet.name == wallet).scalar()
             )
-            if wallet_id is not None:
-                logger.info(
-                    "Deleting past entries for wallet %s, with wallet id %d",
-                    wallet,
-                    wallet_id,
-                )
-                dbsession.query(BtcWalletTransaction).filter(
-                    BtcWalletTransaction.wallet_id == wallet_id
-                ).delete()
-            get_wallet_transactions_from_block(dbsession, 0, wallet)
-            tx_count = (
-                dbsession.query(func.count(BtcWalletTransaction.tx_hash))
-                .filter(BtcWalletTransaction.wallet_id == wallet_id)
-                .scalar()
+            if wallet_id is None:
+                logger.info("Adding wallet %s into db", wallet)
+                wallet = BtcWallet(name=wallet)
+                dbsession.add(wallet)
+                dbsession.flush()
+                wallet_id = wallet.id
+
+            logger.info(
+                "Deleting past entries for wallet %s, with wallet id %d",
+                wallet,
+                wallet_id,
             )
-            logger.info("Done with wallet %s, transactions in db: %d", wallet, tx_count)
+            dbsession.query(BtcWalletTransaction).filter(
+                BtcWalletTransaction.wallet_id == wallet_id
+            ).delete()
+        get_wallet_transactions_from_block(dbsession, 0, wallet)
+        tx_count = (
+            dbsession.query(func.count(BtcWalletTransaction.tx_hash))
+            .filter(BtcWalletTransaction.wallet_id == wallet_id)
+            .scalar()
+        )
+        logger.info("Done with wallet %s, transactions in db: %d", wallet, tx_count)
 
 
 if __name__ == "__main__":

@@ -35,10 +35,9 @@ logger = logging.getLogger(__name__)
 class Bookkeeper:
     """
     This class is responsible for scanning the RSK blockchain for transactions
-    related to the addresses specified in the database. It scans up from the
-    highest block number for a given address in the database and down from the lowest block number
-    in the database. It also performs sanity checks on the addresses in the
-    database, if the sanity check fails, it sends a message to a slack channel.
+    related to addresses specified in the database. Scanned values are placed in the rsk tx trace table.
+    It scans up from the highest block number for a given address in the database and down from the lowest block number
+    in the database. It also performs sanity checks, if the sanity check fails, it sends a message to a slack channel.
     """
 
     FIXED_SANITY_CHECK_INTERVAL = 3600
@@ -464,7 +463,7 @@ def parse_args(argv: Optional[List[str]] = None):
     parser.add_argument(
         "-chain_env", default="local_node", help="Default is local node"
     )
-    return parser.parse_args()
+    return parser.parse_args(argv[1:])
 
 
 def main(argv: List[str]):
