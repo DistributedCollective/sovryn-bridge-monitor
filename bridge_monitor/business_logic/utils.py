@@ -102,10 +102,6 @@ def enable_logging():
     root.addHandler(info_handler)
 
 
-def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
-
-
 def load_abi(name: str) -> List[Dict[str, Any]]:
     abi_path = os.path.join(ABI_DIR, f"{name}.json")
     assert os.path.abspath(abi_path).startswith(os.path.abspath(ABI_DIR))
@@ -126,7 +122,7 @@ ERC20_ABI = load_abi("IERC20")
 @functools.lru_cache()
 def get_erc20_contract(
     *, token_address: Union[str, AnyAddress], web3: Web3
-) -> Contract:
+) -> Type[Contract]:
     return web3.eth.contract(
         address=to_address(token_address),
         abi=ERC20_ABI,
@@ -402,15 +398,15 @@ def get_closest_block(
     rsk_id = block_chain_meta.id
     if block_chain_meta is None:
         raise LookupError("Block chain meta not found")
-    closest_block = (
-        dbsession.query(BlockInfo)
-        .filter(
-            (BlockInfo.block_chain_id == rsk_id)
-            & (BlockInfo.timestamp <= wanted_datetime)
+
+    closest_block = dbsession.execute(
+        select(BlockInfo)
+        .where(
+            BlockInfo.block_chain_id == rsk_id, BlockInfo.timestamp <= wanted_datetime
         )
         .order_by(BlockInfo.timestamp.desc())
-        .first()
-    )
+        .limit(1)
+    ).scalar_one_or_none()
 
     if closest_block is not None:
         if (
