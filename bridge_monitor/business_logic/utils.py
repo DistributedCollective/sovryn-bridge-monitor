@@ -12,7 +12,6 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, U
 from eth_account.signers.local import LocalAccount
 from eth_typing import AnyAddress
 from eth_utils import to_checksum_address
-from requests import RequestException
 from web3 import Web3
 from web3.contract import Contract, ContractEvent, ContractFunction
 from web3.middleware import construct_sign_and_send_raw_middleware, geth_poa_middleware
@@ -207,7 +206,7 @@ def get_event_batch_with_retries(event, from_block, to_block, *, retries=6):
                 fromBlock=from_block,
                 toBlock=to_block,
             )
-        except (ValueError, RequestException) as e:
+        except ValueError as e:
             if retries <= 0:
                 raise e
             logger.warning('error in get_all_entries: %s, retrying (%s)', e, retries)
