@@ -171,3 +171,8 @@ table td.has-number {
 .submit-button {
     display: inline-block;
 }
+
+.export-form {
+    display: inline-block;
+    align-self: flex-end;
+}

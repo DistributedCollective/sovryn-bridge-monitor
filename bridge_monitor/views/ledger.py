@@ -14,6 +14,7 @@ from openpyxl.styles import NamedStyle, Font
 
 from .pnl import _parse_time_range
 from bridge_monitor.models.ledger_entry import LedgerEntry, LedgerAccount
+from ..models.ledger_meta import LedgerUpdate
 
 logger = getLogger(__name__)
 
@@ -63,6 +64,10 @@ def ledger(request):
         .scalars()
         .all()
     )
+
+    ledger_last_updated_at = dbsession.execute(
+        select(LedgerUpdate.timestamp).order_by(LedgerUpdate.timestamp.desc())
+    ).scalar()
 
     account_balances = []
     ledger_entries = []
@@ -201,4 +206,5 @@ def ledger(request):
         "accounts": accounts,
         "account_balances": account_balances,
         "ledger_entries": ledger_entries,
+        "ledger_last_updated_at": ledger_last_updated_at,
     }

@@ -3,7 +3,11 @@
 {% block content %}
 
     <div class="content">
-        <h1>Balances {{ ("at " + request.params.get("target_date")) if request.params.get("target_date") else '' }}</h1>
+        <h1>Balances
+            <small>
+                at {{ target_date.isoformat()}}
+            </small>
+        </h1>
         <form
             style="margin-bottom: .5em;"
             method="GET"

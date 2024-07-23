@@ -114,6 +114,7 @@ def get_balances(request):
 
     return {
         "displays": displays,
+        "target_date": target_date,
     }
 
 

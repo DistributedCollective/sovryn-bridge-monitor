@@ -24,6 +24,7 @@ from .rsk_transaction_info import (
     RskTransactionInfoOld,
     RskTxTrace,
 )
+from .ledger_meta import LedgerUpdate  # flake8: noqa
 
 # Run ``configure_mappers`` after defining all of the models to ensure
 # all relationships can be setup.

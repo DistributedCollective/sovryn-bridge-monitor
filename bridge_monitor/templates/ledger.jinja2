@@ -30,6 +30,23 @@
     </nav>
     {% if request.params.get("start") or request.params.get("end") %}
     <h2>Accounts</h2>
+    <div
+    style="display: flex; justify-content: space-between"
+    >
+    <h4>Latest ledger update at {{ ledger_last_update_at }}</h4>
+    <form
+            method="POST"
+            action="{{ request.current_route_path() }}"
+            class="export-form"
+        >
+            <input type="hidden" name="start" value="{{ start.isoformat() if start else '' }}">
+            <input type="hidden" name="end" value="{{ end.isoformat() if end else '' }}">
+            <input type="hidden" name="first_entry" value="{{ first_entry }}">
+            <button class="export-button"
+                type="submit"
+            >Export to .xlsx</button>
+        </form>
+    </div>
     <table class="display-table">
         <thead>
             <tr>
@@ -51,18 +68,8 @@
             </tr>
             {% endfor %}
     </table>
-        <form
-            method="POST"
-            action="{{ request.current_route_path() }}"
-        >
-            <input type="hidden" name="start" value="{{ start.isoformat() if start else '' }}">
-            <input type="hidden" name="end" value="{{ end.isoformat() if end else '' }}">
-            <input type="hidden" name="first_entry" value="{{ first_entry }}">
-            <button
-                type="submit"
-            >Export to .xlsx</button>
-        </form>
     <div class="entries">
+    <h2>Entries</h2>
         <table>
             <thead>
                 <tr>
