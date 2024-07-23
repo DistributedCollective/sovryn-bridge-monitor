@@ -89,14 +89,13 @@
                     <td>
                         <small>
                             {%  if transfer.submitted_on  %}
-                                submitted <time class="timeago" datetime="{{ transfer.submitted_on.isoformat() }}">{{ transfer.submitted_on }}</time><br/>
+                                submitted {{ copyable_timeago(transfer.submitted_on) }} <br/>
                             {% endif %}
                             {% if transfer.executed_on %}
-                                executed
-                                <time class="timeago" datetime="{{ transfer.executed_on.isoformat() }}">{{ transfer.executed_on }}</time><br/>
+                                executed {{ copyable_timeago(transfer.executed_on) }} <br/>
                             {% endif %}
-                            updated <time class="timeago" datetime="{{ transfer.updated_on.isoformat() }}">{{ transfer.updated_on }}</time><br/>
-                            first seen <time class="timeago" datetime="{{ transfer.created_on.isoformat() }}">{{ transfer.created_on }}</time>
+                            updated {{ copyable_timeago(transfer.updated_on) }}<br/>
+                            first seen {{ copyable_timeago(transfer.created_on) }}<br/>
                         </small>
                     </td>
                     <td class="details">

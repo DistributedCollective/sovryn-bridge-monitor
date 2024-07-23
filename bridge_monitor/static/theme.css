@@ -176,3 +176,37 @@ table td.has-number {
     display: inline-block;
     align-self: flex-end;
 }
+
+#copied-reminder {
+    position: fixed;
+    right: 45%;
+    left: 45%;
+    background-color: rgba(246, 175, 75, 0.2);
+    border: rgba(255, 255, 255, 0.6) 1px solid;
+    height: 3em;
+    top: 1em;
+    opacity: 0;
+    text-align: center;
+
+}
+
+time.timeago:hover {
+    cursor: copy;
+}
+
+#copied-reminder>.inner {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@keyframes fade {
+    100%, 0% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 100%;
+    }
+
+}

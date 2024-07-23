@@ -11,9 +11,18 @@
 
 {%- endmacro %}
 
+{% macro address_link(chain_name, addr_hash) -%}
+
+    {% if chain_name == "rsk_mainnet" %} <a href="https://explorer.rootstock.io/address/{{ addr_hash }}"><code>{{ addr_hash }}</code></a>
+    {% elif chain_name == "rsk_testnet" %} <a href="https://explorer.testnet.rootstock.co/address/{{ addr_hash }}"><code>{{ addr_hash }}</code></a>
+    {% elif chain_name == "bsc_mainnet" %} <a href="https://bscscan.com/address/{{ addr_hash }}"><code>{{ addr_hash }}</code></a>
+    {% elif chain_name == "eth_mainnet" %} <a href="https://etherscan.io/address/{{ addr_hash }}"><code>{{ addr_hash }}</code></a>
+    {% else %} {{ addr_hash }}
+    {% endif %}
+{% endmacro %}
+
 
 {% block content %}
-<div class="content">
     <h1>Sovryn Bridge Transfers</h1>
     <nav>
         Show
@@ -125,15 +134,15 @@
                         <td>{{ transfer.num_votes }}</td>
                         <td>
                             <small>
-                                deposited <time class="timeago" datetime="{{ transfer.deposited_on.isoformat() }}">{{ transfer.deposited_on }}</time><br/>
+                                deposited {{ copyable_timeago(transfer.deposited_on) }} <br/>
                                 {% if transfer.executed_on %}
-                                executed <time class="timeago" datetime="{{ transfer.executed_on.isoformat() }}">{{ transfer.executed_on }}</time><br/>
+                                executed {{ copyable_timeago(transfer.executed_on) }} <br/>
                                 {% endif %}
                                 {% if transfer.seconds_from_deposit_to_execution %}
                                 time taken: <time>{{ (transfer.seconds_from_deposit_to_execution/60)|round(2) }} min</time><br/>
                                 {% endif %}
-                                updated <time class="timeago" datetime="{{ transfer.updated_on.isoformat() }}">{{ transfer.updated_on }}</time><br/>
-                                first seen <time class="timeago" datetime="{{ transfer.created_on.isoformat() }}">{{ transfer.seen_on }}</time>
+                                updated {{ copyable_timeago(transfer.updated_on) }} <br/>
+                                first seen {{ copyable_timeago(transfer.seen_on) }} <br/>
                             </small>
                         </td>
                         <td class="details">
@@ -150,16 +159,12 @@
                             </div>
                             <div style="display: flex">
                                 <span>Depositor:</span>
-                                <a href="https://explorer.rootstock.io/address/{{ transfer.depositor_address }}">
-                                    <code>{{ transfer.depositor_address }}</code>
-                                </a>
+                                {{ address_link(transfer.from_chain, transfer.depositor_address)}}
                                 <br/>
                             </div>
                             <div style="display: flex">
                                 <span>Receiver:</span>
-                                <a href="https://explorer.rootstock.io/address/{{ transfer.receiver_address }}">
-                                    <code>{{ transfer.receiver_address }}</code>
-                                </a>
+                                {{ address_link(transfer.to_chain, transfer.receiver_address)}}
                                 <br/>
                             </div>
                             {% if transfer.user_data != "0x" %}

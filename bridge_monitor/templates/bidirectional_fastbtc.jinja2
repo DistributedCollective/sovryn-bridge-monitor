@@ -81,21 +81,19 @@
                     </td>
                     <td>
                         <small>
-                            initiated <time class="timeago" datetime="{{ transfer.initiated_on.isoformat() }}">{{ transfer.initiated_on }}</time><br/>
+                            initiated {{ copyable_timeago(transfer.initiated_on) }} <br/>
+
                             {% if transfer.marked_as_sending_on %}
-                                marked as sending
-                                <time class="timeago" datetime="{{ transfer.marked_as_sending_on.isoformat() }}">{{ transfer.marked_as_sending_on }}</time><br/>
+                                marked as sending {{ copyable_timeago(transfer.marked_as_sending_on) }} <br/>
                             {% endif %}
                             {% if transfer.marked_as_mined_on %}
-                                marked as mined
-                                <time class="timeago" datetime="{{ transfer.marked_as_mined_on.isoformat() }}">{{ transfer.marked_as_mined_on }}</time><br/>
+                                marked as mined {{ copyable_timeago(transfer.marked_as_mined_on) }} <br/>
                             {% endif %}
                             {% if transfer.refunded_or_reclaimed_on %}
-                                refunded or reclaimed
-                                <time class="timeago" datetime="{{ transfer.refunded_or_reclaimed_on.isoformat() }}">{{ transfer.refunded_or_reclaimed_on }}</time><br/>
+                                refunded or reclaimed {{ copyable_timeago(transfer.refunded_or_reclaimed_on) }} <br/>
                             {% endif %}
-                            updated <time class="timeago" datetime="{{ transfer.updated_on.isoformat() }}">{{ transfer.updated_on }}</time><br/>
-                            first seen <time class="timeago" datetime="{{ transfer.created_on.isoformat() }}">{{ transfer.created_on }}</time>
+                            updated {{ copyable_timeago(transfer.updated_on) }} <br/>
+                            first seen {{ copyable_timeago(transfer.created_on) }} <br/>
                         </small>
                     </td>
                     <td class="details">
