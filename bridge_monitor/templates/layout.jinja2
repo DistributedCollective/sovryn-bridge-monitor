@@ -1,13 +1,23 @@
 <!DOCTYPE html>
 
+<script>
+    document.addEventListener("copy" , function(e) {
+        let obj = document.querySelector( ".timeago:hover" );
+        if (obj && obj.getAttribute("datetime")) {
+            e.preventDefault();
+            e.clipboardData.setData("text/plain", obj.getAttribute("datetime"));
+        }
+    });
+</script>
+
 {% macro copyable_timeago(datetime_obj) -%}
 
-<time onclick="var popup=document.getElementById('copied-reminder');
-                navigator.clipboard.writeText('{{ datetime_obj.isoformat() }}')
-                .then(() => popup.style.animation = null)
-                .then(() => popup.offsetHeight)
-                .then(() => popup.style.animation = 'fade 2s linear')"
-                            class="timeago" datetime="{{ datetime_obj.isoformat() }}">{{ datetime_obj }}
+<time onclick="let popup=document.getElementById('copied-reminder');
+                document.execCommand('copy');
+                popup.style.animation = null;
+                popup.offsetHeight;
+                popup.style.animation = 'fade 2s linear'"
+    class="timeago" datetime="{{ datetime_obj.isoformat() }}">{{ datetime_obj }}
 </time>
 
 {% endmacro %}
