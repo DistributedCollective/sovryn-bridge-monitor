@@ -28,6 +28,7 @@ from ..models.rsk_transaction_info import (
 )
 from ..models.chain_info import BlockInfo, BlockChain
 from ..business_logic.utils import get_web3
+from .ledger_manager import create_ledger
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,7 @@ class Bookkeeper:
         self.traces_scanned_down = 0
         self.last_sanity_check = 0
         self.last_failed_sanity_check_time = datetime.fromtimestamp(0)
+        self.last_ledger_creation_time = datetime.fromtimestamp(0)
 
     @property
     def sanity_check_now(self):
@@ -513,6 +515,7 @@ def main(argv: List[str]):
 
     while True:
         scanned_down = False
+        # scanning
         try:
             for i in range(100):
                 scanned_down = bookkeeper.scan_down(dbsession, chain_id=rsk_id)
@@ -523,7 +526,6 @@ def main(argv: List[str]):
                 dbsession, chain_id=rsk_id, safety_limit=block_chain_meta.safe_limit
             )
 
-            # logger.info("Committing")
             dbsession.commit()
 
             if not (scanned_down or scanned_up):
@@ -534,6 +536,7 @@ def main(argv: List[str]):
             dbsession.rollback()
             time.sleep(10)
 
+        # sanity check
         try:
             if bookkeeper.sanity_check_now:
                 all_bookkeepers = (
@@ -545,6 +548,19 @@ def main(argv: List[str]):
         except Exception:
             logger.exception("Error in sanity check")
             # maybe these should also send slack alerts
+
+        # ledger creation
+        try:
+            if (
+                bookkeeper.last_ledger_creation_time + timedelta(hours=1)
+                < datetime.now()
+            ):
+                create_ledger(dbsession)
+                bookkeeper.last_ledger_creation_time = datetime.now()
+        except Exception:
+            logger.exception("Error in ledger creation")
+            dbsession.rollback()
+            time.sleep(10)
 
 
 if __name__ == "__main__":
