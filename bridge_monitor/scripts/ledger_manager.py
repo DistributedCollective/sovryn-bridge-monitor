@@ -4,7 +4,7 @@ import logging
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from bridge_monitor.models.ledger_meta import LedgerUpdate
+from bridge_monitor.models.ledger_meta import LedgerUpdateMeta
 
 SCRIPT_NAME = "create_ledger.sql"
 
@@ -21,7 +21,7 @@ def create_ledger(dbsession: Session):
         logger.error("error running %s script: %s", SCRIPT_NAME, e)
         error = str(e)
     finally:
-        update = LedgerUpdate(
+        update = LedgerUpdateMeta(
             timestamp=datetime.now(timezone.utc),
             failed=error is not None,
             error=error,

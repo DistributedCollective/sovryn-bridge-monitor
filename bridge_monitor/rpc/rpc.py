@@ -129,21 +129,19 @@ def get_wallet_transactions_from_block(
                 )
             ).scalar()
             if pending_entry is not None:
-                transaction = pending_entry.to_complete()
-                transaction.block_height = entry["blockheight"]
                 dbsession.delete(pending_entry)
-            else:
-                transaction = BtcWalletTransaction(
-                    wallet=wallet,
-                    tx_hash=entry["txid"],
-                    vout=entry.get("vout", -1),
-                    block_height=entry["blockheight"],
-                    timestamp=datetime.fromtimestamp(entry["time"], tz=timezone.utc),
-                    net_change=Decimal(),
-                    amount_sent=Decimal(),
-                    amount_received=Decimal(),
-                    amount_fees=Decimal(),
-                )
+
+            transaction = BtcWalletTransaction(
+                wallet=wallet,
+                tx_hash=entry["txid"],
+                vout=entry.get("vout", -1),
+                block_height=entry["blockheight"],
+                timestamp=datetime.fromtimestamp(entry["time"], tz=timezone.utc),
+                net_change=Decimal(),
+                amount_sent=Decimal(),
+                amount_received=Decimal(),
+                amount_fees=Decimal(),
+            )
         dbsession.add(transaction)
         if entry["category"] == "send":
             transaction.amount_sent += -Decimal(str(entry["amount"]))
