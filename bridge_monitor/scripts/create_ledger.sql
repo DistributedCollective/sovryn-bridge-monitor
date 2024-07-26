@@ -1,7 +1,3 @@
-rollback;
-begin;
-
-
 drop table if exists ledger_entry;
 drop table if exists ledger_entry_queue;
 drop table if exists ledger_account;
@@ -889,5 +885,3 @@ $$
         end if;
     end
 $$;
-
-commit;
