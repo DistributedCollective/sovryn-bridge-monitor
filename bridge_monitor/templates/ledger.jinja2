@@ -85,7 +85,7 @@
                 <td>{{ entry.account_name }}</td>
                 <td class="has-number">{{ '{:.12f}'.format(entry.value) }}</td>
                 <td>{{ entry.tx_hash }}</td>
-                <td>{{ entry.timestamp }}</td>
+                <td>{{ copyable_timeago(entry.timestamp) }}</td>
             </tr>
         {% endfor %}
         </tbody>

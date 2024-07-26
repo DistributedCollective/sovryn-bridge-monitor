@@ -1,6 +1,7 @@
 @import url(//fonts.googleapis.com/css?family=Open+Sans:300,400,600,700);
 html {
   --sovryn-yellow: #fec004;
+  --sovryn-yellow-rgb: 254, 192, 4;
   --sovryn-black: #161616;
 }
 body {
@@ -155,7 +156,7 @@ a>code {
     text-align: left;
 }
 .entries td {
-    padding: 1px 10px;
+    padding: 3px 10px;
     border: rgba(255, 255, 255, 0.33) 1px solid;
     text-align: left;
 }
@@ -187,10 +188,10 @@ table td.has-number {
     top: 1em;
     opacity: 0;
     text-align: center;
-
+    pointer-events: none;
 }
 
-time.timeago:hover {
+time.timeago.copyable:hover {
     cursor: copy;
 }
 
@@ -209,4 +210,39 @@ time.timeago:hover {
         opacity: 100%;
     }
 
+}
+
+/*Timestamp toggle*/
+body.show_timestamps table time.timeago {
+    display: None;
+}
+
+code.timestamp {
+    display: None;
+}
+
+body.show_timestamps table code.timestamp {
+    display: inline;
+}
+
+code.timestamp {
+    font-size: 0.8em;
+}
+
+small > time {
+    color: #ffffff;
+}
+
+small:not(time) {
+    color: #999;
+}
+
+#timestamp-toggle {
+    margin-top: 5px;
+    margin-left: 5em;
+    background: var(--sovryn-black);
+    color: #fff;
+    border: rgba(var(--sovryn-yellow-rgb), 0.2) 2px solid;
+    border-radius: 2px;
+    padding: 2px 5px;
 }
