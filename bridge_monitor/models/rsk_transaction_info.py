@@ -101,6 +101,7 @@ class RskTxTrace(Base):
     value = Column(Numeric(42, 18), nullable=False)
     unmapped = Column(JSONB, nullable=False)
     error = Column(Text)
+    notes = Column(Text, nullable=True)
     block_info = relationship(
         BlockInfo,
         primaryjoin="and_(RskTxTrace.block_number == BlockInfo.block_number,"
