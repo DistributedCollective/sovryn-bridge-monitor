@@ -137,9 +137,8 @@
                         {% if transfer.bitcoin_tx_id %}
                             <span>BitcoinTx:</span>
                             <a href="https://mempool.space/tx/{{ transfer.bitcoin_tx_id }}#vout={{ vouts[transfer.transfer_id] }}">
-                                <code>{{ transfer.bitcoin_tx_id }}</code>
+                                <code>{{ transfer.bitcoin_tx_id + "/" }}{{ vouts[transfer.transfer_id]}}</code>
                             </a>
-                            <small>(VOUT {{ vouts[transfer.transfer_id] }})</small>
                             <br/>
                         {% endif %}
                         {% if transfer.transfer_batch_size %}
