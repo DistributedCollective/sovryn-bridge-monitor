@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 import logging
+import os
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -14,7 +15,9 @@ logger = logging.getLogger(__name__)
 def create_ledger(dbsession: Session):
     error = None
     try:
-        ledger_script = text(open(SCRIPT_NAME).read())
+        ledger_script = text(
+            open(os.path.join(os.path.dirname(__file__), SCRIPT_NAME)).read()
+        )
         logger.info("running %s script", SCRIPT_NAME)
         dbsession.execute(ledger_script)
     except Exception as e:
