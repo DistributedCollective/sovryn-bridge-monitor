@@ -836,7 +836,15 @@ fastbtc in fees
         where wallet_id = get_btc_wallet_id('fastbtc-in')
           and amount_fees > 0;
 
+        update btc_wallet_transaction set notes = 'fastbtc manual transfer' where notes is null and tx_hash in
+            (select tx_hash from ledger_entry where abs(account_id) >= get_account_id('fastbtc in btc manual withdrawl') and
+             abs(account_id) <= get_account_id('btc backup manual deposit'));
+
+        update rsk_tx_trace set notes = 'fastbtc manual transfer' where notes is null and tx_hash in
+            (select tx_hash from ledger_entry where abs(account_id) >= get_account_id('fastbtc in rsk manual withdrawl') and
+             abs(account_id) <= get_account_id('fastbtc out rsk manual withdrawl'));
     end
+
 $$;
 /*
 check valid output
