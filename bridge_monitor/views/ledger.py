@@ -35,6 +35,7 @@ class EntryDisplay:
     value: Decimal
     timestamp: datetime
     tx_hash: str
+    description: str = ""
 
 
 @view_config(
@@ -162,7 +163,13 @@ def ledger(request):
             )
 
             curr_sheet = wb.create_sheet(title="Ledger Entries")
-            ledger_sub_headings = ["Account Name", "Value", "Timestamp", "Tx Hash"]
+            ledger_sub_headings = [
+                "Account Name",
+                "Value",
+                "Timestamp",
+                "Tx Hash",
+                "Description",
+            ]
             for i, heading in enumerate(ledger_sub_headings, start=1):
                 curr_sheet.cell(row=1, column=i).value = heading
                 curr_sheet.cell(row=1, column=i).style = bold_style
@@ -174,6 +181,7 @@ def ledger(request):
                         entry.value,
                         entry.timestamp.replace(tzinfo=None),
                         entry.tx_hash,
+                        entry.description if entry.description else "",
                     ]
                 )
                 curr_sheet.cell(row=row, column=2).style = number_style
@@ -192,6 +200,7 @@ def ledger(request):
                 entry.value,
                 entry.timestamp,
                 entry.tx_hash,
+                entry.description if entry.description else "",
             )
             for entry in ledger_entries
         ]

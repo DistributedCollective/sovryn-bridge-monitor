@@ -18,7 +18,7 @@ create unlogged table ledger_entry
     timestamp  timestamptz     not null,
     account_id int             not null references ledger_account (id),
     value      numeric(40, 18) not null,
-    vout       int
+    description text
 );
 
 create index ledger_entry_tx_hash_idx on ledger_entry (tx_hash);
@@ -83,16 +83,17 @@ values (-1910, 'fastbtc in btc wallet credit', true),
        (-1914, 'fastbtc out rsk wallet credit', true),
        (-1915, 'btc backup wallet credit', true);
 
+/*changing these numbers might break things*/
 insert into ledger_account (id, name, is_debit)
-values (10, 'fastbtc in rsk manual withdrawl', false),
+values (10, 'fastbtc in rsk manual withdrawal', false),
        (11, 'fastbtc in rsk manual deposit', false),
        (-11, 'fastbtc in rsk manual deposit credit', false),
-       (20, 'fastbtc out rsk manual withdrawl', false),
-       (30, 'fastbtc in btc manual withdrawl', false),
-       (40, 'fastbtc out btc manual withdrawl', false),
+       (20, 'fastbtc out rsk manual withdrawal', false),
+       (30, 'fastbtc in btc manual withdrawal', false),
+       (40, 'fastbtc out btc manual withdrawal', false),
        (41, 'fastbtc out btc manual deposit', false),
        (-41, 'fastbtc out btc manual deposit credit', false),
-       (50, 'btc backup manual withdrawl', false),
+       (50, 'btc backup manual withdrawal', false),
        (51, 'btc backup manual deposit', false),
        (-51, 'btc backup manual deposit credit', false);
 
@@ -109,16 +110,16 @@ values (-100, 'fastbtc user prepayments credit', false),
 
 
 insert into ledger_account (id, name, is_debit)
-values (-200, 'fastbtc in processed withdrawls credit', false),
-       (200, 'fastbtc in processed withdrawls', false);
+values (-200, 'fastbtc in processed withdrawals credit', false),
+       (200, 'fastbtc in processed withdrawals', false);
 
 insert into ledger_account (id, name, is_debit)
 values (-210, 'fastbtc in processed deposits credit', false),
        (210, 'fastbtc in processed deposits', false);
 
 insert into ledger_account (id, name, is_debit)
-values (-300, 'fastbtc out processed withdrawls credit', false),
-       (300, 'fastbtc out processed withdrawls', false);
+values (-300, 'fastbtc out processed withdrawals credit', false),
+       (300, 'fastbtc out processed withdrawals', false);
 
 insert into ledger_account (id, name, is_debit)
 values (-310, 'fastbtc out processed deposits credit', false),
@@ -187,59 +188,77 @@ $$
         fastbtcin deposit
         */
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
             (select tx_hash,
                     timestamp,
                     get_account_id('fastbtc in btc wallet'),
-                    amount_received
-             from btc_wallet_transaction
-             where wallet_id = get_btc_wallet_id('fastbtc-in')
-               and amount_received > 0);
-
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
-            (select tx_hash,
-                    timestamp,
-                    get_account_id('fastbtc user prepayments credit'),
-                    -amount_received
+                    amount_received,
+                    'Fastbtc user bridge deposit'
              from btc_wallet_transaction
              where wallet_id = get_btc_wallet_id('fastbtc-in')
                and amount_received >= min_transfer_btc);
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
+            (select tx_hash,
+                    timestamp,
+                    get_account_id('fastbtc user prepayments credit'),
+                    -amount_received,
+                    'Fastbtc user bridge deposit'
+             from btc_wallet_transaction
+             where wallet_id = get_btc_wallet_id('fastbtc-in')
+               and amount_received >= min_transfer_btc);
+
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
             (select tx_hash,
                     timestamp,
                     get_account_id('fastbtc user donations credit'),
-                    -amount_received
+                    -amount_received,
+                    'User donation'
              from btc_wallet_transaction
              where wallet_id = get_btc_wallet_id('fastbtc-in')
                and amount_received < min_transfer_btc
                and amount_received != 0);
 
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
+            (select tx_hash,
+                    timestamp,
+                    get_account_id('fastbtc in btc wallet'),
+                    amount_received,
+                    'User donation'
+             from btc_wallet_transaction
+             where wallet_id = get_btc_wallet_id('fastbtc-in')
+               and amount_received < min_transfer_btc
+               and amount_received != 0);
+
+
 /*
-fastbtcin withdrawl
+fastbtcin withdrawal
  */
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
             (select executed_transaction_hash,
                     executed_block_time,
                     get_account_id('fastbtc in rsk wallet credit'),
-                    -net_amount_wei::numeric(40, 18) / 1e18
+                    -net_amount_wei::numeric(40, 18) / 1e18,
+                    'Fastbtc bridge withdrawal'
              from fastbtc_in_transfer_sane
              where status = 'EXECUTED');
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
             (select executed_transaction_hash,
                     executed_block_time,
-                    get_account_id('fastbtc in processed withdrawls'),
-                    net_amount_wei::numeric(40, 18) / 1e18
+                    get_account_id('fastbtc in processed withdrawals'),
+                    net_amount_wei::numeric(40, 18) / 1e18,
+                    'Fastbtc bridge withdrawal'
              from fastbtc_in_transfer_sane
              where status = 'EXECUTED');
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
             (select bwt.tx_hash,
                     fit.executed_block_time,
                     get_account_id('fastbtc user prepayments'),
-                    bwt.amount_received
+                    bwt.amount_received,
+                    'Fastbtc user bridge deposit'
 
              from fastbtc_in_transfer_sane fit
                       join btc_wallet_transaction bwt
@@ -248,11 +267,12 @@ fastbtcin withdrawl
                and bwt.wallet_id = get_btc_wallet_id('fastbtc-in')
                and bwt.amount_received > 0);
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
             (select bwt.tx_hash,
                     fit.executed_block_time,
                     get_account_id('fastbtc in processed deposits credit'),
-                    -bwt.amount_received
+                    -bwt.amount_received,
+                    'Fastbtc user bridge deposit'
 
              from fastbtc_in_transfer_sane fit
                       join btc_wallet_transaction bwt
@@ -266,55 +286,73 @@ fastbtcin withdrawl
 Fastbtc out deposits
 */
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
             (select tx_hash,
                     block_time,
                     get_account_id('fastbtc out rsk wallet'),
-                    value
+                    value,
+                    'Fastbtc user bridge deposit'
              from rsk_tx_trace_no_error
              where to_address = get_rsk_addr_by_name('fastbtc-out')
-               and value > 0);
+               and value >= min_transfer_rsk);
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
             (select tx_hash,
                     block_time,
                     get_account_id('fastbtc user prepayments credit'),
-                    -value
+                    -value,
+                    'Fastbtc user bridge deposit'
              from rsk_tx_trace_no_error
              where to_address = get_rsk_addr_by_name('fastbtc-out')
                and from_address != get_rsk_addr_by_name('fastbtc-in')
                and value >= min_transfer_rsk);
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
             (select tx_hash,
                     block_time,
                     get_account_id('fastbtc user donations credit'),
-                    -value
+                    -value,
+                    'User donation'
              from rsk_tx_trace_no_error
              where to_address = get_rsk_addr_by_name('fastbtc-out')
                and from_address != get_rsk_addr_by_name('fastbtc-in')
                and value < min_transfer_rsk
                and value != 0);
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
+            (select tx_hash,
+                    block_time,
+                    get_account_id('fastbtc out rsk wallet'),
+                    value,
+                    'User donation'
+             from rsk_tx_trace_no_error
+             where to_address = get_rsk_addr_by_name('fastbtc-out')
+               and from_address != get_rsk_addr_by_name('fastbtc-in')
+               and value < min_transfer_rsk
+               and value != 0);
+
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
             (select tx_hash,
                     block_time,
                     get_account_id('fastbtc in rsk wallet credit'),
-                    -value
+                    -value,
+                    'Deposit from fastbtc in to fastbtc out'
              from rsk_tx_trace_no_error
              where to_address = get_rsk_addr_by_name('fastbtc-out')
                and from_address = get_rsk_addr_by_name('fastbtc-in')
                and value > 0);
 
 /*
-Fastbtc out withdrawls
+Fastbtc out withdrawals
  */
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
         select tx_hash,
                timestamp,
-               get_account_id('fastbtc out processed withdrawls'),
-               amount_sent
+               get_account_id('fastbtc out processed withdrawals'),
+               amount_sent,
+                'Fastbtc bridge withdrawal'
         from btc_wallet_transaction
         where amount_sent > 0
           and wallet_id = get_btc_wallet_id('fastbtc-out')
@@ -323,11 +361,12 @@ Fastbtc out withdrawls
               (select tx_hash, vout from btc_wallet_transaction where wallet_id = get_btc_wallet_id('fastbtc-in'));
 
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
         select tx_hash,
                timestamp,
                get_account_id('fastbtc out btc wallet credit'),
-               -amount_sent
+               -amount_sent,
+                'Fastbtc bridge withdrawal'
         from btc_wallet_transaction
         where amount_sent > 0
           and wallet_id = get_btc_wallet_id('fastbtc-out')
@@ -336,11 +375,12 @@ Fastbtc out withdrawls
               (select tx_hash, vout from btc_wallet_transaction where wallet_id = get_btc_wallet_id('fastbtc-in'));
 
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
             (select rtt.tx_hash,
                     bft.marked_as_mined_block_time,
                     get_account_id('fastbtc user prepayments'),
-                    rtt.value
+                    rtt.value,
+                    'Fastbtc user bridge deposit'
              from bidi_fastbtc_transfer_sane bft
                       join rsk_tx_trace_no_error rtt on bft.event_transaction_hash = rtt.tx_hash
              where bft.status = 'MINED'
@@ -348,11 +388,12 @@ Fastbtc out withdrawls
                and rtt.value > 0);
 
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
             (select rtt.tx_hash,
                     bft.marked_as_mined_block_time,
                     get_account_id('fastbtc out processed deposits credit'),
-                    -rtt.value
+                    -rtt.value,
+                    'Fastbtc user bridge deposit'
              from bidi_fastbtc_transfer_sane bft
                       join rsk_tx_trace_no_error rtt on bft.event_transaction_hash = rtt.tx_hash
              where bft.status = 'MINED'
@@ -374,18 +415,19 @@ create a table with the same columns as ledger entry and name it ledger entry qu
             timestamp  timestamptz     not null,
             account_id int             not null references ledger_account (id),
             value      numeric(40, 18) not null,
-            vout       int
+            description text
         );
 
 /*
 fastbtc in manual in
 */
 
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
             (select rtt.tx_hash,
                     rtt.block_time,
                     get_account_id('fastbtc in rsk wallet'),
-                    rtt.value
+                    rtt.value,
+                    'Rsk fastbtc in manual transfer'
              from rsk_tx_trace_no_error rtt
                       left join ledger_entry le on rtt.tx_hash = le.tx_hash
              where rtt.to_address = get_rsk_addr_by_name('fastbtc-in')
@@ -395,11 +437,12 @@ fastbtc in manual in
                and rtt.value > 0
              order by timestamp, rtt.tx_hash, rtt.trace_index);
 
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
             (select rtt.tx_hash,
                     rtt.block_time,
                     get_account_id('fastbtc in rsk manual deposit credit'),
-                    -rtt.value
+                    -rtt.value,
+                    'Rsk fastbtc in manual transfer'
              from rsk_tx_trace_no_error rtt
                       left join ledger_entry le on rtt.tx_hash = le.tx_hash
              where rtt.to_address = get_rsk_addr_by_name('fastbtc-in')
@@ -413,11 +456,12 @@ fastbtc in manual in
 fastbtc in manual out
 */
 
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
             (select rtt.tx_hash,
                     rtt.block_time,
                     get_account_id('fastbtc in rsk wallet credit'),
-                    -rtt.value
+                    -rtt.value,
+                    'Rsk fastbtc in manual transfer'
              from rsk_tx_trace_no_error rtt
                       left join ledger_entry le on rtt.tx_hash = le.tx_hash
              where rtt.from_address = get_rsk_addr_by_name('fastbtc-in')
@@ -425,11 +469,12 @@ fastbtc in manual out
                and rtt.to_address != get_rsk_addr_by_name('fastbtc-out')
                and rtt.value > 0);
 
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
             (select rtt.tx_hash,
                     rtt.block_time,
-                    get_account_id('fastbtc in rsk manual withdrawl'),
-                    rtt.value
+                    get_account_id('fastbtc in rsk manual withdrawal'),
+                    rtt.value,
+                    'Rsk fastbtc in manual transfer'
              from rsk_tx_trace_no_error rtt
                       left join ledger_entry le on rtt.tx_hash = le.tx_hash
              where rtt.from_address = get_rsk_addr_by_name('fastbtc-in')
@@ -440,11 +485,12 @@ fastbtc in manual out
 /*
 rsk replenishments
 */
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
             (select rtt.tx_hash,
                     rtt.block_time,
                     get_account_id('fastbtc in rsk wallet'),
-                    rtt.value
+                    rtt.value,
+                    'Rsk replenishment'
              from rsk_tx_trace_no_error rtt
                       left join ledger_entry le on rtt.tx_hash = le.tx_hash
              where rtt.from_address = get_rsk_addr_by_name('fastbtc-out')
@@ -452,11 +498,13 @@ rsk replenishments
                and rtt.to_address = get_rsk_addr_by_name('fastbtc-in')
                and rtt.value > 0);
 
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
             (select rtt.tx_hash,
                     rtt.block_time,
                     get_account_id('fastbtc out rsk wallet credit'),
-                    -rtt.value
+                    -rtt.value,
+                    'Rsk replenishment'
+
              from rsk_tx_trace_no_error rtt
                       left join ledger_entry le on rtt.tx_hash = le.tx_hash
              where rtt.from_address = get_rsk_addr_by_name('fastbtc-out')
@@ -468,11 +516,12 @@ rsk replenishments
 fastbtc out manual out
 */
 
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
             (select rtt.tx_hash,
                     rtt.block_time,
                     get_account_id('fastbtc out rsk wallet credit'),
-                    -rtt.value
+                    -rtt.value,
+                    'Rsk fastbtc out manual transfer'
              from rsk_tx_trace_no_error rtt
                       left join ledger_entry le on rtt.tx_hash = le.tx_hash
              where rtt.from_address = get_rsk_addr_by_name('fastbtc-out')
@@ -480,11 +529,12 @@ fastbtc out manual out
                and rtt.to_address != get_rsk_addr_by_name('fastbtc-in')
                and rtt.value > 0);
 
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
             (select rtt.tx_hash,
                     rtt.block_time,
-                    get_account_id('fastbtc out rsk manual withdrawl'),
-                    rtt.value
+                    get_account_id('fastbtc out rsk manual withdrawal'),
+                    rtt.value,
+                    'Rsk fastbtc out manual transfer'
              from rsk_tx_trace_no_error rtt
                       left join ledger_entry le on rtt.tx_hash = le.tx_hash
              where rtt.from_address = get_rsk_addr_by_name('fastbtc-out')
@@ -496,11 +546,12 @@ fastbtc out manual out
                     from bidi_fastbtc_transfer_sane
                     where status != 'MINED'));
 
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
             (select rtt.tx_hash,
                     rtt.block_time,
                     get_account_id('fastbtc out refunds'),
-                    rtt.value
+                    rtt.value,
+                    'Rsk refund'
              from rsk_tx_trace_no_error rtt
                       left join ledger_entry le on rtt.tx_hash = le.tx_hash
              where rtt.from_address = get_rsk_addr_by_name('fastbtc-out')
@@ -512,6 +563,9 @@ fastbtc out manual out
                     from bidi_fastbtc_transfer_sane
                     where status != 'MINED'));
 
+        update ledger_entry_queue set description = 'rsk refund' where account_id = get_account_id('fastbtc out rsk wallet credit')
+        and tx_hash in (select tx_hash from ledger_entry_queue where account_id = get_account_id('fastbtc out refunds'));
+
         /*
         btc manual transfers
         */
@@ -519,11 +573,12 @@ fastbtc out manual out
 /*
  fastbtc out manual in
  */
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
             (select l.tx_hash,
                     l.timestamp,
                     get_account_id('fastbtc out btc wallet'),
-                    l.amount_received
+                    l.amount_received,
+                    'Btc fastbtc out manual transfer'
              from (select * from btc_wallet_full_transaction where wallet_id = get_btc_wallet_id('fastbtc-out')) l
                       left join
                   (select * from btc_wallet_full_transaction where wallet_id = get_btc_wallet_id('fastbtc-in')) r
@@ -532,11 +587,13 @@ fastbtc out manual out
                and l.amount_received > 0
                and l.amount_sent = 0);
 
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
             (select l.tx_hash,
                     l.timestamp,
                     get_account_id('fastbtc out btc manual deposit credit'),
-                    -l.amount_received
+                    -l.amount_received,
+                    'Btc fastbtc out manual transfer'
+
              from (select * from btc_wallet_full_transaction where wallet_id = get_btc_wallet_id('fastbtc-out')) l
                       left join
                   (select * from btc_wallet_full_transaction where wallet_id = get_btc_wallet_id('fastbtc-in')) r
@@ -548,11 +605,12 @@ fastbtc out manual out
 /*
  fastbtc in manual out
  */
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
             (select l.tx_hash,
                     l.timestamp,
                     get_account_id('fastbtc in btc wallet credit'),
-                    -l.amount_sent
+                    -l.amount_sent,
+                    'Btc fastbtc in manual transfer'
              from (select * from btc_wallet_full_transaction where wallet_id = get_btc_wallet_id('fastbtc-in')) l
                       left join
                   (select * from btc_wallet_full_transaction where wallet_id = get_btc_wallet_id('fastbtc-out')) r
@@ -560,11 +618,12 @@ fastbtc out manual out
              where r.tx_hash is null
                and l.amount_sent > 0);
 
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
             (select l.tx_hash,
                     l.timestamp,
-                    get_account_id('fastbtc in btc manual withdrawl'),
-                    l.amount_sent
+                    get_account_id('fastbtc in btc manual withdrawal'),
+                    l.amount_sent,
+                    'Btc fastbtc in manual transfer'
              from (select * from btc_wallet_full_transaction where wallet_id = get_btc_wallet_id('fastbtc-in')) l
                       left join
                   (select * from btc_wallet_full_transaction where wallet_id = get_btc_wallet_id('fastbtc-out')) r
@@ -575,11 +634,12 @@ fastbtc out manual out
 /*
  fastbtc out manual out
  */
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
         select wallet_tx.tx_hash,
                wallet_tx.timestamp,
                get_account_id('fastbtc out btc wallet credit'),
-               -wallet_tx.amount_sent
+               -wallet_tx.amount_sent,
+                'Btc fastbtc out manual transfer'
         from (select l.tx_hash, l.net_change, l.timestamp, l.amount_sent
               from ((select *
                      from btc_wallet_full_transaction
@@ -592,11 +652,12 @@ fastbtc out manual out
         where bft.bitcoin_tx_id is null
           and wallet_tx.amount_sent > 0;
 
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
         select wallet_tx.tx_hash,
                wallet_tx.timestamp,
-               get_account_id('fastbtc out btc manual withdrawl'),
-               wallet_tx.amount_sent
+               get_account_id('fastbtc out btc manual withdrawal'),
+               wallet_tx.amount_sent,
+                'Btc fastbtc out manual transfer'
         from (select l.tx_hash, l.net_change, l.timestamp, l.amount_sent
               from ((select *
                      from btc_wallet_full_transaction
@@ -613,11 +674,12 @@ fastbtc out manual out
 btc replenishments fastbtc in -> fastbtc out
 */
 
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
         select l.tx_hash,
                l.timestamp,
                get_account_id('fastbtc out btc wallet'),
-               r.amount_received
+               r.amount_received,
+                'Btc replenishment'
         from btc_wallet_full_transaction l
                  join
              btc_wallet_full_transaction r
@@ -627,11 +689,12 @@ btc replenishments fastbtc in -> fastbtc out
         where l.amount_sent > 0
           and r.amount_received > 0;
 
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
         select l.tx_hash,
                l.timestamp,
                get_account_id('fastbtc in btc wallet credit'),
-               -l.amount_sent
+               -l.amount_sent,
+                'Btc replenishment'
         from btc_wallet_full_transaction l
                  join
              btc_wallet_full_transaction r
@@ -645,11 +708,12 @@ btc replenishments fastbtc in -> fastbtc out
 Fastbtc out -> in deposit
 */
 
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
         select l.tx_hash,
                l.timestamp,
                get_account_id('fastbtc in btc wallet'),
-               r.amount_received
+               r.amount_received,
+                'Fastbtc out to in deposit'
         from btc_wallet_transaction l
                  join
              btc_wallet_transaction r
@@ -660,11 +724,12 @@ Fastbtc out -> in deposit
           and r.amount_received > 0;
 
 
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
         select l.tx_hash,
                l.timestamp,
                get_account_id('fastbtc out btc wallet credit'),
-               -l.amount_sent
+               -l.amount_sent,
+                'Fastbtc out to in deposit'
         from btc_wallet_transaction l
                  join
              btc_wallet_transaction r
@@ -674,11 +739,12 @@ Fastbtc out -> in deposit
         where l.amount_sent > 0
           and r.amount_received > 0;
 
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
         select l.tx_hash,
                l.timestamp,
                get_account_id('fastbtc btc self prepayments credit'),
-               -l.amount_sent
+               -l.amount_sent,
+                'Fastbtc out to in deposit'
         from btc_wallet_transaction l
                  join
              btc_wallet_transaction r
@@ -689,11 +755,12 @@ Fastbtc out -> in deposit
           and r.amount_received > 0
           and l.tx_hash in (select bitcoin_tx_hash from fastbtc_in_transfer_sane);
 
-        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry_queue(tx_hash, timestamp, account_id, value, description)
         select l.tx_hash,
                l.timestamp,
                get_account_id('fastbtc in self deposit'),
-               l.amount_sent
+               l.amount_sent,
+                'Fastbtc out to in deposit'
         from btc_wallet_transaction l
                  join
              btc_wallet_transaction r
@@ -721,9 +788,16 @@ Fastbtc out -> in deposit
                             and r.amount_received > 0);
 
         update ledger_entry
-        set account_id = get_account_id('fastbtc btc self prepayments')
+        set account_id = get_account_id('fastbtc btc self prepayments'), description = 'Fastbtc out to in deposit'
         where account_id = get_account_id('fastbtc user prepayments')
           and tx_hash in
+              (select tx_hash
+               from ledger_entry_queue
+               where account_id = get_account_id('fastbtc btc self prepayments credit'));
+
+        update ledger_entry
+        set description = 'Fastbtc out to in deposit'
+        where tx_hash in
               (select tx_hash
                from ledger_entry_queue
                where account_id = get_account_id('fastbtc btc self prepayments credit'));
@@ -732,8 +806,8 @@ Fastbtc out -> in deposit
 /*
 re-insert queue
 */
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
-        select tx_hash, timestamp, account_id, value
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
+        select tx_hash, timestamp, account_id, value, description
         from ledger_entry_queue;
 
 
@@ -741,56 +815,62 @@ re-insert queue
 btc backup wallet
 */
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
         select tx_hash,
                timestamp,
                get_account_id('btc backup wallet'),
-               amount_received
+               amount_received,
+               'Btc backup wallet manual transfer'
         from btc_wallet_full_transaction
         where wallet_id = get_btc_wallet_id('btc-backup')
           and amount_received > 0;
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
         select tx_hash,
                timestamp,
                get_account_id('btc backup manual deposit credit'),
-               -amount_received
+               -amount_received,
+                'Btc backup wallet manual transfer'
         from btc_wallet_full_transaction
         where wallet_id = get_btc_wallet_id('btc-backup')
           and amount_received > 0;
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
         select tx_hash,
                timestamp,
                get_account_id('btc backup wallet credit'),
-               -amount_sent
+               -amount_sent,
+               'Btc backup wallet manual transfer'
         from btc_wallet_full_transaction
         where wallet_id = get_btc_wallet_id('btc-backup')
           and amount_sent > 0;
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
         select tx_hash,
                timestamp,
-               get_account_id('btc backup manual withdrawl'),
-               amount_sent
+               get_account_id('btc backup manual withdrawal'),
+               amount_sent,
+                'Btc backup wallet manual transfer'
         from btc_wallet_full_transaction
         where wallet_id = get_btc_wallet_id('btc-backup')
           and amount_sent > 0;
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
         select tx_hash,
                timestamp,
                get_account_id('btc backup wallet fees'),
-               amount_fees
+               amount_fees,
+               'Fees'
         from btc_wallet_full_transaction
         where wallet_id = get_btc_wallet_id('btc-backup')
           and amount_sent > 0;
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
         select tx_hash,
                timestamp,
                get_account_id('btc backup wallet credit'),
-               -amount_fees
+               -amount_fees,
+               'Fees'
         from btc_wallet_full_transaction
         where wallet_id = get_btc_wallet_id('btc-backup')
           and amount_sent > 0;
@@ -798,20 +878,22 @@ btc backup wallet
 
 /*fastbtc out fees*/
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
         select tx_hash,
                timestamp,
                get_account_id('fastbtc out btc fees'),
-               amount_fees
+               amount_fees,
+                'Fees'
         from btc_wallet_full_transaction
         where wallet_id = get_btc_wallet_id('fastbtc-out')
           and amount_fees > 0;
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
         select tx_hash,
                timestamp,
                get_account_id('fastbtc out btc wallet credit'),
-               -amount_fees
+               -amount_fees,
+                'Fees'
         from btc_wallet_full_transaction
         where wallet_id = get_btc_wallet_id('fastbtc-out')
           and amount_fees > 0;
@@ -819,30 +901,86 @@ btc backup wallet
 fastbtc in fees
 */
 
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
         select tx_hash,
                timestamp,
                get_account_id('fastbtc in btc fees'),
-               amount_fees
+               amount_fees,
+                'Fees'
         from btc_wallet_full_transaction
         where wallet_id = get_btc_wallet_id('fastbtc-in')
           and amount_fees > 0;
-        insert into ledger_entry(tx_hash, timestamp, account_id, value)
+        insert into ledger_entry(tx_hash, timestamp, account_id, value, description)
         select tx_hash,
                timestamp,
                get_account_id('fastbtc in btc wallet credit'),
-               -amount_fees
+               -amount_fees,
+                'Fees'
         from btc_wallet_full_transaction
         where wallet_id = get_btc_wallet_id('fastbtc-in')
           and amount_fees > 0;
 
-        update btc_wallet_transaction set notes = 'fastbtc manual transfer' where notes is null and tx_hash in
-            (select tx_hash from ledger_entry where abs(account_id) >= get_account_id('fastbtc in btc manual withdrawl') and
+/*
+descriptions
+*/
+        update btc_wallet_transaction set notes = 'Fastbtc manual transfer' where tx_hash in
+            (select tx_hash from ledger_entry where abs(account_id) >= get_account_id('fastbtc in btc manual withdrawal') and
              abs(account_id) <= get_account_id('btc backup manual deposit'));
 
-        update rsk_tx_trace set notes = 'fastbtc manual transfer' where notes is null and tx_hash in
-            (select tx_hash from ledger_entry where abs(account_id) >= get_account_id('fastbtc in rsk manual withdrawl') and
-             abs(account_id) <= get_account_id('fastbtc out rsk manual withdrawl'));
+        update rsk_tx_trace set notes = 'Fastbtc manual transfer' where tx_hash in
+            (select tx_hash from ledger_entry where abs(account_id) >= get_account_id('fastbtc in rsk manual withdrawal') and
+             abs(account_id) <= get_account_id('fastbtc out rsk manual withdrawal'));
+
+
+        update btc_wallet_transaction set notes = 'Fastbtc user bridge deposit' where tx_hash in
+            (select tx_hash from ledger_entry where account_id = get_account_id('fastbtc user prepayments credit'));
+
+        update rsk_tx_trace set notes = 'Fastbtc user bridge deposit' where tx_hash in
+            (select tx_hash from ledger_entry where account_id = get_account_id('fastbtc user prepayments credit'));
+
+
+        update btc_wallet_transaction set notes = 'User donation' where tx_hash in
+            (select tx_hash from ledger_entry where account_id = get_account_id('fastbtc user donations credit'));
+
+        update rsk_tx_trace set notes = 'User donation' where tx_hash in
+            (select tx_hash from ledger_entry where account_id = get_account_id('fastbtc user donations credit'));
+
+
+        update btc_wallet_transaction set notes = 'Fastbtc bridge withdrawal' where tx_hash in
+            (select tx_hash from ledger_entry where account_id = get_account_id('fastbtc out processed withdrawals'));
+
+        update rsk_tx_trace set notes = 'Fastbtc bridge withdrawal' where tx_hash in
+            (select tx_hash from ledger_entry where account_id = get_account_id('fastbtc in processed withdrawals'));
+
+
+        update rsk_tx_trace set notes = 'Replenishment' where tx_hash in
+            (select tx_hash from ledger_entry where account_id = get_account_id('fastbtc out rsk wallet credit')) and
+            tx_hash in (select tx_hash from ledger_entry where account_id = get_account_id('fastbtc in rsk wallet'));
+
+        update rsk_tx_trace set notes = 'Refunded' where  tx_hash in
+            (select tx_hash from ledger_entry where abs(account_id) = get_account_id('fastbtc out refunds'));
+
+        update btc_wallet_transaction set notes = 'Replenishment' where tx_hash in
+            (select tx_hash from ledger_entry where account_id = get_account_id('fastbtc in btc wallet credit')) and
+            tx_hash in (select tx_hash from ledger_entry where account_id = get_account_id('fastbtc out btc wallet'));
+
+        update btc_wallet_transaction set notes = 'Deposit from fastbtc out to fastbtc in' where tx_hash in
+            (select tx_hash from ledger_entry where abs(account_id ) = get_account_id('fastbtc in self deposit'));
+
+
+        /*
+        override descriptions for ledger_entry table using content of ledger_description_override table
+        */
+        update ledger_entry set description = ldo.description_override
+                            from ledger_description_override ldo where ldo.tx_hash = ledger_entry.tx_hash;
+
+        update rsk_tx_trace set notes = ldo.description_override
+                            from ledger_description_override ldo where ldo.tx_hash = rsk_tx_trace.tx_hash;
+
+        update btc_wallet_transaction set notes = ldo.description_override
+                            from ledger_description_override ldo where ldo.tx_hash = btc_wallet_transaction.tx_hash;
+
+
     end
 
 $$;

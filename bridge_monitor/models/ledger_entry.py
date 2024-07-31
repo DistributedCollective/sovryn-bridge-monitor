@@ -30,5 +30,5 @@ class LedgerEntry(Base):
     timestamp = Column(DateTime(timezone=True), nullable=False)
     account_id = Column(Integer, ForeignKey(LedgerAccount.id), nullable=False)
     value = Column(Numeric(40, 18), nullable=False)
-    vout = Column(Integer, nullable=True)
+    description = Column(Text, nullable=True)
     account = relationship("LedgerAccount", back_populates="entries")
