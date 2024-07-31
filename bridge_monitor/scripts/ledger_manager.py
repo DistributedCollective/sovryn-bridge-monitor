@@ -29,5 +29,6 @@ def create_ledger(dbsession: Session):
             failed=error is not None,
             error=error,
         )
+        logger.info("adding ledger update metadata to db")
         dbsession.add(update)
         dbsession.commit()

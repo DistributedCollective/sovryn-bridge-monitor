@@ -13,8 +13,6 @@
 
 <code class="timestamp"> {{ datetime_obj }}</code>
 
-
-
 {% endmacro %}
 
 <html lang="{{request.locale_name}}">
@@ -56,7 +54,11 @@
         <a href="{{ request.route_path('sanity_check') }}">Sanity check (deprecated)</a> |
         <a href="{{ request.route_path('balances') }}">Balances</a> |
         <a href="{{ request.route_path('ledger') }}">Ledger entries</a>
-        <button id="timestamp-toggle" onclick="window.localStorage.setItem('show_timestamps', (window.localStorage.getItem('show_timestamps') !== 'true' ? 'true' : 'false'));
+        <button id="timestamp-toggle"
+                onclick="window.localStorage
+                        .setItem('show_timestamps',
+                                    (window.localStorage.getItem('show_timestamps') !== 'true' ? 'true' : 'false')
+                                );
                             document.body.classList.toggle('show_timestamps');">
             Toggle timestamps/relative time</button>
 
@@ -85,7 +87,6 @@
     });
 
     let show_timestamps = window.localStorage.getItem("show_timestamps");
-    console.log(show_timestamps)
     if (show_timestamps === null) {
         show_timestamps = "false";
         window.localStorage.setItem("show_timestamps", show_timestamps);
