@@ -256,7 +256,6 @@ small:not(time) {
     width: 100%;
     border-collapse: collapse;
     border-spacing: 0;
-    border: 1px solid rgba(255, 255, 255, 0.6);
     margin: 30px 0;
 }
 
@@ -264,4 +263,37 @@ small:not(time) {
     padding: 3px 2px 3px 10px;
     border: 1px solid rgba(255, 255, 255, 0.6);
     min-width: 200px;
+}
+
+.description-table tr td:first-child,
+.description-table tr th:first-child {
+    border-left: 0;
+}
+
+.description-table tr td:last-child,
+.description-table tr th:last-child {
+    border-right: 0;
+}
+
+.description-table tr:first-child th {
+    border-top: 0;
+}
+
+.description-table tr:last-child td {
+    border-bottom: 0;
+}
+
+#override-submit label {
+    display: inline-block;
+    width: 7em;
+    vertical-align: top;
+}
+
+#override-submit input[type="text"] {
+    height: 3em;
+    width: 600px;
+}
+
+#override-submit > * {
+    margin: 0.5em 0;
 }

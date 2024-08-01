@@ -19,11 +19,15 @@
 {% else %}
     <p>No overrides found</p>
 {% endif %}
-    <form method="post">
-        <label for="tx_hash">tx hash</label>
-        <input type="text" name="tx_hash" id="tx_hash" required>
-        <label for="description">description</label>
-        <input type="text" name="description" id="description">
+    <form id="override-submit" method="post">
+        <div>
+            <label for="tx_hash">tx hash</label>
+            <input type="text" name="tx_hash" id="tx_hash" required>
+        </div>
+        <div>
+            <label for="description">description</label>
+            <input type="text" name="description" id="description">
+        </div>
         <button type="submit">Submit</button>
     </form>
 </div>

@@ -3,6 +3,7 @@ from decimal import Decimal
 from datetime import datetime
 from logging import getLogger
 from tempfile import NamedTemporaryFile
+from typing import Sequence
 
 from pyramid.view import view_config
 from pyramid.response import Response
@@ -58,7 +59,7 @@ def ledger(request):
     first_entry_number = max(1, int(first_entry_number))
     last_entry_number = first_entry_number + amount_in_page - 1
 
-    accounts = (
+    accounts: Sequence[LedgerAccount] = (
         dbsession.execute(
             select(LedgerAccount).where(LedgerAccount.id > 0).order_by(LedgerAccount.id)
         )
@@ -66,7 +67,7 @@ def ledger(request):
         .all()
     )
 
-    ledger_last_updated_at = dbsession.execute(
+    ledger_last_updated_at: datetime = dbsession.execute(
         select(LedgerUpdateMeta.timestamp).order_by(LedgerUpdateMeta.timestamp.desc())
     ).scalar()
 
@@ -101,7 +102,7 @@ def ledger(request):
                 )
             )
 
-        ledger_entries = (
+        ledger_entries: Sequence[LedgerEntry | EntryDisplay] = (
             dbsession.execute(
                 select(LedgerEntry)
                 .where(LedgerEntry.timestamp >= start, LedgerEntry.timestamp <= end)
