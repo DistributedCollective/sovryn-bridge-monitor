@@ -4,6 +4,9 @@ html {
   --sovryn-yellow-rgb: 254, 192, 4;
   --sovryn-black: #161616;
 }
+nav {
+    margin-top: 3px;
+}
 body {
   font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-weight: 300;
@@ -238,11 +241,27 @@ small:not(time) {
 }
 
 #timestamp-toggle {
-    margin-top: 5px;
     margin-left: 5em;
     background: var(--sovryn-black);
     color: #fff;
     border: rgba(var(--sovryn-yellow-rgb), 0.2) 2px solid;
     border-radius: 2px;
     padding: 2px 5px;
+    position: absolute;
+
+}
+
+.description-table {
+    display: table;
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    margin: 30px 0;
+}
+
+.description-table  td, .description-table th {
+    padding: 3px 2px 3px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    min-width: 200px;
 }
