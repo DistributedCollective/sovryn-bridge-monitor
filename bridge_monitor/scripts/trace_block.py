@@ -340,6 +340,7 @@ class Bookkeeper:
                 return
             post_url = config.get("slack", "sanity_check_hook")
             if not post_url:
+                logger.warning("No slack hook found for sanity check")
                 return
             payload = {
                 "username": "Trace table sanity check -bot",
