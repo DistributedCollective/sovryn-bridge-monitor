@@ -297,3 +297,19 @@ small:not(time) {
 #override-submit > * {
     margin: 0.5em 0;
 }
+
+@keyframes red_blink {
+    0% {
+        background-color: rgba(255, 0, 0, 0.2);
+    }
+    50% {
+        background-color: rgba(255, 0, 0, 0.5);
+    }
+    100% {
+        background-color: rgba(255, 0, 0, 0.2);
+    }
+
+}
+tr.double-spend {
+    animation: red_blink 1s infinite;
+}

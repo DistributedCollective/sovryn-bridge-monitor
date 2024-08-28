@@ -1,8 +1,9 @@
 import logging
-from typing import Optional
+from typing import Optional, Sequence
 
 import transaction
 
+from sqlalchemy.sql import select
 from bridge_monitor.business_logic.key_value_store import KeyValueStore
 from bridge_monitor.models import get_tm_session
 from .constants import (
@@ -208,6 +209,22 @@ def update_fastbtc_in_transfers(
                 )
             else:
                 raise Exception(f"Unexpected event {event.event}")
+
+            matching_transfers: Sequence[FastBTCInTransfer] = (
+                dbsession.execute(
+                    select(FastBTCInTransfer).where(
+                        FastBTCInTransfer.chain == chain_name,
+                        FastBTCInTransfer.bitcoin_tx_hash == bitcoin_tx_hash,
+                        FastBTCInTransfer.bitcoin_tx_vout == transfer.bitcoin_tx_vout,
+                    )
+                )
+                .scalars()
+                .all()
+            )
+
+            if len(matching_transfers) >= 2:
+                for matching_transfer in matching_transfers:
+                    matching_transfer.is_double_spend = True
 
             # Flush for old times' sake
             dbsession.flush()

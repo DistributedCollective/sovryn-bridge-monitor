@@ -71,6 +71,10 @@ class FastBTCInTransfer(HasPnL, Base):
 
     extra_data = Column(JSONB, default=dict, server_default="{}", nullable=False)
 
+    is_double_spend = Column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+
     __table_args__ = (Index("ix_fastbtc_in_chain_tx_id", "chain", "multisig_tx_id"),)
 
     @classmethod
