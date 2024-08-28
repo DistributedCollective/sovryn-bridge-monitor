@@ -65,18 +65,18 @@
                                 title="ignored"
                                 style="color: yellow"
                             ></i>
-                        {% elif transfer.was_processed %}
+                         {% elif transfer.is_double_spend%}
+                             <i
+                                class="glyphicon glyphicon-remove"
+                                title="double spend"
+                                style="color: red"
+                            ></i>
+                        {% elif transfer.was_processed and not transfer.is_double_spend%}
                             <i class="glyphicon glyphicon-ok" title="processed"></i>
                         {% elif transfer.is_late() %}
                             <i
                                 class="glyphicon glyphicon-remove"
                                 title="not processed, late"
-                                style="color: red"
-                            ></i>
-                        {% elif transfer.is_double_spend %}
-                             <i
-                                class="glyphicon glyphicon-remove"
-                                title="double spend"
                                 style="color: red"
                             ></i>
                         {% endif %}
@@ -109,6 +109,10 @@
                         </small>
                     </td>
                     <td class="details">
+                        {% if transfer.is_double_spend %}
+                        <span>Warning:</span> <code>double spend</code>
+                        <br/>
+                        {% endif %}
                         <span>MultisigTxID:</span><code>{{ transfer.multisig_tx_id }}</code><br/>
                         <span>Func:</span><code>{{ transfer.transfer_function }}</code><br/>
                         <span>RskReceiver:</span>
