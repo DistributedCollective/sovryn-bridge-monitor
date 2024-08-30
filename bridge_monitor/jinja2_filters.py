@@ -1,5 +1,13 @@
 from pyramid.config import Configurator
 from markupsafe import Markup
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+
+def get_from_env(env_name, default=None) -> str:
+    return str(os.environ.get(env_name, default))
 
 
 def explorer_tx_link(value, chain):
@@ -28,5 +36,6 @@ def includeme(config: Configurator):
     def setup_jinja2_environment():
         environment = config.get_jinja2_environment()
         environment.filters["explorer_tx_link"] = explorer_tx_link
+        environment.filters["get_from_env"] = get_from_env
 
     config.action(None, setup_jinja2_environment, order=9999)

@@ -50,11 +50,13 @@
         <a href="{{ request.route_path('bidirectional_fastbtc') }}">FastBTC-out</a> |
         <a href="{{ request.route_path('fastbtc_in') }}">FastBTC-in</a> |
         <a href="{{ request.route_path('replenisher') }}">Replenisher</a> |
-        <a href="{{ request.route_path('pnl') }}">PnL</a> |
-        <a href="{{ request.route_path('sanity_check') }}">Sanity check (deprecated)</a> |
-        <a href="{{ request.route_path('balances') }}">Balances</a> |
-        <a href="{{ request.route_path('ledger') }}">Ledger entries</a> |
-        <a href="{{ request.route_path('descriptions') }}">Descriptions</a>
+        <a href="{{ request.route_path('pnl') }}">PnL</a>
+        <span id="experimental-links">|
+            <a href="{{ request.route_path('sanity_check') }}">Sanity check (deprecated)</a> |
+            <a href="{{ request.route_path('balances') }}">Balances</a> |
+            <a href="{{ request.route_path('ledger') }}">Ledger entries</a> |
+            <a href="{{ request.route_path('descriptions') }}">Descriptions</a>
+        </span>
         <button id="timestamp-toggle"
                 onclick="window.localStorage
                         .setItem('show_timestamps',
@@ -97,6 +99,13 @@
     }
     else {
         document.body.classList.remove("show_timestamps");
+    }
+    let experimental_links = document.getElementById("experimental-links");
+    if ('{{ ('HIDE_EXPERIMENTAL' | get_from_env) | lower }}' === 'true') {
+        experimental_links.style.display = 'none';
+    }
+    else {
+        experimental_links.style.display = 'inline';
     }
 </script>
 
