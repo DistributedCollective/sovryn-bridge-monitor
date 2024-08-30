@@ -29,6 +29,10 @@ Monitor bridge transfers
 
     INFURA_API_KEY=KEYGOESHERE env/bin/monitor_bridge development.ini
 
+Fetch block times and rsk transfers
+
+    trace_block development.ini -chain_env rsk_mainnet
+
 Run your project.
 
     env/bin/pserve development.ini
