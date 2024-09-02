@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from tempfile import TemporaryFile
 import json
 import configparser
-from typing import List
+from typing import List, BinaryIO
 
 from pyramid.paster import setup_logging
 import zstandard as zstd
@@ -52,10 +52,10 @@ def get_blockchain_meta(dbsession: Session, name, expected_safe_limit=12):
 
 
 def write_from_file_to_db(
-    dbsession: Session, file, args
+    dbsession: Session, file: BinaryIO, truncate: bool = False
 ):  # file must be formatted as: [123123, 545343]\n[123124, 545344]\n...
     block_chain_meta = get_blockchain_meta(dbsession, "rsk")
-    if args.truncate:
+    if truncate:
         dbsession.query(BlockInfo).filter(
             BlockInfo.block_chain_id == block_chain_meta.id
         ).delete()
@@ -78,9 +78,16 @@ def write_from_file_to_db(
             dbsession.flush()
 
 
-def write_from_parquet_to_db(dbsession: Session, path: str, args):
+def write_from_parquet_to_db(dbsession: Session, passed_args: argparse.Namespace):
+    path = getattr(passed_args, "file", None)
+    truncate = getattr(passed_args, "truncate", False)
+
+    if path is None:
+        logger.error("No file path provided")
+        return
+
     block_chain_meta = get_blockchain_meta(dbsession, "rsk")
-    if args.truncate:
+    if truncate:
         dbsession.query(BlockInfo).filter(
             BlockInfo.block_chain_id == block_chain_meta.id
         ).delete()
@@ -120,7 +127,7 @@ def main(argv=None):
     if args.file.endswith(".parquet"):
         logger.info("Writing from parquet file %s to db", args.file)
         with dbsession.begin():
-            write_from_parquet_to_db(dbsession, args.file)
+            write_from_parquet_to_db(dbsession, args)
         logger.info("Done writing from parquet file %s to db", args.file)
         return
     with open(args.file, "rb") as source_file:
