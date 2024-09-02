@@ -1,0 +1,34 @@
+{% extends "layout.jinja2" %}
+
+{% block content %}
+<div class="content">
+    <h1>Override descriptions</h1>
+{% if overrides %}
+    <table class="description-table">
+        <tr>
+            <th>tx hash</th>
+            <th>description</th>
+        </tr>
+        {% for override in overrides %}
+        <tr>
+            <td>{{ override.tx_hash }}</td>
+            <td>{{ override.description_override }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+{% else %}
+    <p>No overrides found</p>
+{% endif %}
+    <form id="override-submit" method="post">
+        <div>
+            <label for="tx_hash">tx hash</label>
+            <input type="text" name="tx_hash" id="tx_hash" required>
+        </div>
+        <div>
+            <label for="description">description</label>
+            <input type="text" name="description" id="description">
+        </div>
+        <button type="submit">Submit</button>
+    </form>
+</div>
+{% endblock content %}

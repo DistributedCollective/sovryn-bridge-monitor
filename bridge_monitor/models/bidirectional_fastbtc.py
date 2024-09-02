@@ -26,7 +26,7 @@ class TransferStatus(enum.IntEnum):
 
 
 class BidirectionalFastBTCTransfer(HasPnL, Base):
-    __tablename__ = 'bidi_fastbtc_transfer'
+    __tablename__ = "bidi_fastbtc_transfer"
     id = Column(Integer, primary_key=True)
 
     chain = Column(Text, nullable=False)
@@ -36,7 +36,9 @@ class BidirectionalFastBTCTransfer(HasPnL, Base):
     total_amount_satoshi = Column(Uint256, nullable=False)
     net_amount_satoshi = Column(Uint256, nullable=False)
     fee_satoshi = Column(Uint256, nullable=False)
-    status = Column(Enum(TransferStatus, name='bidi_fastbtc_transferstatus'), nullable=False)
+    status = Column(
+        Enum(TransferStatus, name="bidi_fastbtc_transferstatus"), nullable=False
+    )
     bitcoin_tx_id = Column(Text, nullable=True)
 
     ignored = Column(Boolean, nullable=False, default=False)
@@ -69,9 +71,7 @@ class BidirectionalFastBTCTransfer(HasPnL, Base):
     seen_on = Column(TZDateTime, default=now_in_utc, nullable=False)
     updated_on = Column(TZDateTime, default=now_in_utc, nullable=False)
 
-    __table_args__ = (
-        Index('ix_chain_transfer_id', 'chain', 'transfer_id'),
-    )
+    __table_args__ = (Index("ix_chain_transfer_id", "chain", "transfer_id"),)
 
     @property
     def created_on(self):
@@ -80,41 +80,55 @@ class BidirectionalFastBTCTransfer(HasPnL, Base):
 
     @property
     def initiated_on(self):
-        return datetime.utcfromtimestamp(self.event_block_timestamp).replace(tzinfo=timezone.utc)
+        return datetime.utcfromtimestamp(self.event_block_timestamp).replace(
+            tzinfo=timezone.utc
+        )
 
     @property
     def marked_as_sending_on(self):
         if not self.marked_as_sending_block_timestamp:
             return None
-        return datetime.utcfromtimestamp(self.marked_as_sending_block_timestamp).replace(tzinfo=timezone.utc)
+        return datetime.utcfromtimestamp(
+            self.marked_as_sending_block_timestamp
+        ).replace(tzinfo=timezone.utc)
 
     @property
     def marked_as_mined_on(self):
         if not self.marked_as_mined_block_timestamp:
             return None
-        return datetime.utcfromtimestamp(self.marked_as_mined_block_timestamp).replace(tzinfo=timezone.utc)
+        return datetime.utcfromtimestamp(self.marked_as_mined_block_timestamp).replace(
+            tzinfo=timezone.utc
+        )
 
     @property
     def refunded_or_reclaimed_on(self):
         if not self.refunded_or_reclaimed_block_timestamp:
             return None
-        return datetime.utcfromtimestamp(self.refunded_or_reclaimed_block_timestamp).replace(tzinfo=timezone.utc)
+        return datetime.utcfromtimestamp(
+            self.refunded_or_reclaimed_block_timestamp
+        ).replace(tzinfo=timezone.utc)
 
     @hybrid_property
     def was_processed(self):
-        return self.status in (TransferStatus.MINED, TransferStatus.REFUNDED, TransferStatus.RECLAIMED)
+        return self.status in (
+            TransferStatus.MINED,
+            TransferStatus.REFUNDED,
+            TransferStatus.RECLAIMED,
+        )
 
     @was_processed.expression
     def was_processed(self):
-        return self.status.in_([TransferStatus.MINED, TransferStatus.REFUNDED, TransferStatus.RECLAIMED])
+        return self.status.in_(
+            [TransferStatus.MINED, TransferStatus.REFUNDED, TransferStatus.RECLAIMED]
+        )
 
     @hybrid_method
     def is_late(self, now: datetime = None):
         if not now:
             now = now_in_utc()
         return not self.was_processed and (
-            now - self.initiated_on > TRANSFER_LATE_DEPOSITED_CUTOFF or
-            now - self.updated_on > TRANSFER_LATE_UPDATED_CUTOFF
+            now - self.initiated_on > TRANSFER_LATE_DEPOSITED_CUTOFF
+            or now - self.updated_on > TRANSFER_LATE_UPDATED_CUTOFF
         )
 
     @is_late.expression
@@ -123,8 +137,11 @@ class BidirectionalFastBTCTransfer(HasPnL, Base):
             now = now_in_utc()
         now_ts = int(now.timestamp())
         return ~self.was_processed & (
-            (now_ts - self.event_block_timestamp > TRANSFER_LATE_DEPOSITED_CUTOFF.total_seconds()) |
-            (now - self.updated_on > TRANSFER_LATE_UPDATED_CUTOFF)
+            (
+                now_ts - self.event_block_timestamp
+                > TRANSFER_LATE_DEPOSITED_CUTOFF.total_seconds()
+            )
+            | (now - self.updated_on > TRANSFER_LATE_UPDATED_CUTOFF)
         )
 
     @property

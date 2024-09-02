@@ -1,4 +1,20 @@
 <!DOCTYPE html>
+
+
+{% macro copyable_timeago(datetime_obj) -%}
+
+<time onclick="let popup=document.getElementById('copied-reminder');
+                document.execCommand('copy');
+                popup.style.animation = null;
+                popup.offsetHeight;
+                popup.style.animation = 'fade 2s linear'"
+    class="timeago copyable" datetime="{{ datetime_obj.isoformat() }}">{{ datetime_obj }}
+</time>
+
+<code class="timestamp"> {{ datetime_obj }}</code>
+
+{% endmacro %}
+
 <html lang="{{request.locale_name}}">
 {% set cache_breaker=3 %}
 <head>
@@ -31,19 +47,62 @@
 <div class="container">
     <nav>
         <a href="{{ request.route_path('bridge_transfers') }}">Token bridge</a> |
-        <a href="{{ request.route_path('bidirectional_fastbtc') }}">Bidirectional FastBTC</a> |
+        <a href="{{ request.route_path('bidirectional_fastbtc') }}">FastBTC-out</a> |
         <a href="{{ request.route_path('fastbtc_in') }}">FastBTC-in</a> |
         <a href="{{ request.route_path('replenisher') }}">Replenisher</a> |
-        <a href="{{ request.route_path('pnl') }}">PnL</a> |
-        <a href="{{ request.route_path('sanity_check') }}">Sanity check</a>
+        <a href="{{ request.route_path('pnl') }}">PnL</a>
+        {% if ('HIDE_EXPERIMENTAL' | get_from_env) != "true" %}
+            |
+            <a href="{{ request.route_path('sanity_check') }}">Sanity check (deprecated)</a> |
+            <a href="{{ request.route_path('balances') }}">Balances</a> |
+            <a href="{{ request.route_path('ledger') }}">Ledger entries</a> |
+            <a href="{{ request.route_path('descriptions') }}">Descriptions</a>
+        {% endif %}
+        <button id="timestamp-toggle"
+                onclick="window.localStorage
+                        .setItem('show_timestamps',
+                                    (window.localStorage.getItem('show_timestamps') !== 'true' ? 'true' : 'false')
+                                );
+                            document.body.classList.toggle('show_timestamps');">
+            Toggle timestamps/relative time</button>
+
     </nav>
 </div>
-
+<div class="content">
+    <div id="copied-reminder">
+        <div class="inner">
+            Copied to clipboard
+        </div>
+    </div>
+</div>
 <div class="container">
     {% block content %}
         <p>No content</p>
     {% endblock content %}
 </div>
+
+<script>
+    document.addEventListener("copy" , function(e) {
+        let obj = document.querySelector( ".timeago:hover" );
+        if (obj && obj.getAttribute("datetime")) {
+            e.preventDefault();
+            e.clipboardData.setData("text/plain", obj.getAttribute("datetime"));
+        }
+    });
+
+    let show_timestamps = window.localStorage.getItem("show_timestamps");
+    if (show_timestamps === null) {
+        show_timestamps = "false";
+        window.localStorage.setItem("show_timestamps", show_timestamps);
+    }
+    if (show_timestamps === "true") {
+        document.body.classList.add("show_timestamps");
+    }
+    else {
+        document.body.classList.remove("show_timestamps");
+    }
+</script>
+
 
 
 <!-- Bootstrap core JavaScript

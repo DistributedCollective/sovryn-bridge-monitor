@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="content">
-    <h1>Bidirectional FastBTC Transfers <small>(RSK&rarr;BTC)</small></h1>
+    <h1>FastBTC-out Transfers <small>(RSK&rarr;BTC)</small></h1>
     <nav>
         Show
         {% for value in [10, 50, 1000] %}
@@ -71,55 +71,75 @@
                             ></i>
                         {% endif %}
                     </td>
-                    <td
+                    <td class="no-hover"
                         title="{{  transfer.total_amount_satoshi }} sat"
                     >
                         <code>{{ transfer.formatted_amount }}&nbsp;BTC</code><br/>
                     </td>
                     <td>
-                        {% if transfer.bitcoin_tx_id %}
-                            <a href="{{ btc_explorer_base_url }}/tx/{{ transfer.bitcoin_tx_id }}" target="_blank">
-                                {{ transfer.status.name }}
-                            </a>
-                        {% else %}
-                            {{ transfer.status.name }}
-                        {% endif %}
+                        {{ transfer.status.name }}
                     </td>
                     <td>
                         <small>
-                            initiated <time class="timeago" datetime="{{ transfer.initiated_on.isoformat() }}">{{ transfer.initiated_on }}</time><br/>
+                            initiated {{ copyable_timeago(transfer.initiated_on) }} <br/>
+
                             {% if transfer.marked_as_sending_on %}
-                                marked as sending
-                                <time class="timeago" datetime="{{ transfer.marked_as_sending_on.isoformat() }}">{{ transfer.marked_as_sending_on }}</time><br/>
+                                marked as sending {{ copyable_timeago(transfer.marked_as_sending_on) }} <br/>
                             {% endif %}
                             {% if transfer.marked_as_mined_on %}
-                                marked as mined
-                                <time class="timeago" datetime="{{ transfer.marked_as_mined_on.isoformat() }}">{{ transfer.marked_as_mined_on }}</time><br/>
+                                marked as mined {{ copyable_timeago(transfer.marked_as_mined_on) }} <br/>
                             {% endif %}
                             {% if transfer.refunded_or_reclaimed_on %}
-                                refunded or reclaimed
-                                <time class="timeago" datetime="{{ transfer.refunded_or_reclaimed_on.isoformat() }}">{{ transfer.refunded_or_reclaimed_on }}</time><br/>
+                                refunded or reclaimed {{ copyable_timeago(transfer.refunded_or_reclaimed_on) }} <br/>
                             {% endif %}
-                            updated <time class="timeago" datetime="{{ transfer.updated_on.isoformat() }}">{{ transfer.updated_on }}</time><br/>
-                            first seen <time class="timeago" datetime="{{ transfer.created_on.isoformat() }}">{{ transfer.created_on }}</time>
+                            updated {{ copyable_timeago(transfer.updated_on) }} <br/>
+                            first seen {{ copyable_timeago(transfer.created_on) }} <br/>
                         </small>
                     </td>
                     <td class="details">
                         <span>TransferID:</span><code>{{ transfer.transfer_id }}</code><br/>
-                        <span>RskAddr:</span><code>{{ transfer.rsk_address }}</code><br/>
-                        <span>BtcAddr:</span><code>{{ transfer.bitcoin_address }}</code><br/>
-                        <span>EventTx:</span><code>{{ transfer.event_transaction_hash }}</code><br/>
+                        <span>RskAddr:</span>
+                        <a href="https://explorer.rootstock.io/address/{{ transfer.rsk_address }}">
+                            <code>{{ transfer.rsk_address }}</code>
+                        </a>
+                        <br/>
+                        <span>BtcAddr:</span>
+                        <a href="https://mempool.space/address/{{ transfer.bitcoin_address }}">
+                            <code>{{ transfer.bitcoin_address }}</code>
+                        </a>
+                        <br/>
+                        <span>EventTx:</span>
+                        <a href="https://explorer.rootstock.io/tx/{{ transfer.event_transaction_hash }}">
+                            <code>{{ transfer.event_transaction_hash }}</code>
+                        </a>
+                        <br/>
                         {% if transfer.marked_as_sending_transaction_hash %}
-                            <span>SendingTx:</span><code>{{ transfer.marked_as_sending_transaction_hash }}</code><br/>
+                            <span>SendingTx:</span>
+                            <a href="https://explorer.rootstock.io/tx/{{ transfer.marked_as_sending_transaction_hash }}">
+                                <code>{{ transfer.marked_as_sending_transaction_hash }}</code>
+                            </a>
+                            <br/>
                         {% endif %}
                         {% if transfer.marked_as_mined_transaction_hash %}
-                            <span>MinedTx:</span><code>{{ transfer.marked_as_mined_transaction_hash }}</code><br/>
+                            <span>MinedTx:</span>
+                            <a href="https://explorer.rootstock.io/tx/{{ transfer.marked_as_mined_transaction_hash }}">
+                                <code>{{ transfer.marked_as_mined_transaction_hash }}</code>
+                            </a>
+                            <br/>
                         {% endif %}
                         {% if transfer.refunded_or_reclaimed_transaction_hash %}
-                            <span>RefundTx:</span><code>{{ transfer.refunded_or_reclaimed_transaction_hash }}</code><br/>
+                            <span>RefundTx:</span>
+                            <a href="https://explorer.rootstock.io/tx/{{ transfer.refunded_or_reclaimed_transaction_hash }}">
+                                <code>{{ transfer.refunded_or_reclaimed_transaction_hash }}</code>
+                            </a>
+                            <br/>
                         {% endif %}
                         {% if transfer.bitcoin_tx_id %}
-                            <span>BitcoinTx:</span><code>{{ transfer.bitcoin_tx_id }}</code><br/>
+                            <span>BitcoinTx:</span>
+                            <a href="https://mempool.space/tx/{{ transfer.bitcoin_tx_id }}#vout={{ vouts[transfer.transfer_id] }}">
+                                <code>{{ transfer.bitcoin_tx_id + "/" }}{{ vouts[transfer.transfer_id]}}</code>
+                            </a>
+                            <br/>
                         {% endif %}
                         {% if transfer.transfer_batch_size %}
                             <span>BatchSize:</span><code>{{ transfer.transfer_batch_size }}</code><br/>

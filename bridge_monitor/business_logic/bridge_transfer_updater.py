@@ -1,6 +1,7 @@
 """
 High-level operations for updating bridge transfers in DB
 """
+
 import logging
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -26,10 +27,10 @@ def update_transfers_from_all_bridges(
     transaction_manager=transaction.manager,
     max_blocks: Optional[int] = None,
     update_last_processed_blocks_first: bool = False,
-    chain_env: str = 'mainnet'
+    chain_env: str = "mainnet",
 ):
     # TODO: these are hardcoded :f
-    for bridge_name in [f'rsk_eth_{chain_env}', f'rsk_bsc_{chain_env}']:
+    for bridge_name in [f"rsk_eth_{chain_env}", f"rsk_bsc_{chain_env}"]:
         update_transfers(
             bridge_name=bridge_name,
             session_factory=session_factory,
@@ -45,7 +46,7 @@ def update_transfers(
     session_factory,
     transaction_manager=transaction.manager,
     max_blocks: Optional[int] = None,
-    update_last_processed_blocks_first: bool = False
+    update_last_processed_blocks_first: bool = False,
 ):
     bridge_config = BRIDGES[bridge_name]
 
@@ -55,65 +56,65 @@ def update_transfers(
             transaction_manager,
         )
         key_value_store = KeyValueStore(dbsession=dbsession)
-        rsk_chain_name = bridge_config['rsk']['chain']
-        rsk_chain_block_key = f'last-processed-block:{bridge_name}:{rsk_chain_name}'
-        other_chain_name = bridge_config['other']['chain']
-        other_chain_block_key = f'last-processed-block:{bridge_name}:{other_chain_name}'
+        rsk_chain_name = bridge_config["rsk"]["chain"]
+        rsk_chain_block_key = f"last-processed-block:{bridge_name}:{rsk_chain_name}"
+        other_chain_name = bridge_config["other"]["chain"]
+        other_chain_block_key = f"last-processed-block:{bridge_name}:{other_chain_name}"
         rsk_last_processed_block = key_value_store.get_or_create_value(
             rsk_chain_block_key,
-            bridge_config['rsk']['bridge_start_block'] - 1,
+            bridge_config["rsk"]["bridge_start_block"] - 1,
         )
         other_last_processed_block = key_value_store.get_or_create_value(
             other_chain_block_key,
-            bridge_config['other']['bridge_start_block'] - 1,
+            bridge_config["other"]["bridge_start_block"] - 1,
         )
 
         # Quick thing to update these blocks if it was somehow messed
         if update_last_processed_blocks_first:
-            logger.info('updating last processed blocks first')
-            logger.info('rsk from: %s', rsk_last_processed_block)
-            rsk_last_processed_block = get_last_block_number_with_all_transfers_processed(
-                dbsession.query(Transfer).filter(
-                    (Transfer.from_chain == rsk_chain_name) & (Transfer.to_chain == other_chain_name)
-                    & ~Transfer.ignored
-                ),
-                rsk_last_processed_block
+            logger.info("updating last processed blocks first")
+            logger.info("rsk from: %s", rsk_last_processed_block)
+            rsk_last_processed_block = (
+                get_last_block_number_with_all_transfers_processed(
+                    dbsession.query(Transfer).filter(
+                        (Transfer.from_chain == rsk_chain_name)
+                        & (Transfer.to_chain == other_chain_name)
+                        & ~Transfer.ignored
+                    ),
+                    rsk_last_processed_block,
+                )
             )
-            logger.info('rsk to: %s', rsk_last_processed_block)
-            logger.info('%s from: %s', other_chain_name, other_last_processed_block)
-            other_last_processed_block = get_last_block_number_with_all_transfers_processed(
-                dbsession.query(Transfer).filter(
-                    (Transfer.from_chain == other_chain_name) & (Transfer.to_chain == rsk_chain_name)
-                    & ~Transfer.ignored
-                ),
-                other_last_processed_block,
+            logger.info("rsk to: %s", rsk_last_processed_block)
+            logger.info("%s from: %s", other_chain_name, other_last_processed_block)
+            other_last_processed_block = (
+                get_last_block_number_with_all_transfers_processed(
+                    dbsession.query(Transfer).filter(
+                        (Transfer.from_chain == other_chain_name)
+                        & (Transfer.to_chain == rsk_chain_name)
+                        & ~Transfer.ignored
+                    ),
+                    other_last_processed_block,
+                )
             )
-            logger.info('%s to: %s', other_chain_name, other_last_processed_block)
+            logger.info("%s to: %s", other_chain_name, other_last_processed_block)
 
-            key_value_store.set_value(
-                rsk_chain_block_key,
-                rsk_last_processed_block
-            )
-            key_value_store.set_value(
-                other_chain_block_key,
-                other_last_processed_block
-            )
+            key_value_store.set_value(rsk_chain_block_key, rsk_last_processed_block)
+            key_value_store.set_value(other_chain_block_key, other_last_processed_block)
 
     now = now_in_utc()
 
     with ThreadPoolExecutor() as executor:
         rsk_transfers_future = executor.submit(
             fetch_state,
-            main_bridge_config=bridge_config['rsk'],
-            side_bridge_config=bridge_config['other'],
+            main_bridge_config=bridge_config["rsk"],
+            side_bridge_config=bridge_config["other"],
             bridge_start_block=rsk_last_processed_block + 1,
             federation_start_block=other_last_processed_block + 1,
             max_blocks=max_blocks,
         )
         other_transfers_future = executor.submit(
             fetch_state,
-            main_bridge_config=bridge_config['other'],
-            side_bridge_config=bridge_config['rsk'],
+            main_bridge_config=bridge_config["other"],
+            side_bridge_config=bridge_config["rsk"],
             bridge_start_block=other_last_processed_block + 1,
             federation_start_block=rsk_last_processed_block + 1,
             max_blocks=max_blocks,
@@ -126,25 +127,25 @@ def update_transfers(
 
     # TODO: get_last_block_number_with_all_transfers_processed doesn't handle ignored transfers correctly here
     rsk_last_processed_block = get_last_block_number_with_all_transfers_processed(
-        rsk_transfers,
-        rsk_last_processed_block
+        rsk_transfers, rsk_last_processed_block
     )
     logger.debug(
         "%s last block: %s, last fully processed: %s",
         rsk_chain_name,
-        max(t.event_block_number for t in rsk_transfers) if rsk_transfers else '(none)',
-        rsk_last_processed_block
+        max(t.event_block_number for t in rsk_transfers) if rsk_transfers else "(none)",
+        rsk_last_processed_block,
     )
     # TODO: get_last_block_number_with_all_transfers_processed doesn't handle ignored transfers correctly here either
     other_last_processed_block = get_last_block_number_with_all_transfers_processed(
-        other_transfers,
-        other_last_processed_block
+        other_transfers, other_last_processed_block
     )
     logger.debug(
         "%s last block: %s, last fully processed: %s",
         other_chain_name,
-        max(t.event_block_number for t in other_transfers) if other_transfers else '(none)',
-        other_last_processed_block
+        max(t.event_block_number for t in other_transfers)
+        if other_transfers
+        else "(none)",
+        other_last_processed_block,
     )
 
     with transaction_manager:
@@ -160,23 +161,19 @@ def update_transfers(
             now=now,
         )
 
+        key_value_store.set_value(rsk_chain_block_key, rsk_last_processed_block)
+        key_value_store.set_value(other_chain_block_key, other_last_processed_block)
         key_value_store.set_value(
-            rsk_chain_block_key,
-            rsk_last_processed_block
-        )
-        key_value_store.set_value(
-            other_chain_block_key,
-            other_last_processed_block
-        )
-        key_value_store.set_value(
-            f'last-updated:{bridge_name}',
+            f"last-updated:{bridge_name}",
             now.isoformat(),
         )
 
     logger.debug("All done")
 
 
-def get_last_block_number_with_all_transfers_processed(transfers: List[TransferDTO], default_value: int) -> int:
+def get_last_block_number_with_all_transfers_processed(
+    transfers: List[TransferDTO], default_value: int
+) -> int:
     transfers_by_block = defaultdict(list)
     for t in transfers:
         transfers_by_block[t.event_block_number].append(t)
@@ -190,14 +187,20 @@ def get_last_block_number_with_all_transfers_processed(transfers: List[TransferD
     return ret
 
 
-def update_db_transfers(*, dbsession: Session, transfer_dtos: List[TransferDTO], now: datetime):
+def update_db_transfers(
+    *, dbsession: Session, transfer_dtos: List[TransferDTO], now: datetime
+):
     created, updated = 0, 0
     for transfer_dto in transfer_dtos:
-        transfer = dbsession.query(Transfer).filter_by(
-            transaction_id=transfer_dto.transaction_id,
-            from_chain=transfer_dto.from_chain,
-            to_chain=transfer_dto.to_chain,
-        ).first()
+        transfer = (
+            dbsession.query(Transfer)
+            .filter_by(
+                transaction_id=transfer_dto.transaction_id,
+                from_chain=transfer_dto.from_chain,
+                to_chain=transfer_dto.to_chain,
+            )
+            .first()
+        )
         if not transfer:
             transfer = Transfer(
                 **asdict(transfer_dto),
@@ -209,27 +212,30 @@ def update_db_transfers(*, dbsession: Session, transfer_dtos: List[TransferDTO],
             created += 1
         else:
             compared_fields = [
-                'was_processed',
-                'num_votes',
-                'executed_transaction_hash',
-                'executed_block_hash',
-                'executed_block_number',
-                'executed_block_timestamp',
-                'executed_log_index',
-                'has_error_token_receiver_events',
-                'error_data',
+                "was_processed",
+                "num_votes",
+                "executed_transaction_hash",
+                "executed_block_hash",
+                "executed_block_number",
+                "executed_block_timestamp",
+                "executed_log_index",
+                "has_error_token_receiver_events",
+                "error_data",
             ]
             has_changes = False
             for field in compared_fields:
                 dto_value = getattr(transfer_dto, field)
-                if field == 'was_processed' and dto_value is False and transfer.ignored:
-                    logger.debug('Ignoring was_processed for ignored transfer %s', transfer.transaction_id)
+                if field == "was_processed" and dto_value is False and transfer.ignored:
+                    logger.debug(
+                        "Ignoring was_processed for ignored transfer %s",
+                        transfer.transaction_id,
+                    )
                     continue
                 if dto_value != getattr(transfer, field):
                     has_changes = True
                     setattr(transfer, field, dto_value)
             if has_changes:
-                logger.info('Updating transfer %s', transfer.transaction_id)
+                logger.info("Updating transfer %s", transfer.transaction_id)
                 transfer.updated_on = now
                 updated += 1
-    logger.info('Created %s, updated %s transfers', created, updated)
+    logger.info("Created %s, updated %s transfers", created, updated)
