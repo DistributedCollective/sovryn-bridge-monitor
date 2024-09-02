@@ -1,14 +1,10 @@
 import logging
 import argparse
 import sys
-from datetime import datetime, timezone
-from tempfile import TemporaryFile
-import json
 import configparser
-from typing import List, BinaryIO
+from typing import List
 
 from pyramid.paster import setup_logging
-import zstandard as zstd
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 import pandas as pd
@@ -27,7 +23,7 @@ def parse_args(argv: List[str]):
     )
     parser.add_argument(
         "-file",
-        help="file to import, can be zstd compressed",
+        help="file to import, has to be parquet format",
         required=False,
     )
     parser.add_argument("--empty", action="store_true", help="Initialize empty")
@@ -49,33 +45,6 @@ def get_blockchain_meta(dbsession: Session, name, expected_safe_limit=12):
             dbsession.query(BlockChain).filter(BlockChain.name == name).one()
         )
     return block_chain_meta
-
-
-def write_from_file_to_db(
-    dbsession: Session, file: BinaryIO, truncate: bool = False
-):  # file must be formatted as: [123123, 545343]\n[123124, 545344]\n...
-    block_chain_meta = get_blockchain_meta(dbsession, "rsk")
-    if truncate:
-        dbsession.query(BlockInfo).filter(
-            BlockInfo.block_chain_id == block_chain_meta.id
-        ).delete()
-
-    for count, line in enumerate(file):
-        try:
-            block_n, ts = json.loads(line.decode("utf-8"))
-        except (
-            ValueError
-        ):  # in a properly formatted file an empty last line would trigger this
-            break
-        dbsession.add(
-            BlockInfo(
-                block_chain_id=block_chain_meta.id,
-                block_number=block_n,
-                timestamp=datetime.fromtimestamp(ts, tz=timezone.utc),
-            )
-        )
-        if count % 1000 == 0:
-            dbsession.flush()
 
 
 def write_from_parquet_to_db(dbsession: Session, passed_args: argparse.Namespace):
@@ -129,19 +98,9 @@ def main(argv=None):
         with dbsession.begin():
             write_from_parquet_to_db(dbsession, args)
         logger.info("Done writing from parquet file %s to db", args.file)
+    else:
+        logger.error("Unsupported file type")
         return
-    with open(args.file, "rb") as source_file:
-        if args.file.endswith(".zst"):
-            logger.info("Decompressing zstd compressed file")
-            with TemporaryFile() as temp_file:
-                decomp = zstd.ZstdDecompressor()
-                decomp.copy_stream(source_file, temp_file)
-                with dbsession.begin():
-                    temp_file.seek(0)
-                    write_from_file_to_db(dbsession, temp_file)
-        else:
-            with dbsession.begin():
-                write_from_file_to_db(dbsession, source_file)
     logger.info("Done writing from file %s to db", args.file)
 
 
