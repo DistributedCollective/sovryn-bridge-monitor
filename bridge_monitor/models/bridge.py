@@ -12,7 +12,7 @@ TRANSFER_LATE_UPDATED_CUTOFF = timedelta(minutes=45 + 30)
 
 
 class Transfer(Base):
-    __tablename__ = 'transfer'
+    __tablename__ = "transfer"
 
     id = Column(Integer, primary_key=True)
 
@@ -44,7 +44,9 @@ class Transfer(Base):
 
     ignored = Column(Boolean, nullable=False, default=False)
 
-    created_on = Column(TZDateTime, default=now_in_utc, nullable=False)  # TODO: should be seen_on
+    created_on = Column(
+        TZDateTime, default=now_in_utc, nullable=False
+    )  # TODO: should be seen_on
     updated_on = Column(TZDateTime, default=now_in_utc, nullable=False)
 
     @property
@@ -53,13 +55,17 @@ class Transfer(Base):
 
     @property
     def deposited_on(self):
-        return datetime.utcfromtimestamp(self.event_block_timestamp).replace(tzinfo=timezone.utc)
+        return datetime.utcfromtimestamp(self.event_block_timestamp).replace(
+            tzinfo=timezone.utc
+        )
 
     @property
     def executed_on(self):
         if not self.executed_block_timestamp:
             return None
-        return datetime.utcfromtimestamp(self.executed_block_timestamp).replace(tzinfo=timezone.utc)
+        return datetime.utcfromtimestamp(self.executed_block_timestamp).replace(
+            tzinfo=timezone.utc
+        )
 
     @hybrid_property
     def seconds_from_deposit_to_execution(self):
@@ -76,8 +82,8 @@ class Transfer(Base):
         if not now:
             now = now_in_utc()
         return not self.was_processed and (
-            now - self.deposited_on > TRANSFER_LATE_DEPOSITED_CUTOFF or
-            now - self.updated_on > TRANSFER_LATE_UPDATED_CUTOFF
+            now - self.deposited_on > TRANSFER_LATE_DEPOSITED_CUTOFF
+            or now - self.updated_on > TRANSFER_LATE_UPDATED_CUTOFF
         )
 
     @is_late.expression
@@ -86,8 +92,11 @@ class Transfer(Base):
             now = now_in_utc()
         now_ts = int(now.timestamp())
         return ~self.was_processed & (
-            (now_ts - self.event_block_timestamp > TRANSFER_LATE_DEPOSITED_CUTOFF.total_seconds()) |
-            (now - self.updated_on > TRANSFER_LATE_UPDATED_CUTOFF)
+            (
+                now_ts - self.event_block_timestamp
+                > TRANSFER_LATE_DEPOSITED_CUTOFF.total_seconds()
+            )
+            | (now - self.updated_on > TRANSFER_LATE_UPDATED_CUTOFF)
         )
 
     @property
@@ -96,10 +105,10 @@ class Transfer(Base):
 
     @property
     def vote_command(self):
-        deposit_chain = 'rsk' if self.from_chain.startswith('rsk_') else 'other'
-        env_vars = ''
-        if self.bridge_name.startswith('rsk_eth'):
-            env_vars = 'INFURA_API_KEY=keygoeshere '
+        deposit_chain = "rsk" if self.from_chain.startswith("rsk_") else "other"
+        env_vars = ""
+        if self.bridge_name.startswith("rsk_eth"):
+            env_vars = "INFURA_API_KEY=keygoeshere "
         return (
             f"{env_vars}venv/bin/python vote_bridge_tx.py --bridge {self.bridge_name} --deposit-chain {deposit_chain} "
             f"--tx-hash {self.event_transaction_hash}"
@@ -108,13 +117,12 @@ class Transfer(Base):
     @property
     def bridge_name(self):
         chains = {self.from_chain, self.to_chain}
-        if chains == {'rsk_mainnet', 'eth_mainnet'}:
-            return 'rsk_eth_mainnet'
-        if chains == {'rsk_mainnet', 'bsc_mainnet'}:
-            return 'rsk_bsc_mainnet'
-        if chains == {'rsk_testnet', 'eth_testnet_ropsten'}:
-            return 'rsk_eth_testnet'
-        if chains == {'rsk_testnet', 'bsc_testnet'}:
-            return 'rsk_bsc_testnet'
-        return 'unknown'
-
+        if chains == {"rsk_mainnet", "eth_mainnet"}:
+            return "rsk_eth_mainnet"
+        if chains == {"rsk_mainnet", "bsc_mainnet"}:
+            return "rsk_bsc_mainnet"
+        if chains == {"rsk_testnet", "eth_testnet_ropsten"}:
+            return "rsk_eth_testnet"
+        if chains == {"rsk_testnet", "bsc_testnet"}:
+            return "rsk_bsc_testnet"
+        return "unknown"

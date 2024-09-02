@@ -8,7 +8,7 @@ from .meta import Base
 
 
 class KeyValuePair(Base):
-    __tablename__ = 'key_value_pair'
+    __tablename__ = "key_value_pair"
 
     key = Column(Text, primary_key=True)
     value = Column(JSONB)

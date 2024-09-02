@@ -1,7 +1,11 @@
 @import url(//fonts.googleapis.com/css?family=Open+Sans:300,400,600,700);
 html {
   --sovryn-yellow: #fec004;
+  --sovryn-yellow-rgb: 254, 192, 4;
   --sovryn-black: #161616;
+}
+nav {
+    margin-top: 3px;
 }
 body {
   font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -33,23 +37,25 @@ button, input, optgroup, select, textarea {
 .font-bold {
   font-weight: 700;
 }
-
+.no-hover {
+  pointer-events: none;
+}
 td.details {
   font-size: smaller;
 }
 td.details span {
+  margin: 3px 0;
   display: inline-block;
   vertical-align: top;
-  min-width: 60px;
+  min-width: 80px;
 }
 td.details code {
   display: inline-block;
   vertical-align: top;
-  max-width: 430px;
+  max-width: 400px;
   word-wrap: break-word;
   padding-top: 0;
   padding-bottom: 0;
-  color: white;
   background-color: transparent;
   border-radius: 0;
 }
@@ -75,4 +81,235 @@ code.vote-command {
   border-color: #333 !important;
   color: #999;
   font-size: small;
+}
+
+tbody code {
+  color: white;
+  font-size: 100%;
+  background: none;
+}
+
+tbody code.profit, i.glyphicon-ok {
+  color: #008126;
+}
+
+tbody code.loss {
+  color: #f00;
+  position: relative;       /*offset the text by the length of the negative sign to align with other text*/
+  right: 1ch;
+}
+
+nav>form {
+  width: 20%;
+}
+
+nav>form>* {
+  width: 100%;
+  margin: 4px auto;
+}
+
+nav>form>input {
+  display: block;
+}
+a>code {
+  text-decoration: underline;
+  color: #89cde3;
+}
+
+* {                 /*Globally increase the font size a little (has a greater impact than 1%*/
+  font-size: 101%;
+}
+/* Sanity check page*/
+#main-submit {
+  width: 20rem;
+  height: 5rem;
+  font-size: 2rem;
+}
+
+/*Balances page*/
+ .display-table {
+    display: table;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+
+    margin-bottom: 10px;
+ }
+
+ .display-table th {
+   padding: 15px 0;
+   text-align: center;
+ }
+
+ .display-table td {
+   padding: 10px 5px;
+   border: rgba(255, 255, 255, 0.33) 1px solid;
+   text-align: left;
+ }
+
+.entries {
+    display: table;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.entries th {
+    padding: 15px 0;
+    text-align: left;
+}
+.entries td {
+    padding: 3px 10px;
+    border: rgba(255, 255, 255, 0.33) 1px solid;
+    text-align: left;
+}
+
+table td.has-number {
+    text-align: right;
+    padding-right: 5px;
+}
+.entries tbody tr:nth-child(odd) {
+    background-color: rgba(246, 175, 75, 0.06);
+}
+
+.submit-button {
+    display: inline-block;
+}
+
+.export-form {
+    display: inline-block;
+    align-self: flex-end;
+}
+
+#copied-reminder {
+    position: fixed;
+    right: 45%;
+    left: 45%;
+    background-color: rgba(246, 175, 75, 0.2);
+    border: rgba(255, 255, 255, 0.6) 1px solid;
+    height: 3em;
+    top: 1em;
+    opacity: 0;
+    text-align: center;
+    pointer-events: none;
+}
+
+time.timeago.copyable:hover {
+    cursor: copy;
+}
+
+#copied-reminder>.inner {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@keyframes fade {
+    100%, 0% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 100%;
+    }
+
+}
+
+/*Timestamp toggle*/
+body.show_timestamps table time.timeago {
+    display: None;
+}
+
+code.timestamp {
+    display: None;
+}
+
+body.show_timestamps table code.timestamp {
+    display: inline;
+}
+
+code.timestamp {
+    font-size: 0.8em;
+}
+
+small > time {
+    color: #ffffff;
+}
+
+small:not(time) {
+    color: #999;
+}
+
+#timestamp-toggle {
+    margin-left: 5em;
+    background: var(--sovryn-black);
+    color: #fff;
+    border: rgba(var(--sovryn-yellow-rgb), 0.2) 2px solid;
+    border-radius: 2px;
+    padding: 2px 5px;
+    position: absolute;
+
+}
+
+.description-table {
+    display: table;
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
+    margin: 30px 0;
+}
+
+.description-table  td, .description-table th {
+    padding: 3px 2px 3px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    min-width: 200px;
+}
+
+.description-table tr td:first-child,
+.description-table tr th:first-child {
+    border-left: 0;
+}
+
+.description-table tr td:last-child,
+.description-table tr th:last-child {
+    border-right: 0;
+}
+
+.description-table tr:first-child th {
+    border-top: 0;
+}
+
+.description-table tr:last-child td {
+    border-bottom: 0;
+}
+
+#override-submit label {
+    display: inline-block;
+    width: 7em;
+    vertical-align: top;
+}
+
+#override-submit input[type="text"] {
+    height: 3em;
+    width: 600px;
+}
+
+#override-submit > * {
+    margin: 0.5em 0;
+}
+
+@keyframes red_blink {
+    0% {
+        background-color: rgba(255, 0, 0, 0.2);
+    }
+    50% {
+        background-color: rgba(255, 0, 0, 0.5);
+    }
+    100% {
+        background-color: rgba(255, 0, 0, 0.2);
+    }
+
+}
+tr.double-spend {
+    animation: red_blink 1s infinite;
 }

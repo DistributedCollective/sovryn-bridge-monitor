@@ -1,7 +1,28 @@
 {% extends "layout.jinja2" %}
 
+{% macro tx_link(chain_name, tx_hash) -%}
+
+{% if chain_name == "rsk_mainnet" %} <a href="https://explorer.rootstock.io/tx/{{ tx_hash }}"><code>{{ tx_hash }}</code></a>
+{% elif chain_name == "rsk_testnet" %} <a href="https://explorer.testnet.rootstock.co/tx/{{ tx_hash }}"><code>{{ tx_hash }}</code></a>
+{% elif chain_name == "bsc_mainnet" %} <a href="https://bscscan.com/tx/{{ tx_hash }}"><code>{{ tx_hash }}</code></a>
+{% elif chain_name == "eth_mainnet" %} <a href="https://etherscan.io/tx/{{ tx_hash }}"><code>{{ tx_hash }}</code></a>
+{% else %} {{ tx_hash }}
+{% endif %}
+
+{%- endmacro %}
+
+{% macro address_link(chain_name, addr_hash) -%}
+
+    {% if chain_name == "rsk_mainnet" %} <a href="https://explorer.rootstock.io/address/{{ addr_hash }}"><code>{{ addr_hash }}</code></a>
+    {% elif chain_name == "rsk_testnet" %} <a href="https://explorer.testnet.rootstock.co/address/{{ addr_hash }}"><code>{{ addr_hash }}</code></a>
+    {% elif chain_name == "bsc_mainnet" %} <a href="https://bscscan.com/address/{{ addr_hash }}"><code>{{ addr_hash }}</code></a>
+    {% elif chain_name == "eth_mainnet" %} <a href="https://etherscan.io/address/{{ addr_hash }}"><code>{{ addr_hash }}</code></a>
+    {% else %} {{ addr_hash }}
+    {% endif %}
+{% endmacro %}
+
+
 {% block content %}
-<div class="content">
     <h1>Sovryn Bridge Transfers</h1>
     <nav>
         Show
@@ -54,6 +75,7 @@
                 <tr>
                     <th></th>
                     <th>from</th>
+                    <th></th>
                     <th>to</th>
                     <th>amount</th>
                     <th>votes</th>
@@ -90,6 +112,9 @@
                                 <span title="deposit on {{ transfer.from_chain }} block: {{ transfer.event_block_number }}">#{{ transfer.event_block_number }}</span>
                             </small>
                         </td>
+                    <td>
+                        <i class="glyphicon glyphicon-arrow-right"></i>
+                    </td>
                         <td>
                             {{ transfer.to_chain }}
                             {% if transfer.executed_block_number %}
@@ -101,7 +126,7 @@
                                 </small>
                             {% endif %}
                         </td>
-                        <td
+                        <td class="no-hover"
                             title="{{  transfer.amount_wei }} wei"
                         >
                             <code>~{{ transfer.formatted_amount|round(4) }}&nbsp;{{ transfer.token_symbol }}</code>
@@ -109,27 +134,50 @@
                         <td>{{ transfer.num_votes }}</td>
                         <td>
                             <small>
-                                deposited <time class="timeago" datetime="{{ transfer.deposited_on.isoformat() }}">{{ transfer.deposited_on }}</time><br/>
+                                deposited {{ copyable_timeago(transfer.deposited_on) }} <br/>
                                 {% if transfer.executed_on %}
-                                executed <time class="timeago" datetime="{{ transfer.executed_on.isoformat() }}">{{ transfer.executed_on }}</time><br/>
+                                executed {{ copyable_timeago(transfer.executed_on) }} <br/>
                                 {% endif %}
                                 {% if transfer.seconds_from_deposit_to_execution %}
                                 time taken: <time>{{ (transfer.seconds_from_deposit_to_execution/60)|round(2) }} min</time><br/>
                                 {% endif %}
-                                updated <time class="timeago" datetime="{{ transfer.updated_on.isoformat() }}">{{ transfer.updated_on }}</time><br/>
-                                first seen <time class="timeago" datetime="{{ transfer.created_on.isoformat() }}">{{ transfer.seen_on }}</time>
+                                updated {{ copyable_timeago(transfer.updated_on) }} <br/>
+                                first seen {{ copyable_timeago(transfer.seen_on) }} <br/>
                             </small>
                         </td>
                         <td class="details">
                             <span>TxIdU:</span><code>{{ transfer.transaction_id }}</code><br/>
-                            <span>EventTx:</span><code>{{ transfer.event_transaction_hash }}</code><br/>
-                            <span>ExecTx:</span><code>{{ transfer.executed_transaction_hash }}</code><br/>
-                            <span>Depositor:</span><code>{{ transfer.depositor_address }}</code><br/>
-                            <span>Receiver:</span><code>{{ transfer.receiver_address }}</code><br/>
-                            <span>UserData:</span><code>{{ transfer.user_data }}</code><br/>
-                            <span>ErrorData:</span><code>{{ transfer.error_data }}</code><br/>
+                            <div style="display: flex">
+                                <span>EventTx:</span>
+                                {{ tx_link(transfer.from_chain, transfer.event_transaction_hash) }}
+                                <br/>
+                            </div>
+                            <div style="display: flex">
+                                <span>ExecTx:</span>
+                                {{ tx_link(transfer.to_chain, transfer.executed_transaction_hash)}}
+                                <br/>
+                            </div>
+                            <div style="display: flex">
+                                <span>Depositor:</span>
+                                {{ address_link(transfer.from_chain, transfer.depositor_address)}}
+                                <br/>
+                            </div>
+                            <div style="display: flex">
+                                <span>Receiver:</span>
+                                {{ address_link(transfer.to_chain, transfer.receiver_address)}}
+                                <br/>
+                            </div>
+                            {% if transfer.user_data != "0x" %}
+                                <span>UserData:</span><code>{{ transfer.user_data }}</code><br/>
+                            {% endif %}
+                            {% if transfer.error_data != "0x" %}
+                                <span>ErrorData:</span><code>{{ transfer.error_data }}</code><br/>
+                            {% endif %}
                             {% if not transfer.was_processed  %}
-                                <span>Cmd</span> <a href="#" data-vote-command="{{ transfer.vote_command  }}">show vote command</a>
+                                <span>Cmd</span>
+                                <a href="#" data-vote-command="{{ transfer.vote_command  }}">
+                                    <code>show vote command</code>
+                                </a>
                             {% endif %}
                         </td>
                     </tr>

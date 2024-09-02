@@ -1,0 +1,126 @@
+{% extends "layout.jinja2" %}
+
+{% block content %}
+<div class="content">
+    <h1>Ledger entries</h1>
+    {# TODO: enable filters on the view #}
+    <nav>
+        <div
+            style="margin-bottom: .5em;"
+        >
+        Time period
+        {% for option in time_filter_options %}
+            {% if loop.index0 != 0 %}| {% endif %}<a href="{{ request.current_route_path(_query=option.query) }}">
+            {{ option.label }}
+        </a>
+        {% endfor %}
+        </div>
+
+        <form
+            style="margin-bottom: .5em;"
+            method="GET"
+            action="{{ request.current_route_path() }}"
+        >
+            Start <input type="date" name="start" value="{{ start.isoformat() if start else '' }}" placeholder="start date">
+            End <input type="date" name="end" value="{{ end.isoformat() if end else '' }}" placeholder="end date">
+            <button
+                type="submit"
+            >Filter</button>
+        </form>
+    </nav>
+    {% if request.params.get("start") or request.params.get("end") %}
+    <h2>Accounts</h2>
+    <div
+    style="display: flex; justify-content: space-between"
+    >
+    <h4>Latest ledger update at {{ ledger_last_updated_at }}</h4>
+    <form
+            method="POST"
+            action="{{ request.current_route_path() }}"
+            class="export-form"
+        >
+            <input type="hidden" name="start" value="{{ start.isoformat() if start else '' }}">
+            <input type="hidden" name="end" value="{{ end.isoformat() if end else '' }}">
+            <input type="hidden" name="first_entry" value="{{ first_entry }}">
+            <button class="export-button"
+                type="submit"
+            >Export to .xlsx</button>
+        </form>
+    </div>
+    <table class="display-table">
+        <thead>
+            <tr>
+                <th>Account</th>
+                <th>Credit Total</th>
+                <th>Debit Total</th>
+                <th>Account Type</th>
+                <th>Balance Delta</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for account in account_balances %}
+            <tr>
+                <td>{{ account.account_name }}</td>
+                <td class="has-number">{{ '{:.12f}'.format(account.credit) }}</td>
+                <td class="has-number">{{ '{:.12f}'.format(account.debit) }}</td>
+                <td>{{ "Debit" if account.is_debit else "Credit" }}</td>
+                <td class="has-number">{{ '{:.12f}'.format(account.balance) if account.balance > 0 or account.balance < 0 else "0." + "0" * 12 }}</td>
+            </tr>
+            {% endfor %}
+    </table>
+    <div class="entries">
+    <h2>Entries</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Account</th>
+                    <th>Value</th>
+                    <th>Tx Hash</th>
+                    <th>Timestamp</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+        <tbody>
+        {% for entry in ledger_entries %}
+            <tr>
+                <td>{{ entry.account_name }}</td>
+                <td class="has-number">{{ '{:.12f}'.format(entry.value) }}</td>
+                <td>{{ entry.tx_hash }}</td>
+                <td>{{ copyable_timeago(entry.timestamp) }}</td>
+                <td>{{ entry.description }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+        </table>
+        <div class="submit-button">
+            <a href="{{ request.current_route_path(_query=
+            {
+                'first_entry': first_entry - amount_in_page,
+                'start': request.params.get('start'),
+                'end': request.params.get('end'),
+            }
+            )}}">
+                <button>
+                    Previous
+                </button>
+            </a>
+        </div>
+        {{ first_entry }} - {{ last_entry }}
+        <div class="submit-button">
+            <a href="{{ request.current_route_path(_query=
+            {
+                'first_entry': first_entry + amount_in_page,
+                'start': request.params.get('start'),
+                'end': request.params.get('end'),
+            }
+            )}}">
+                <button>
+                    Next
+                </button>
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock content %}

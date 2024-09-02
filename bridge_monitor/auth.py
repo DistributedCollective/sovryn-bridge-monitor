@@ -14,14 +14,12 @@ logger = logging.getLogger(__name__)
 
 def check_credentials(username, password, request):
     reg = request.registry
-    if username == reg['auth.username'] and password == reg['auth.password']:
+    if username == reg["auth.username"] and password == reg["auth.password"]:
         return []  # logged in
 
 
 class Root:
-    __acl__ = (
-        (Allow, Authenticated, ALL_PERMISSIONS),
-    )
+    __acl__ = ((Allow, Authenticated, ALL_PERMISSIONS),)
 
 
 @forbidden_view_config()
@@ -36,12 +34,16 @@ def forbidden_view(request):
 
 
 def includeme(config: Configurator):
-    username = config.registry['auth.username'] = os.getenv('AUTH_USERNAME', 'sov' + secrets.token_hex(2))
-    password = config.registry['auth.password'] = os.getenv('AUTH_PASSWORD', secrets.token_hex(10))
-    logger.info('HTTP Basic auth: %s / %s', username, password)
+    username = config.registry["auth.username"] = os.getenv(
+        "AUTH_USERNAME", "sov" + secrets.token_hex(2)
+    )
+    password = config.registry["auth.password"] = os.getenv(
+        "AUTH_PASSWORD", secrets.token_hex(10)
+    )
+    logger.info("HTTP Basic auth: %s / %s", username, password)
 
     # TODO: this is pyramid 1.x legacy stuff and should be replace with 2.0 security policy
     config.set_authentication_policy(BasicAuthAuthenticationPolicy(check_credentials))
     config.set_authorization_policy(ACLAuthorizationPolicy())
     config.set_root_factory(lambda request: Root)
-    config.set_default_permission('view')
+    config.set_default_permission("view")
