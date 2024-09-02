@@ -6,15 +6,6 @@ import os
 load_dotenv()
 
 
-def get_from_env(env_name, default=None) -> str:
-    return str(os.environ.get(env_name, default))
-
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
-
-
 def get_from_env(env_name, default="") -> str:
     return os.environ.get(env_name, default)
 
