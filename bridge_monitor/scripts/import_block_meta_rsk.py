@@ -34,7 +34,7 @@ def parse_args(argv: List[str]):
     return parser.parse_args(argv[1:])
 
 
-def get_blockchain_meta(dbsession: Session, name, expected_safe_limit=12):
+def get_or_create_blockchain_meta(dbsession: Session, name, expected_safe_limit=12):
     block_chain_meta = (
         dbsession.query(BlockChain).filter(BlockChain.name == name).scalar()
     )
@@ -55,7 +55,7 @@ def write_from_parquet_to_db(dbsession: Session, passed_args: argparse.Namespace
         logger.error("No file path provided")
         return
 
-    block_chain_meta = get_blockchain_meta(dbsession, "rsk")
+    block_chain_meta = get_or_create_blockchain_meta(dbsession, "rsk")
     if truncate:
         dbsession.query(BlockInfo).filter(
             BlockInfo.block_chain_id == block_chain_meta.id
@@ -91,7 +91,7 @@ def main(argv=None):
 
     if args.empty:
         with dbsession.begin():
-            get_blockchain_meta(dbsession, "rsk")
+            get_or_create_blockchain_meta(dbsession, "rsk")
         return
     if args.file.endswith(".parquet"):
         logger.info("Writing from parquet file %s to db", args.file)
