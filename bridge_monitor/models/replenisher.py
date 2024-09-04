@@ -6,16 +6,14 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.hybrid import hybrid_property
 
 from .pnl import HasPnL
+from .meta import Base
+from .types import TZDateTime, Uint256, now_in_utc
 
 SATOSHI_IN_BTC = 100_000_000
 
 
-from .meta import Base
-from .types import TZDateTime, Uint256, now_in_utc
-
-
 class BidirectionalFastBTCReplenisherTransaction(HasPnL, Base):
-    __tablename__ = 'bidi_fastbtc_replenisher_transaction'
+    __tablename__ = "bidi_fastbtc_replenisher_transaction"
 
     id = Column(Integer, primary_key=True)
 
@@ -32,7 +30,7 @@ class BidirectionalFastBTCReplenisherTransaction(HasPnL, Base):
     seen_on = Column(TZDateTime, default=now_in_utc, nullable=False)
     updated_on = Column(TZDateTime, default=now_in_utc, nullable=False)
 
-    raw_data = Column(JSONB, default=dict, server_default='{}', nullable=False)
+    raw_data = Column(JSONB, default=dict, server_default="{}", nullable=False)
 
     @hybrid_property
     def amount_btc(self):
@@ -44,4 +42,6 @@ class BidirectionalFastBTCReplenisherTransaction(HasPnL, Base):
 
     @hybrid_property
     def confirmed_on(self):
-        return datetime.utcfromtimestamp(self.block_timestamp).replace(tzinfo=timezone.utc)
+        return datetime.utcfromtimestamp(self.block_timestamp).replace(
+            tzinfo=timezone.utc
+        )

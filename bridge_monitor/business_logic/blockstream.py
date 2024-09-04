@@ -21,6 +21,7 @@ def get(*parts, testnet):
 def get_transaction(tx_id, *, testnet):
     return get("tx", tx_id, testnet=testnet)
 
+
 def get_address(address, *, testnet):
     return get("address", address, testnet=testnet)
 
@@ -47,7 +48,7 @@ def get_confirmed_transactions(address, *, testnet, before_txid=None, after_txid
             return
 
         for tx in transactions:
-            if after_txid is not None and tx['txid'] == after_txid:
+            if after_txid is not None and tx["txid"] == after_txid:
                 return
             yield tx
-            before_txid = tx['txid']
+            before_txid = tx["txid"]

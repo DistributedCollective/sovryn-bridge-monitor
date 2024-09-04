@@ -29,7 +29,7 @@ class FastBTCInTransferStatus(enum.IntEnum):
 
 
 class FastBTCInTransfer(HasPnL, Base):
-    __tablename__ = 'fastbtc_in_transfer'
+    __tablename__ = "fastbtc_in_transfer"
     id = Column(Integer, primary_key=True)
 
     chain = Column(Text, nullable=False)
@@ -37,15 +37,17 @@ class FastBTCInTransfer(HasPnL, Base):
     rsk_receiver_address = Column(Text, nullable=False)
     bitcoin_tx_hash = Column(Text, nullable=True)
     bitcoin_tx_vout = Column(Integer, nullable=True)
-    transfer_function = Column(Text, nullable=False, default='')  # e.g. transferToUser/withdrawAdmin/etc
+    transfer_function = Column(
+        Text, nullable=False, default=""
+    )  # e.g. transferToUser/withdrawAdmin/etc
 
     net_amount_wei = Column(Uint256, nullable=False)
     fee_wei = Column(Uint256, nullable=True)
 
     status = Column(
-        Enum(FastBTCInTransferStatus, name='fastbtc_in_transferstatus'),
+        Enum(FastBTCInTransferStatus, name="fastbtc_in_transferstatus"),
         nullable=False,
-        default=FastBTCInTransferStatus.INITIATED
+        default=FastBTCInTransferStatus.INITIATED,
     )
     num_confirmations = Column(Integer, nullable=False, default=0)
     has_execution_failure = Column(Boolean, nullable=True, default=False)
@@ -67,11 +69,13 @@ class FastBTCInTransfer(HasPnL, Base):
     seen_on = Column(TZDateTime, default=now_in_utc, nullable=False)
     updated_on = Column(TZDateTime, default=now_in_utc, nullable=False)
 
-    extra_data = Column(JSONB, default=dict, server_default='{}', nullable=False)
+    extra_data = Column(JSONB, default=dict, server_default="{}", nullable=False)
 
-    __table_args__ = (
-        Index('ix_fastbtc_in_chain_tx_id', 'chain', 'multisig_tx_id'),
+    is_double_spend = Column(
+        Boolean, nullable=False, default=False, server_default="false"
     )
+
+    __table_args__ = (Index("ix_fastbtc_in_chain_tx_id", "chain", "multisig_tx_id"),)
 
     @classmethod
     def get_or_create(
@@ -83,14 +87,18 @@ class FastBTCInTransfer(HasPnL, Base):
         rsk_receiver_address: str,
         bitcoin_tx_hash: str = None,
         bitcoin_tx_vout: int = None,
-        transfer_function: str = '',
+        transfer_function: str = "",
         net_amount_wei: int,
         fee_wei: int = None,
     ):
-        ret = dbsession.query(cls).filter_by(
-            chain=chain,
-            multisig_tx_id=multisig_tx_id,
-        ).one_or_none()
+        ret = (
+            dbsession.query(cls)
+            .filter_by(
+                chain=chain,
+                multisig_tx_id=multisig_tx_id,
+            )
+            .one_or_none()
+        )
         if ret:
             return ret
         ret = cls(
@@ -107,7 +115,6 @@ class FastBTCInTransfer(HasPnL, Base):
         dbsession.flush()
         return ret
 
-
     @property
     def created_on(self):
         # Backwards compat
@@ -117,13 +124,17 @@ class FastBTCInTransfer(HasPnL, Base):
     def submitted_on(self):
         if not self.submission_block_timestamp:
             return None
-        return datetime.utcfromtimestamp(self.submission_block_timestamp).replace(tzinfo=timezone.utc)
+        return datetime.utcfromtimestamp(self.submission_block_timestamp).replace(
+            tzinfo=timezone.utc
+        )
 
     @property
     def executed_on(self):
         if not self.executed_block_timestamp:
             return None
-        return datetime.utcfromtimestamp(self.executed_block_timestamp).replace(tzinfo=timezone.utc)
+        return datetime.utcfromtimestamp(self.executed_block_timestamp).replace(
+            tzinfo=timezone.utc
+        )
 
     @hybrid_property
     def was_processed(self):
@@ -134,8 +145,8 @@ class FastBTCInTransfer(HasPnL, Base):
         if not now:
             now = now_in_utc()
         return not self.was_processed and (
-            now - self.submitted_on > FASTBTC_IN_TRANSFER_LATE_DEPOSITED_CUTOFF or
-            now - self.updated_on > FASTBTC_IN_TRANSFER_LATE_UPDATED_CUTOFF
+            now - self.submitted_on > FASTBTC_IN_TRANSFER_LATE_DEPOSITED_CUTOFF
+            or now - self.updated_on > FASTBTC_IN_TRANSFER_LATE_UPDATED_CUTOFF
         )
 
     @is_late.expression
@@ -144,8 +155,11 @@ class FastBTCInTransfer(HasPnL, Base):
             now = now_in_utc()
         now_ts = int(now.timestamp())
         return ~self.was_processed & (
-            (now_ts - self.submission_block_timestamp > FASTBTC_IN_TRANSFER_LATE_DEPOSITED_CUTOFF.total_seconds()) |
-            (now - self.updated_on > FASTBTC_IN_TRANSFER_LATE_UPDATED_CUTOFF)
+            (
+                now_ts - self.submission_block_timestamp
+                > FASTBTC_IN_TRANSFER_LATE_DEPOSITED_CUTOFF.total_seconds()
+            )
+            | (now - self.updated_on > FASTBTC_IN_TRANSFER_LATE_UPDATED_CUTOFF)
         )
 
     @property
@@ -158,11 +172,11 @@ class FastBTCInTransfer(HasPnL, Base):
 
     @property
     def confirmations(self):
-        return self.extra_data.get('confirmations', [])
+        return self.extra_data.get("confirmations", [])
 
     @property
     def revocations(self):
-        return self.extra_data.get('revocations', [])
+        return self.extra_data.get("revocations", [])
 
     @property
     def execution_failures(self):
@@ -171,9 +185,9 @@ class FastBTCInTransfer(HasPnL, Base):
     def update_status(self, new_status: FastBTCInTransferStatus):
         # Only update upwards, except for INVALID
         if (
-            new_status == FastBTCInTransferStatus.INVALID or
-            self.status == FastBTCInTransferStatus.INVALID or
-            new_status > self.status
+            new_status == FastBTCInTransferStatus.INVALID
+            or self.status == FastBTCInTransferStatus.INVALID
+            or new_status > self.status
         ):
             self.status = new_status
             self.updated_on = now_in_utc()
@@ -185,7 +199,7 @@ class FastBTCInTransfer(HasPnL, Base):
         timestamp: int,
         block_number: int,
         block_hash: Union[str, bytes],
-        log_index: int
+        log_index: int,
     ):
         self.update_status(FastBTCInTransferStatus.SUBMITTED)
         self.submission_transaction_hash = to_hex_if_bytes(tx_hash)
@@ -195,50 +209,58 @@ class FastBTCInTransfer(HasPnL, Base):
         self.submission_log_index = log_index
 
     def add_confirmation(self, *, sender: str, tx_hash: Union[bytes, str]):
-        if not 'confirmations' in self.extra_data:
-            self.extra_data['confirmations'] = []
+        if "confirmations" not in self.extra_data:
+            self.extra_data["confirmations"] = []
 
-        flag_modified(self, 'extra_data')  # have to flag it as modified for sqlalchemy to save
+        flag_modified(
+            self, "extra_data"
+        )  # have to flag it as modified for sqlalchemy to save
 
-        for confirmation in self.extra_data['confirmations']:
-            if confirmation['sender'].lower() == sender.lower():
-                confirmation['tx_hash'] = to_hex_if_bytes(tx_hash)
+        for confirmation in self.extra_data["confirmations"]:
+            if confirmation["sender"].lower() == sender.lower():
+                confirmation["tx_hash"] = to_hex_if_bytes(tx_hash)
                 return
 
-        self.extra_data['confirmations'].append({
-            'sender': sender,
-            'tx_hash': to_hex_if_bytes(tx_hash),
-        })
+        self.extra_data["confirmations"].append(
+            {
+                "sender": sender,
+                "tx_hash": to_hex_if_bytes(tx_hash),
+            }
+        )
         self.update_status(FastBTCInTransferStatus.PARTIALLY_CONFIRMED)
-        self.num_confirmations = len(self.extra_data['confirmations'])
+        self.num_confirmations = len(self.extra_data["confirmations"])
         self.updated_on = now_in_utc()
 
     def revoke_confirmation(self, *, sender: str, tx_hash: Union[bytes, str]):
-        if not 'confirmations' in self.extra_data:
-            self.extra_data['confirmations'] = []
-        if not 'revocations' in self.extra_data:
-            self.extra_data['revocations'] = []
+        if "confirmations" not in self.extra_data:
+            self.extra_data["confirmations"] = []
+        if "revocations" not in self.extra_data:
+            self.extra_data["revocations"] = []
 
-        flag_modified(self, 'extra_data')  # have to flag it as modified for sqlalchemy to save
+        flag_modified(
+            self, "extra_data"
+        )  # have to flag it as modified for sqlalchemy to save
 
         new_confirmations = []
         revoked_confirmation_tx_hash = None
-        for confirmation in self.extra_data['confirmations']:
-            if confirmation['sender'].lower() == sender.lower():
-                revoked_confirmation_tx_hash = confirmation['tx_hash']
+        for confirmation in self.extra_data["confirmations"]:
+            if confirmation["sender"].lower() == sender.lower():
+                revoked_confirmation_tx_hash = confirmation["tx_hash"]
             else:
                 new_confirmations.append(confirmation)
 
         if revoked_confirmation_tx_hash is not None:
             # Previously confirmed by sender, update confirmations
-            self.extra_data['confirmations'] = new_confirmations
-            self.num_confirmations = len(self.extra_data['confirmations'])
+            self.extra_data["confirmations"] = new_confirmations
+            self.num_confirmations = len(self.extra_data["confirmations"])
 
-            self.extra_data['revocations'].append({
-                'sender': sender,
-                'tx_hash': to_hex_if_bytes(tx_hash),
-                'revoked_confirmation_tx_hash': revoked_confirmation_tx_hash,
-            })
+            self.extra_data["revocations"].append(
+                {
+                    "sender": sender,
+                    "tx_hash": to_hex_if_bytes(tx_hash),
+                    "revoked_confirmation_tx_hash": revoked_confirmation_tx_hash,
+                }
+            )
         self.updated_on = now_in_utc()
 
     def mark_executed(
@@ -248,7 +270,7 @@ class FastBTCInTransfer(HasPnL, Base):
         timestamp: int,
         block_number: int,
         block_hash: Union[str, bytes],
-        log_index: int
+        log_index: int,
     ):
         self.update_status(FastBTCInTransferStatus.EXECUTED)
         self.executed_transaction_hash = to_hex_if_bytes(tx_hash)
@@ -266,11 +288,15 @@ class FastBTCInTransfer(HasPnL, Base):
         if 'execution_failures' not in self.extra_data:
             self.extra_data['execution_failures'] = []
 
-        flag_modified(self, 'extra_data')  # have to flag it as modified for sqlalchemy to save
+        flag_modified(
+            self, "extra_data"
+        )  # have to flag it as modified for sqlalchemy to save
 
-        self.extra_data['execution_failures'].append({
-            'tx_hash': to_hex_if_bytes(tx_hash),
-        })
+        self.extra_data["execution_failures"].append(
+            {
+                "tx_hash": to_hex_if_bytes(tx_hash),
+            }
+        )
 
 
 def to_hex_if_bytes(val: Union[str, bytes]) -> str:

@@ -1,0 +1,48 @@
+{% extends "layout.jinja2" %}
+
+{% block content %}
+
+    <div class="content">
+        <h1>Balances
+            <small>
+                at {{ target_date}}
+            </small>
+        </h1>
+        <form
+            style="margin-bottom: .5em;"
+            method="GET"
+            action="{{ request.current_route_path() }}"
+        >
+            Get balance at timestamp
+            <input type="date" name="target_date" value="{{ request.params.get("target_date") }}" placeholder="target date">
+            <button
+                type="submit"
+            >Filter</button>
+        </form>
+        <table class="display-table">
+            <tr>
+                    <th>Name</th>
+                    <th>Chain</th>
+                    <th>Balance from DB</th>
+                    <th>Balance from blockchain node API</th>
+            </tr>
+            {% for display in displays %}
+
+                <tr>
+                    <td>{{ display.name }}</td>
+                    <td>{{ display.chain_name }}</td>
+                    <td>{{ display.balance_db }}
+                    {% if display.pending_total != 0 and not request.params.get("target_date") %}
+                    <br/>
+                    With pending: {{ display.balance_db + display.pending_total }}
+                    {% endif %}
+                    </td>
+                    <td>
+                        {{ display.balance_api if display.balance_api else 'N/A'}}
+                    </td>
+                </tr>
+
+        {% endfor %}
+        </table>
+    </div>
+{% endblock %}

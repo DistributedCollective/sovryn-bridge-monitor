@@ -8,7 +8,9 @@ from datetime import timedelta
 from pyramid.paster import bootstrap, setup_logging
 from pyramid.request import Request
 
-from bridge_monitor.business_logic.bidirectional_fastbtc_alerts import handle_bidi_fastbtc_alerts
+from bridge_monitor.business_logic.bidirectional_fastbtc_alerts import (
+    handle_bidi_fastbtc_alerts,
+)
 from bridge_monitor.business_logic.fastbtc_in import update_fastbtc_in_transfers
 from bridge_monitor.business_logic.replenisher import scan_replenisher_transactions
 from ..business_logic.bridge_transfer_updater import update_transfers_from_all_bridges
@@ -24,92 +26,92 @@ logger = logging.getLogger(__name__)
 def parse_args(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        'config_uri',
-        help='Configuration file, e.g., development.ini',
+        "config_uri",
+        help="Configuration file, e.g., development.ini",
     )
     parser.add_argument(
-        '--max-blocks',
+        "--max-blocks",
         type=int,
         required=False,
         default=None,
-        help='Max blocks to process at time. 0 = no maximum',
+        help="Max blocks to process at time. 0 = no maximum",
     )
     parser.add_argument(
-        '--sleep',
+        "--sleep",
         type=int,
         required=False,
         default=120,
-        help='Sleep seconds between iterations',
+        help="Sleep seconds between iterations",
     )
     parser.add_argument(
-        '--one-off',
-        action='store_true',
+        "--one-off",
+        action="store_true",
         default=False,
-        help='One-off operation, don\'t enter infinite loop',
+        help="One-off operation, don't enter infinite loop",
     )
     parser.add_argument(
-        '--no-updates',
-        action='store_true',
+        "--no-updates",
+        action="store_true",
         default=False,
         help="Don't update transfers",
     )
     parser.add_argument(
-        '--no-alerts',
-        action='store_true',
+        "--no-alerts",
+        action="store_true",
         default=False,
         help="Don't send alerts",
     )
     parser.add_argument(
-        '--alert-interval-minutes',
+        "--alert-interval-minutes",
         type=int,
         help="Send new alerts only every N minutes",
     )
     parser.add_argument(
-        '--discord-webhook-url',
+        "--discord-webhook-url",
         type=str,
         required=False,
         help="Discord webhook url for alerts. Can also be specified with env var DISCORD_WEBHOOK_URL",
     )
     parser.add_argument(
-        '--bidi-fastbtc-discord-webhook-url',
+        "--bidi-fastbtc-discord-webhook-url",
         type=str,
         required=False,
         help="Discord webhook url for alerts (bidi fastbtc). Can also be specified with env var DISCORD_WEBHOOK_URL_FASTBTC",
     )
     parser.add_argument(
-        '--update-last-processed-blocks-first',
-        action='store_true',
+        "--update-last-processed-blocks-first",
+        action="store_true",
         default=False,
         help="Update last processed blocks from DB first (developers only)",
     )
 
     parser.add_argument(
-        '--no-fastbtc',
-        action='store_true',
+        "--no-fastbtc",
+        action="store_true",
         default=False,
         help="Don't monitor bidirectional FastBTC",
     )
     parser.add_argument(
-        '--no-fastbtc-in',
-        action='store_true',
+        "--no-fastbtc-in",
+        action="store_true",
         default=False,
         help="Don't monitor FastBTC-in",
     )
     parser.add_argument(
-        '--no-bridge',
-        action='store_true',
+        "--no-bridge",
+        action="store_true",
         default=False,
         help="Only monitor (bidirectional) FastBTC - no token bridge",
     )
     parser.add_argument(
-        '--no-replenisher',
-        action='store_true',
+        "--no-replenisher",
+        action="store_true",
         default=False,
         help="Don't update fastbtc replenisher transactions",
     )
     parser.add_argument(
-        '--no-pnl',
-        action='store_true',
+        "--no-pnl",
+        action="store_true",
         default=False,
         help="Don't update profit-and-loss calculations",
     )
@@ -121,21 +123,21 @@ def main(argv=sys.argv):
     args = parse_args(argv)
     setup_logging(args.config_uri)
     env = bootstrap(args.config_uri)
-    request: Request = env['request']
-    session_factory = request.registry['dbsession_factory']
+    request: Request = env["request"]
+    session_factory = request.registry["dbsession_factory"]
 
-    chain_env = request.registry.get('chain_env', 'unset')
-    if chain_env == 'unset':
-        logger.warning('chain_env not set in config, defaulting to mainnet')
-        chain_env = 'mainnet'
+    chain_env = request.registry.get("chain_env", "unset")
+    if chain_env == "unset":
+        logger.warning("chain_env not set in config, defaulting to mainnet")
+        chain_env = "mainnet"
 
     logger.info("chain_env: %s", chain_env)
 
-    discord_webhook_url = args.discord_webhook_url or os.getenv('DISCORD_WEBHOOK_URL')
+    discord_webhook_url = args.discord_webhook_url or os.getenv("DISCORD_WEBHOOK_URL")
     bidi_fastbtc_discord_webhook_url = (
-        args.bidi_fastbtc_discord_webhook_url or
-        os.getenv('DISCORD_WEBHOOK_URL_FASTBTC') or
-        discord_webhook_url
+        args.bidi_fastbtc_discord_webhook_url
+        or os.getenv("DISCORD_WEBHOOK_URL_FASTBTC")
+        or discord_webhook_url
     )
 
     # TODO: limit 1 session at time
@@ -159,7 +161,7 @@ def main(argv=sys.argv):
             if not args.no_fastbtc:
                 try:
                     update_bidi_fastbtc_transfers(
-                        config_name=f'rsk_{chain_env}',
+                        config_name=f"rsk_{chain_env}",
                         transaction_manager=request.tm,
                         session_factory=session_factory,
                         max_blocks=args.max_blocks,
@@ -173,7 +175,7 @@ def main(argv=sys.argv):
             if not args.no_fastbtc_in:
                 try:
                     update_fastbtc_in_transfers(
-                        config_name=f'rsk_{chain_env}',
+                        config_name=f"rsk_{chain_env}",
                         transaction_manager=request.tm,
                         session_factory=session_factory,
                         max_blocks=args.max_blocks,
@@ -187,7 +189,9 @@ def main(argv=sys.argv):
         if not args.no_alerts:
             extra_args = {}
             if args.alert_interval_minutes is not None:
-                extra_args['alert_interval'] = timedelta(minutes=args.alert_interval_minutes)
+                extra_args["alert_interval"] = timedelta(
+                    minutes=args.alert_interval_minutes
+                )
             try:
                 handle_bridge_alerts(
                     transaction_manager=request.tm,
@@ -260,5 +264,5 @@ def main(argv=sys.argv):
         time.sleep(args.sleep)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

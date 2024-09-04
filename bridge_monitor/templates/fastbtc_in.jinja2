@@ -53,7 +53,11 @@
         </thead>
         <tbody>
             {% for transfer in transfers  %}
-                <tr>
+                <tr
+                {% if transfer.is_double_spend %}
+                    class="double-spend"
+                {% endif %}
+                >
                     <td>
                         {% if transfer.ignored %}
                             <i
@@ -61,7 +65,13 @@
                                 title="ignored"
                                 style="color: yellow"
                             ></i>
-                        {% elif transfer.was_processed %}
+                         {% elif transfer.is_double_spend%}
+                             <i
+                                class="glyphicon glyphicon-remove"
+                                title="double spend"
+                                style="color: red"
+                            ></i>
+                        {% elif transfer.was_processed and not transfer.is_double_spend%}
                             <i class="glyphicon glyphicon-ok" title="processed"></i>
                         {% elif transfer.is_late() %}
                             <i
@@ -71,7 +81,7 @@
                             ></i>
                         {% endif %}
                     </td>
-                    <td
+                    <td class="no-hover"
                         title="{{  transfer.net_amount_wei }} wei"
                     >
                         <code>{{ transfer.formatted_net_amount }}&nbsp;rBTC</code><br/>
@@ -81,46 +91,56 @@
                     </td>
                     <td>
                         {% set rsktx = transfer.executed_transaction_hash or transfer.submission_transaction_hash %}
-                        {% if rsktx %}
-                            <a href="{{ rsk_explorer_base_url }}/tx/{{ rsktx }}" target="_blank">
-                                {{ transfer.status.name }}
-                            </a>
-                        {% elif transfer.bitcoin_tx_hash %}
-                            <a href="{{ btc_explorer_base_url }}/tx/{{ transfer.bitcoin_tx_hash }}" target="_blank">
-                                {{ transfer.status.name }}
-                            </a>
-                        {% else %}
+                        <div>
                             {{ transfer.status.name }}
-                        {% endif %}
+                        </div>
                         <br/><small><strong>{{ transfer.num_confirmations }}</strong> confirmations</small>
                     </td>
                     <td>
                         <small>
                             {%  if transfer.submitted_on  %}
-                                submitted <time class="timeago" datetime="{{ transfer.submitted_on.isoformat() }}">{{ transfer.submitted_on }}</time><br/>
+                                submitted {{ copyable_timeago(transfer.submitted_on) }} <br/>
                             {% endif %}
                             {% if transfer.executed_on %}
-                                executed
-                                <time class="timeago" datetime="{{ transfer.executed_on.isoformat() }}">{{ transfer.executed_on }}</time><br/>
+                                executed {{ copyable_timeago(transfer.executed_on) }} <br/>
                             {% endif %}
-                            updated <time class="timeago" datetime="{{ transfer.updated_on.isoformat() }}">{{ transfer.updated_on }}</time><br/>
-                            first seen <time class="timeago" datetime="{{ transfer.created_on.isoformat() }}">{{ transfer.created_on }}</time>
+                            updated {{ copyable_timeago(transfer.updated_on) }}<br/>
+                            first seen {{ copyable_timeago(transfer.created_on) }}<br/>
                         </small>
                     </td>
                     <td class="details">
+                        {% if transfer.is_double_spend %}
+                        <span>Warning:</span> <code>double spend</code>
+                        <br/>
+                        {% endif %}
                         <span>MultisigTxID:</span><code>{{ transfer.multisig_tx_id }}</code><br/>
                         <span>Func:</span><code>{{ transfer.transfer_function }}</code><br/>
-                        <span>RskReceiver:</span><code>{{ transfer.rsk_receiver_address }}</code><br/>
-                        <span>BtcTxHash:</span><code>{{ transfer.bitcoin_tx_hash }}</code><br/>
-                        <span>BtcTxVout:</span><code>{{ transfer.bitcoin_tx_vout }}</code><br/>
+                        <span>RskReceiver:</span>
+                        <a href="https://explorer.rootstock.io/address/{{ transfer.rsk_receiver_address }}">
+                            <code>{{ transfer.rsk_receiver_address }}</code>
+                        </a>
+                        <br/>
+                        <span>BtcTxHash:</span>
+                        <a href="https://mempool.space/tx/{{ transfer.bitcoin_tx_hash }}#vout={{ transfer.bitcoin_tx_vout }}">
+                            <code>{{ transfer.bitcoin_tx_hash + "/"}}{{ transfer.bitcoin_tx_vout }}</code>
+                        </a>
+                        <br/>
                         {% if transfer.submission_transaction_hash %}
-                            <span>SubmissionTx:</span><code>{{ transfer.submission_transaction_hash }}</code><br/>
+                            <span>SubmissionTx:</span>
+                            <a href="https://explorer.rootstock.io/tx/{{ transfer.submission_transaction_hash }}">
+                                <code>{{ transfer.submission_transaction_hash }}</code>
+                            </a>
+                            <br/>
                         {% endif %}
                         {% if transfer.has_execution_failure %}
                             <span>ExecutionFailures:</span><code>{{ transfer.execution_failures }}</code><br/>
                         {% endif %}
                         {% if transfer.executed_transaction_hash %}
-                            <span>ExecutionTx:</span><code>{{ transfer.executed_transaction_hash }}</code><br/>
+                            <span>ExecutionTx:</span>
+                            <a href="https://explorer.rootstock.io/tx/{{ transfer.executed_transaction_hash }}">
+                                <code>{{ transfer.executed_transaction_hash }}</code>
+                            </a>
+                            <br/>
                         {% endif %}
                     </td>
                 </tr>

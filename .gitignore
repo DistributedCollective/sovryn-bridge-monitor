@@ -1,6 +1,6 @@
 venv/
 secret_env
-
+/.env
 *.egg
 *.egg-info
 *.pyc
@@ -23,3 +23,13 @@ Data*.fs*
 coverage
 test
 *.sqlite
+*dump.sql
+*.log
+.idea/
+*.parquet
+/docker-compose.yaml
+
+/create_*.sh
+
+/script.sh
+/development_local.ini
