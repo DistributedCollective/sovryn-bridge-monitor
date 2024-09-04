@@ -259,7 +259,7 @@ def fetch_state(
         error_token_receiver_events = tuple()
         if executed_transaction_receipt:
             error_token_receiver_events = (
-                side_bridge_contract.events.ErrorTokenReceiver().processReceipt(
+                side_bridge_contract.events.ErrorTokenReceiver().process_receipt(
                     executed_transaction_receipt,
                     errors=DISCARD,  # TODO: is this right?
                 )
