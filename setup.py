@@ -29,7 +29,7 @@ requires = [
     "pyarrow",
     "openpyxl",
     "zstandard",
-    "dotenv",
+    "python-dotenv",
 ]
 
 tests_require = [
