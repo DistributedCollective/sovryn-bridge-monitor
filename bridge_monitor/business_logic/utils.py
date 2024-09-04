@@ -36,8 +36,9 @@ RSK_META_FETCHER_LONG_DELAY = 10 * 60
 
 INFURA_API_KEY = os.getenv("INFURA_API_KEY", "INFURA_API_KEY_NOT_SET")
 RPC_URLS = {
-    #'rsk_mainnet': os.getenv('RSK_NODE_URL', 'https://rsk-internal.sovryn.app/rpc'),
-    "rsk_mainnet": os.getenv("RSK_NODE_URL", "https://mainnet-dev.sovryn.app/rpc/"),
+    # NOTE: rsk-internal only works on sovryn machines -- use mainnet-dev for local dev
+    'rsk_mainnet': os.getenv('RSK_NODE_URL', 'https://rsk-internal.sovryn.app/rpc'),
+    #"rsk_mainnet": os.getenv("RSK_NODE_URL", "https://mainnet-dev.sovryn.app/rpc/"),
     "rsk_mainnet_iov": "https://public-node.rsk.co",
     "bsc_mainnet": os.getenv("BSC_NODE_URL", "https://bsc-dataseed1.binance.org/"),
     "rsk_testnet": "https://testnet.sovryn.app/rpc",
